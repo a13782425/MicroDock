@@ -1,0 +1,165 @@
+<Window
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:vm="using:MicroDock.ViewModels"
+	xmlns:models="using:MicroDock.Models"
+    xmlns:ext="using:MicroDock.Extension"
+    mc:Ignorable="d"
+    d:DesignWidth="500"
+    d:DesignHeight="350"
+    x:Class="MicroDock.Views.MainWindow"
+    x:DataType="vm:MainWindowViewModel"
+    ExtendClientAreaToDecorationsHint="True"
+    ExtendClientAreaChromeHints="NoChrome"
+    Icon="/Assets/avalonia-logo.ico">
+
+    <Window.Resources>
+        <ext:EnumToBooleanConverter x:Key="EnumToBooleanConverter"/>
+    </Window.Resources>
+
+    <Design.DataContext>
+        <!-- This only sets the DataContext for the previewer in an IDE,
+             to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
+        <vm:MainWindowViewModel />
+    </Design.DataContext>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="30"/>  <!-- 自定义标题栏 --> 
+            <RowDefinition Height="*"/>   <!-- 内容区域 -->
+        </Grid.RowDefinitions>
+    
+        <!-- 自定义标题栏 -->
+        <Grid Grid.Row="0" Background="#40FFFFFF" PointerPressed="TitleBar_PointerPressed">
+            <TextBlock Text="MicroDock"
+                       VerticalAlignment="Center"
+                       Margin="10,0"/>
+    
+            <!-- 自定义关闭按钮 -->
+            <Button Content="✕"
+                    Width="30"
+                    Height="30"
+                    HorizontalAlignment="Right"
+                    Click="CloseButton_OnClick"/>
+        </Grid>
+    
+        <!-- 内容区域 - 页签容器 -->
+        <TabControl Grid.Row="1" 
+                    ItemsSource="{Binding Tabs}"
+                    SelectedIndex="{Binding SelectedTabIndex}"
+                    Background="Transparent">
+            <TabControl.ItemTemplate>
+                <DataTemplate DataType="models:TabItemModel">
+                    <StackPanel Orientation="Horizontal" Spacing="5">
+                        <TextBlock Text="{Binding Header}" VerticalAlignment="Center"/>
+                        <!-- 可关闭的页签显示关闭按钮 -->
+                        <Button Content="×" 
+                                FontSize="16"
+                                Width="20" 
+                                Height="20"
+                                Padding="0"
+                                IsVisible="{Binding IsClosable}"
+                                Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).RemoveTabCommand}"
+                                CommandParameter="{Binding}"/>
+                    </StackPanel>
+                </DataTemplate>
+            </TabControl.ItemTemplate>
+            <TabControl.ContentTemplate>
+                <DataTemplate DataType="models:TabItemModel">
+                    <Border Background="#40FFFFFF" Padding="10">
+                        <Panel>
+                            <!-- 应用页签内容 -->
+                            <StackPanel IsVisible="{Binding TabType, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Application}">
+                                <TextBlock Text="应用列表" FontSize="18" FontWeight="Bold" Margin="0,0,0,10"/>
+                                <Button Content="+ 添加应用" 
+                                        HorizontalAlignment="Left"
+                                        Margin="0,0,0,10"/>
+                                <TextBlock Text="这里将显示应用程序图标列表" 
+                                           Foreground="Gray"/>
+                            </StackPanel>
+                            
+                            <!-- 设置页签内容 -->
+                            <StackPanel IsVisible="{Binding TabType, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Settings}">
+                                <TextBlock Text="设置" FontSize="18" FontWeight="Bold" Margin="0,0,0,10"/>
+                                <Button Content="+ 添加自定义页签" 
+                                        Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).AddCustomTabCommand}"
+                                        HorizontalAlignment="Left"
+                                        Margin="0,0,0,10"/>
+                                <TextBlock Text="自动启动：" Margin="0,5"/>
+                                <TextBlock Text="主题设置：" Margin="0,5"/>
+                                <TextBlock Text="其他配置..." Foreground="Gray" Margin="0,5"/>
+                            </StackPanel>
+                            
+                            <!-- 自定义页签内容 -->
+                            <StackPanel IsVisible="{Binding TabType, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Custom}">
+                                <TextBlock Text="{Binding Header}" FontSize="18" FontWeight="Bold" Margin="0,0,0,10"/>
+                                <TextBlock Text="这是一个自定义页签的内容区域" 
+                                           Foreground="Gray"/>
+                            </StackPanel>
+                            <!-- 插件页签内容 -->
+                            <ContentControl IsVisible="{Binding TabType, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Plugin}"
+                                            Content="{Binding PluginControl}"/>
+                        </Panel>
+                    </Border>
+                </DataTemplate>
+            </TabControl.ContentTemplate>
+        </TabControl>
+    
+    </Grid>
+    <!-- <Panel> -->
+        <!-- 毛玻璃背景层 -->
+        <!-- <ExperimentalAcrylicBorder IsHitTestVisible="False"> -->
+        <!--     <ExperimentalAcrylicBorder.Material> -->
+        <!--         <ExperimentalAcrylicMaterial -->
+        <!--             BackgroundSource="Digger" -->
+        <!--             TintColor="White" -->
+        <!--             TintOpacity="0.6" -->
+        <!--             MaterialOpacity="0.5" -->
+        <!--             FallbackColor="White"/> -->
+        <!--     </ExperimentalAcrylicBorder.Material> -->
+        <!-- </ExperimentalAcrylicBorder> -->
+        <!-- 毛玻璃背景 -->
+        <!-- <Border CornerRadius="15" -->
+        <!--         Margin="10" -->
+        <!--         Background="#40FFFFFF" -->
+        <!--         BorderBrush="#60FFFFFF" -->
+        <!--         BorderThickness="1"> -->
+        <!--     <Border.Effect> -->
+        <!--         <DropShadowEffect Color="Black"  -->
+        <!--                           BlurRadius="20"  -->
+        <!--                           Opacity="0.3"/> -->
+        <!--     </Border.Effect> -->
+        <!--      -->
+        <!--     ~1~ Dock 图标 @1@ -->
+        <!--     <StackPanel Orientation="Horizontal" -->
+        <!--                 Spacing="15" -->
+        <!--                 Margin="15,10" -->
+        <!--                 HorizontalAlignment="Center" -->
+        <!--                 VerticalAlignment="Center"> -->
+        <!--          -->
+        <!--         <Image Source="/Assets/avalonia-logo.ico"  -->
+        <!--                Width="48" Height="48" -->
+        <!--                Cursor="Hand"/> -->
+        <!--          -->
+        <!--         <Image Source="/Assets/avalonia-logo.ico"  -->
+        <!--                Width="48" Height="48" -->
+        <!--                Cursor="Hand"/> -->
+        <!--          -->
+        <!--         <Image Source="/Assets/avalonia-logo.ico"  -->
+        <!--                Width="48" Height="48" -->
+        <!--                Cursor="Hand"/> -->
+        <!--          -->
+        <!--         ~1~ 分隔线 @1@ -->
+        <!--         <Border Width="2" Height="40" -->
+        <!--                 Background="#80000000" -->
+        <!--                 CornerRadius="1" -->
+        <!--                 Margin="5,0"/> -->
+        <!--          -->
+        <!--         <Image Source="/Assets/avalonia-logo.ico"  -->
+        <!--                Width="48" Height="48" -->
+        <!--                Cursor="Hand"/> -->
+        <!--     </StackPanel> -->
+        <!-- </Border> -->
+    <!-- </Panel> -->
+</Window>
