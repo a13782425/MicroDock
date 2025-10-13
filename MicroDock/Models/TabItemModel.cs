@@ -10,7 +10,7 @@ namespace MicroDock.Models
         private bool _isClosable;
         private TabType _tabType;
         private Control? _pluginControl;
-        public TabItemModel(string header, TabType tabType, bool isClosable = true, Control? pluginControl = null)
+        public TabItemModel(string header, TabType tabType, bool isClosable = false, Control? pluginControl = null)
         {
             _header = header;
             _tabType = tabType;

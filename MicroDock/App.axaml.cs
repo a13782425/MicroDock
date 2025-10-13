@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using MicroDock.Database;
 using MicroDock.ViewModels;
 using MicroDock.Views;
 
@@ -17,6 +18,10 @@ namespace MicroDock
         {
             if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             {
+                desktop.Exit += (s, e) =>
+                {
+                    DBContext.Close();
+                };
                 desktop.MainWindow = new MainWindow
                 {
                     DataContext = new MainWindowViewModel(),
