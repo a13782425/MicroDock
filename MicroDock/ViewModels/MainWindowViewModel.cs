@@ -1,9 +1,13 @@
-﻿using System.Collections.ObjectModel;
+﻿using System;
+using System.Collections.ObjectModel;
 using System.Reactive;
 using System.IO;
 using Avalonia.Controls;
+using Avalonia.Media;
+using MicroDock.Database;
 using MicroDock.Models;
 using MicroDock.Services;
+using MicroDock.Views;
 using ReactiveUI;
 
 namespace MicroDock.ViewModels
@@ -18,13 +22,21 @@ namespace MicroDock.ViewModels
             Tabs = new ObservableCollection<TabItemModel>();
 
             // 添加固定的"应用"页签（不可关闭）
-            Tabs.Add(new TabItemModel("应用", TabType.Application));
+            TabItemModel applicationTab = new TabItemModel("应用", TabType.Application)
+            {
+                Content = new ApplicationTabView()
+            };
+            Tabs.Add(applicationTab);
 
             // 加载插件页签
             LoadPluginTabs();
 
             // 添加固定的"设置"页签（不可关闭）
-            Tabs.Add(new TabItemModel("设置", TabType.Settings));
+            TabItemModel settingsTab = new TabItemModel("设置", TabType.Settings)
+            {
+                Content = new SettingsTabView() // SettingsTabView 有自己的 ViewModel
+            };
+            Tabs.Add(settingsTab);
 
             // 初始化命令
             AddCustomTabCommand = ReactiveCommand.Create(ExecuteAddCustomTab);
@@ -65,7 +77,27 @@ namespace MicroDock.ViewModels
         private void ExecuteAddCustomTab()
         {
             int customTabCount = Tabs.Count - 1; // 减去设置页签
-            TabItemModel newTab = new TabItemModel($"自定义 {customTabCount}", TabType.Custom);
+            string tabName = $"自定义 {customTabCount}";
+            
+            // 创建自定义页签的内容
+            StackPanel customContent = new StackPanel();
+            customContent.Children.Add(new TextBlock
+            {
+                Text = tabName,
+                FontSize = 18,
+                FontWeight = FontWeight.Bold,
+                Margin = new Avalonia.Thickness(0, 0, 0, 10)
+            });
+            customContent.Children.Add(new TextBlock
+            {
+                Text = "这是一个自定义页签的内容区域",
+                Foreground = Brushes.Gray
+            });
+            
+            TabItemModel newTab = new TabItemModel(tabName, TabType.Custom)
+            {
+                Content = customContent
+            };
 
             // 插入到倒数第二个位置（设置页签之前）
             Tabs.Insert(Tabs.Count - 1, newTab);
@@ -110,9 +142,11 @@ namespace MicroDock.ViewModels
                 string pluginName = PluginLoader.GetPluginName(plugin);
                 TabItemModel pluginTab = new TabItemModel(
                     pluginName,
-                    TabType.Plugin,
-                    pluginControl: plugin
-                );
+                    TabType.Plugin
+                )
+                {
+                    Content = plugin  // 将插件控件设置为内容
+                };
                 Tabs.Add(pluginTab);
             }
         }

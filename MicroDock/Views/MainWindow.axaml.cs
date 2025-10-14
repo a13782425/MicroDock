@@ -4,6 +4,10 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform;
 using DesktopNotifications;
+using MicroDock.Database;
+using MicroDock.Models;
+using MicroDock.Services;
+using MicroDock.ViewModels;
 using System;
 
 namespace MicroDock.Views
@@ -11,11 +15,31 @@ namespace MicroDock.Views
     public partial class MainWindow : Window
     {
         private TrayIcon? _trayIcon;
+        private readonly AutoStartupService _autoStartupService;
+        private readonly AutoHideService _autoHideService;
+        private readonly TopMostService _topMostService;
 
         public MainWindow()
         {
             InitializeComponent();
+            
+            // 初始化服务
+            _autoStartupService = new AutoStartupService();
+            _autoHideService = new AutoHideService(this);
+            _topMostService = new TopMostService(this);
+            
             InitializeTrayIcon();
+            
+            // 在窗口打开后初始化设置
+            this.Opened += OnWindowOpened;
+        }
+        
+        /// <summary>
+        /// 窗口打开事件处理
+        /// </summary>
+        private void OnWindowOpened(object? sender, EventArgs e)
+        {
+            InitializeSettings();
         }
 
         /// <summary>
@@ -126,6 +150,108 @@ namespace MicroDock.Views
         private void CloseButton_OnClick(object? sender, RoutedEventArgs e)
         {
             this.Hide();
+        }
+
+        /// <summary>
+        /// 初始化设置并订阅配置变更事件
+        /// </summary>
+        private void InitializeSettings()
+        {
+            // 查找 SettingsTabView 并订阅其 ViewModel 的事件
+            SettingsTabView? settingsTab = FindSettingsTabView();
+            if (settingsTab?.ViewModel != null)
+            {
+                // 订阅配置变更事件
+                settingsTab.ViewModel.SettingChanged += OnSettingChanged;
+                
+                // 应用初始配置
+                SettingDB settings = DBContext.GetSetting();
+                ApplyAutoStartup(settings.AutoStartup);
+                ApplyAutoHide(settings.AutoHide);
+                ApplyAlwaysOnTop(settings.AlwaysOnTop);
+            }
+        }
+        
+        /// <summary>
+        /// 查找 SettingsTabView
+        /// </summary>
+        private SettingsTabView? FindSettingsTabView()
+        {
+            if (this.DataContext is MainWindowViewModel viewModel)
+            {
+                foreach (TabItemModel tab in viewModel.Tabs)
+                {
+                    if (tab.Content is SettingsTabView settingsView)
+                    {
+                        return settingsView;
+                    }
+                }
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// 配置变更事件处理
+        /// </summary>
+        private void OnSettingChanged(string settingName, bool value)
+        {
+            switch (settingName)
+            {
+                case nameof(SettingsTabViewModel.AutoStartup):
+                    ApplyAutoStartup(value);
+                    break;
+                case nameof(SettingsTabViewModel.AutoHide):
+                    ApplyAutoHide(value);
+                    break;
+                case nameof(SettingsTabViewModel.AlwaysOnTop):
+                    ApplyAlwaysOnTop(value);
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// 应用自启动配置
+        /// </summary>
+        private void ApplyAutoStartup(bool enabled)
+        {
+            if (enabled)
+            {
+                _autoStartupService.Enable();
+            }
+            else
+            {
+                _autoStartupService.Disable();
+            }
+        }
+
+        /// <summary>
+        /// 应用靠边隐藏配置
+        /// </summary>
+        private void ApplyAutoHide(bool enabled)
+        {
+            if (enabled)
+            {
+                _autoHideService.Enable();
+            }
+            else
+            {
+                _autoHideService.Disable();
+            }
+        }
+
+        /// <summary>
+        /// 应用窗口置顶配置
+        /// </summary>
+        private void ApplyAlwaysOnTop(bool enabled)
+        {
+            if (enabled)
+            {
+                _topMostService.Enable();
+            }
+            else
+            {
+                _topMostService.Disable();
+            }
         }
     }
 }

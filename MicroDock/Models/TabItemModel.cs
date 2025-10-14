@@ -9,13 +9,11 @@ namespace MicroDock.Models
         private object? _content;
         private bool _isClosable;
         private TabType _tabType;
-        private Control? _pluginControl;
-        public TabItemModel(string header, TabType tabType, bool isClosable = false, Control? pluginControl = null)
+        public TabItemModel(string header, TabType tabType, bool isClosable = false)
         {
             _header = header;
             _tabType = tabType;
             _isClosable = isClosable;
-            _pluginControl = pluginControl;
         }
 
         /// <summary>
@@ -52,14 +50,6 @@ namespace MicroDock.Models
         {
             get => _tabType;
             set => this.RaiseAndSetIfChanged(ref _tabType, value);
-        }
-        /// <summary>
-        /// 插件控件（仅Plugin类型使用）
-        /// </summary>
-        public Control? PluginControl
-        {
-            get => _pluginControl;
-            set => this.RaiseAndSetIfChanged(ref _pluginControl, value);
         }
     }
 }

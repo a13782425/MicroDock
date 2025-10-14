@@ -8,7 +8,7 @@ using MicroDock.Plugin;
 
 namespace MicroDock.Services
 {
-    public class PluginLoader
+    public static class PluginLoader
     {
         /// <summary>
         /// 从指定目录加载插件
