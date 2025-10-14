@@ -9,6 +9,7 @@ using MicroDock.Models;
 using MicroDock.Services;
 using MicroDock.ViewModels;
 using System;
+using System.ComponentModel;
 
 namespace MicroDock.Views
 {
@@ -18,6 +19,7 @@ namespace MicroDock.Views
         private readonly AutoStartupService _autoStartupService;
         private readonly AutoHideService _autoHideService;
         private readonly TopMostService _topMostService;
+        private readonly MiniModeService _miniModeService;
 
         public MainWindow()
         {
@@ -27,7 +29,8 @@ namespace MicroDock.Views
             _autoStartupService = new AutoStartupService();
             _autoHideService = new AutoHideService(this);
             _topMostService = new TopMostService(this);
-            
+            _miniModeService = new MiniModeService(this);
+
             InitializeTrayIcon();
             
             // 在窗口打开后初始化设置
@@ -161,16 +164,22 @@ namespace MicroDock.Views
             SettingsTabView? settingsTab = FindSettingsTabView();
             if (settingsTab?.ViewModel != null)
             {
-                // 订阅配置变更事件
-                settingsTab.ViewModel.SettingChanged += OnSettingChanged;
-                
-                // 应用初始配置
-                SettingDB settings = DBContext.GetSetting();
-                ApplyAutoStartup(settings.AutoStartup);
-                ApplyAutoHide(settings.AutoHide);
-                ApplyAlwaysOnTop(settings.AlwaysOnTop);
+                // 将服务实例传递给 ViewModel
+                settingsTab.ViewModel.InitializeServices(_autoStartupService, _autoHideService, _topMostService, _miniModeService);
+                // settingsTab.ViewModel.PropertyChanged += OnSettingChanged;
             }
         }
+
+        /*private void OnSettingChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(SettingsTabViewModel.IsMiniModeEnabled))
+            {
+                if ((sender as SettingsTabViewModel).IsMiniModeEnabled)
+                    _miniModeService.Enable();
+                else
+                    _miniModeService.Disable();
+            }
+        }*/
         
         /// <summary>
         /// 查找 SettingsTabView
@@ -188,70 +197,6 @@ namespace MicroDock.Views
                 }
             }
             return null;
-        }
-
-        /// <summary>
-        /// 配置变更事件处理
-        /// </summary>
-        private void OnSettingChanged(string settingName, bool value)
-        {
-            switch (settingName)
-            {
-                case nameof(SettingsTabViewModel.AutoStartup):
-                    ApplyAutoStartup(value);
-                    break;
-                case nameof(SettingsTabViewModel.AutoHide):
-                    ApplyAutoHide(value);
-                    break;
-                case nameof(SettingsTabViewModel.AlwaysOnTop):
-                    ApplyAlwaysOnTop(value);
-                    break;
-            }
-        }
-
-        /// <summary>
-        /// 应用自启动配置
-        /// </summary>
-        private void ApplyAutoStartup(bool enabled)
-        {
-            if (enabled)
-            {
-                _autoStartupService.Enable();
-            }
-            else
-            {
-                _autoStartupService.Disable();
-            }
-        }
-
-        /// <summary>
-        /// 应用靠边隐藏配置
-        /// </summary>
-        private void ApplyAutoHide(bool enabled)
-        {
-            if (enabled)
-            {
-                _autoHideService.Enable();
-            }
-            else
-            {
-                _autoHideService.Disable();
-            }
-        }
-
-        /// <summary>
-        /// 应用窗口置顶配置
-        /// </summary>
-        private void ApplyAlwaysOnTop(bool enabled)
-        {
-            if (enabled)
-            {
-                _topMostService.Enable();
-            }
-            else
-            {
-                _topMostService.Disable();
-            }
         }
     }
 }

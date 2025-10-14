@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Platform;
 using Avalonia.Threading;
 using System;
+using System.Runtime.InteropServices;
 using System.Timers;
 
 namespace MicroDock.Services;
@@ -22,6 +23,18 @@ public class AutoHideService : IWindowService
     private bool _isHidden = false;
     private EdgePosition _hiddenEdge = EdgePosition.None;
     private PixelPoint _lastPosition;
+    private Screen? _hiddenScreen = null; // 窗口隐藏时所在的屏幕
+
+    // Windows API 调用获取全局鼠标位置
+    [DllImport("user32.dll")]
+    private static extern bool GetCursorPos(out POINT lpPoint);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct POINT
+    {
+        public int X;
+        public int Y;
+    }
 
     public enum EdgePosition
     {
@@ -170,6 +183,9 @@ public class AutoHideService : IWindowService
         if (screen == null)
             return;
 
+        // 保存窗口隐藏时所在的屏幕
+        _hiddenScreen = screen;
+
         PixelRect workingArea = screen.WorkingArea;
         PixelPoint newPosition = _window.Position;
 
@@ -221,6 +237,7 @@ public class AutoHideService : IWindowService
         _window.Position = newPosition;
         _isHidden = false;
         _hiddenEdge = EdgePosition.None;
+        _hiddenScreen = null;
     }
 
     /// <summary>
@@ -228,14 +245,53 @@ public class AutoHideService : IWindowService
     /// </summary>
     private bool ShouldShowWindow()
     {
-        if (!_isHidden)
+        if (!_isHidden || _hiddenScreen == null)
             return false;
 
-        // 获取鼠标位置（这里简化处理，实际可能需要使用平台特定的API）
-        // 由于Avalonia没有直接提供全局鼠标位置，这里使用窗口激活作为触发
-        // 当鼠标移动到隐藏的窗口区域时，窗口会收到鼠标事件
-        
-        return false; // 暂时使用简单逻辑，可以后续优化
+        // 仅在 Windows 平台上使用 P/Invoke 获取鼠标位置
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            return false;
+
+        // 获取全局鼠标位置
+        if (!GetCursorPos(out POINT mousePos))
+            return false;
+
+        // 使用保存的屏幕信息
+        PixelRect workingArea = _hiddenScreen.WorkingArea;
+        PixelPoint windowPos = _window.Position;
+        int windowWidth = (int)_window.Width;
+        int windowHeight = (int)_window.Height;
+
+        // 根据隐藏的边缘判断鼠标是否在可见区域内
+        switch (_hiddenEdge)
+        {
+            case EdgePosition.Left:
+                // 左边缘：检查鼠标是否在 [workingArea.X, workingArea.X + HIDE_OFFSET] 区域内
+                // 并且 Y 坐标在窗口的高度范围内
+                return mousePos.X >= workingArea.X && 
+                       mousePos.X <= workingArea.X + HIDE_OFFSET &&
+                       mousePos.Y >= windowPos.Y && 
+                       mousePos.Y <= windowPos.Y + windowHeight;
+
+            case EdgePosition.Right:
+                // 右边缘：检查鼠标是否在 [workingArea.Right - HIDE_OFFSET, workingArea.Right] 区域内
+                // 并且 Y 坐标在窗口的高度范围内
+                return mousePos.X >= workingArea.Right - HIDE_OFFSET && 
+                       mousePos.X <= workingArea.Right &&
+                       mousePos.Y >= windowPos.Y && 
+                       mousePos.Y <= windowPos.Y + windowHeight;
+
+            case EdgePosition.Top:
+                // 上边缘：检查鼠标是否在 [workingArea.Y, workingArea.Y + HIDE_OFFSET] 区域内
+                // 并且 X 坐标在窗口的宽度范围内
+                return mousePos.Y >= workingArea.Y && 
+                       mousePos.Y <= workingArea.Y + HIDE_OFFSET &&
+                       mousePos.X >= windowPos.X && 
+                       mousePos.X <= windowPos.X + windowWidth;
+
+            default:
+                return false;
+        }
     }
 }
 

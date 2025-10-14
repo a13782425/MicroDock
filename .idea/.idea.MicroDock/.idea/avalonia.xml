@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AvaloniaProject">
+    <option name="projectPerEditor">
+      <map>
+        <entry key="MicroDock/Views/Controls/CircularLauncherView.axaml" value="MicroDock/MicroDock.csproj" />
+        <entry key="MicroDock/Views/MainWindow.axaml" value="MicroDock/MicroDock.csproj" />
+        <entry key="MicroDock/Views/MiniBallWindow.axaml" value="MicroDock/MicroDock.csproj" />
+        <entry key="MicroDock/Views/Tabs/SettingsTabView.axaml" value="MicroDock/MicroDock.csproj" />
+      </map>
+    </option>
+  </component>
+</project>

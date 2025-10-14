@@ -33,4 +33,9 @@ internal class SettingDB
     /// 是否窗口置顶
     /// </summary>
     public bool AlwaysOnTop { get; set; } = false;
+    
+    /// <summary>
+    /// 是否开启迷你模式
+    /// </summary>
+    public bool IsMiniModeEnabled { get; set; } = false;
 }

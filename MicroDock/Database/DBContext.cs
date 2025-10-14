@@ -22,6 +22,7 @@ internal static class DBContext
         try
         {
             _database.CreateTable<SettingDB>();
+            _database.CreateTable<ApplicationDB>();
             // 尝试迁移表结构以支持新增字段
             TableMapping mapping = _database.GetMapping<SettingDB>();
             foreach (TableMapping.Column column in mapping.Columns)
@@ -64,6 +65,25 @@ internal static class DBContext
         updateAction(settings);
         _database.Update(settings);
     }
+    
+    // 获取所有应用
+    public static List<ApplicationDB> GetApplications()
+    {
+        return _database.Table<ApplicationDB>().ToList();
+    }
+    
+    // 添加应用
+    public static void AddApplication(ApplicationDB application)
+    {
+        _database.Insert(application);
+    }
+    
+    // 删除应用
+    public static void DeleteApplication(int id)
+    {
+        _database.Delete<ApplicationDB>(id);
+    }
+
     // 关闭数据库连接
     public static void Close()
     {
