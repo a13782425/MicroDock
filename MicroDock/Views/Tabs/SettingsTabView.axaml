@@ -3,6 +3,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:MicroDock.ViewModels"
+             xmlns:db="using:MicroDock.Database"
              xmlns:fa="clr-namespace:FluentAvalonia.UI.Controls;assembly=FluentAvalonia"
              mc:Ignorable="d"
              d:DesignWidth="500"
@@ -119,14 +120,14 @@
                             Command="{Binding AddApplicationCommand}"
                             HorizontalAlignment="Left"/>
                     
-                    <ListBox ItemsSource="{Binding Applications}" Margin="0,10,0,0">
+                    <ListBox x:Name="AppsList" ItemsSource="{Binding Applications}" Margin="0,10,0,0">
                         <ListBox.ItemTemplate>
-                            <DataTemplate>
+                            <DataTemplate x:DataType="db:ApplicationDB">
                                 <Grid ColumnDefinitions="*,Auto">
                                     <TextBlock Text="{Binding Name}" VerticalAlignment="Center"/>
                                     <Button Grid.Column="1" 
                                             Content="删除" 
-                                            Command="{Binding $parent[ListBox].DataContext.RemoveApplicationCommand}"
+                                            Command="{Binding #AppsList.DataContext.RemoveApplicationCommand}"
                                             CommandParameter="{Binding}"/>
                                 </Grid>
                             </DataTemplate>

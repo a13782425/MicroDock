@@ -74,5 +74,46 @@ namespace MicroDock.Services
             }
             return plugin.GetType().Name;
         }
+
+        public static List<MicroAction> LoadActions(string pluginDirectory)
+        {
+            List<MicroAction> actions = new List<MicroAction>();
+
+            if (!Directory.Exists(pluginDirectory))
+            {
+                return actions;
+            }
+
+            string[] dllFiles = Directory.GetFiles(pluginDirectory, "*.dll", SearchOption.AllDirectories);
+            foreach (string dllFile in dllFiles)
+            {
+                try
+                {
+                    Assembly assembly = Assembly.LoadFrom(dllFile);
+                    Type[] types = assembly.GetTypes();
+                    foreach (Type type in types)
+                    {
+                        if (typeof(IMicroActionsProvider).IsAssignableFrom(type) && !type.IsAbstract && !type.IsInterface)
+                        {
+                            object? instance = Activator.CreateInstance(type);
+                            IMicroActionsProvider? provider = instance as IMicroActionsProvider;
+                            if (provider != null)
+                            {
+                                foreach (MicroAction action in provider.GetActions())
+                                {
+                                    actions.Add(action);
+                                }
+                            }
+                        }
+                    }
+                }
+                catch
+                {
+                    // ignore single plugin failures
+                }
+            }
+
+            return actions;
+        }
     }
 }

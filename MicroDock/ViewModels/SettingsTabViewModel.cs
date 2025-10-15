@@ -125,7 +125,7 @@ public class SettingsTabViewModel : ViewModelBase
 
     private async System.Threading.Tasks.Task AddApplication()
     {
-        var dialog = new OpenFileDialog
+        OpenFileDialog dialog = new OpenFileDialog
         {
             Title = "选择要添加的应用程序",
             AllowMultiple = false,
@@ -138,14 +138,16 @@ public class SettingsTabViewModel : ViewModelBase
 
         if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
         {
-            var result = await dialog.ShowAsync(desktop.MainWindow);
+            string[]? result = await dialog.ShowAsync(desktop.MainWindow);
             if (result != null && result.Length > 0)
             {
-                var filePath = result[0];
-                var app = new ApplicationDB
+                string filePath = result[0];
+                byte[]? iconBytes = IconService.TryExtractFileIconBytes(filePath);
+                ApplicationDB app = new ApplicationDB
                 {
                     Name = Path.GetFileNameWithoutExtension(filePath),
-                    FilePath = filePath
+                    FilePath = filePath,
+                    Icon = iconBytes
                 };
                 DBContext.AddApplication(app);
                 Applications.Add(app);

@@ -1,10 +1,10 @@
+using System;
+using System.Runtime.InteropServices;
+using System.Timers;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Platform;
 using Avalonia.Threading;
-using System;
-using System.Runtime.InteropServices;
-using System.Timers;
 
 namespace MicroDock.Services;
 
