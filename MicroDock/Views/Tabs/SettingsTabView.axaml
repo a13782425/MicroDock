@@ -136,6 +136,75 @@
                 </StackPanel>
             </fa:SettingsExpander>
 
+            <!-- 迷你模式设置 -->
+            <fa:SettingsExpander Header="迷你模式设置"
+                                 IconSource="Emoji">
+                <StackPanel Margin="10,10,0,10" Spacing="8">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="220"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="长按触发(ms)" VerticalAlignment="Center"/>
+                        <Slider Grid.Column="1" Minimum="200" Maximum="1500" TickFrequency="50" IsSnapToTickEnabled="True" Value="{Binding LongPressMs, Mode=TwoWay}"/>
+                    </Grid>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="220"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="半径" VerticalAlignment="Center"/>
+                        <Slider Grid.Column="1" Minimum="40" Maximum="140" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding MiniRadius, Mode=TwoWay}"/>
+                    </Grid>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="220"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="项大小" VerticalAlignment="Center"/>
+                        <Slider Grid.Column="1" Minimum="24" Maximum="80" TickFrequency="2" IsSnapToTickEnabled="True" Value="{Binding MiniItemSize, Mode=TwoWay}"/>
+                    </Grid>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="220"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="起始角度" VerticalAlignment="Center"/>
+                        <Slider Grid.Column="1" Minimum="-180" Maximum="180" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding MiniStartAngle, Mode=TwoWay}"/>
+                    </Grid>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="220"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="扫过角度" VerticalAlignment="Center"/>
+                        <Slider Grid.Column="1" Minimum="60" Maximum="360" TickFrequency="10" IsSnapToTickEnabled="True" Value="{Binding MiniSweepAngle, Mode=TwoWay}"/>
+                    </Grid>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="自动半环（靠边）" VerticalAlignment="Center"/>
+                        <ToggleSwitch Grid.Column="1" IsChecked="{Binding MiniAutoDynamicArc, Mode=TwoWay}"/>
+                    </Grid>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="触发后自动收起" VerticalAlignment="Center"/>
+                        <ToggleSwitch Grid.Column="1" IsChecked="{Binding MiniAutoCollapseAfterTrigger, Mode=TwoWay}"/>
+                    </Grid>
+                </StackPanel>
+            </fa:SettingsExpander>
+
             <!-- 页签管理分组 -->
             <fa:SettingsExpander Header="页签管理" 
                                  IconSource="Library">

@@ -38,4 +38,40 @@ internal class SettingDB
     /// 是否开启迷你模式
     /// </summary>
     public bool IsMiniModeEnabled { get; set; } = false;
+
+    // === 迷你模式配置（P1） ===
+    /// <summary>
+    /// 长按触发展开（毫秒）
+    /// </summary>
+    public int LongPressMs { get; set; } = 500;
+
+    /// <summary>
+    /// 环形半径
+    /// </summary>
+    public double MiniRadius { get; set; } = 60;
+
+    /// <summary>
+    /// 启动项大小（边长，像素）
+    /// </summary>
+    public double MiniItemSize { get; set; } = 40;
+
+    /// <summary>
+    /// 起始角度（度）
+    /// </summary>
+    public double MiniStartAngle { get; set; } = -90;
+
+    /// <summary>
+    /// 扫过角度（度）
+    /// </summary>
+    public double MiniSweepAngle { get; set; } = 360;
+
+    /// <summary>
+    /// 是否根据靠边自动半环
+    /// </summary>
+    public bool MiniAutoDynamicArc { get; set; } = true;
+
+    /// <summary>
+    /// 触发后是否自动收起
+    /// </summary>
+    public bool MiniAutoCollapseAfterTrigger { get; set; } = true;
 }

@@ -16,7 +16,7 @@ public static class IconService
             return null;
         }
 
-        MemoryStream stream = new MemoryStream(data);
+        using var stream = new MemoryStream(data, writable: false);
         return new Avalonia.Media.Imaging.Bitmap(stream);
     }
 

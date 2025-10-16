@@ -70,6 +70,9 @@ public partial class CircularLauncherView : UserControl
     
     public static readonly StyledProperty<double> ItemSizeProperty =
         AvaloniaProperty.Register<CircularLauncherView, double>(nameof(ItemSize), 40);
+
+    public static readonly StyledProperty<bool> AutoDynamicArcProperty =
+        AvaloniaProperty.Register<CircularLauncherView, bool>(nameof(AutoDynamicArc), true);
     
     static CircularLauncherView()
     {
@@ -110,6 +113,12 @@ public partial class CircularLauncherView : UserControl
     {
         get => GetValue(ItemSizeProperty);
         set => SetValue(ItemSizeProperty, value);
+    }
+
+    public bool AutoDynamicArc
+    {
+        get => GetValue(AutoDynamicArcProperty);
+        set => SetValue(AutoDynamicArcProperty, value);
     }
 
     public CircularLauncherView()
@@ -186,51 +195,59 @@ public partial class CircularLauncherView : UserControl
         double dynamicStartDeg = StartAngleDegrees;
         double dynamicSweepDeg = SweepAngleDegrees;
 
-        Window? window = this.VisualRoot as Window;
-        if (window != null)
+        if (AutoDynamicArc)
         {
-            Avalonia.PixelPoint winPos = window.Position;
-            Avalonia.Platform.Screen? screen = window.Screens.ScreenFromWindow(window);
-            if (screen != null)
+            Window? window = this.VisualRoot as Window;
+            if (window != null)
             {
-                Avalonia.PixelRect wa = screen.WorkingArea;
-                int margin = 48; // 边缘阈值
+                Avalonia.PixelPoint winPos = window.Position;
+                Avalonia.Platform.Screen? screen = window.Screens.ScreenFromWindow(window);
+                if (screen != null)
+                {
+                    Avalonia.PixelRect wa = screen.WorkingArea;
+                    int margin = 48; // 边缘阈值
 
-                bool nearLeft = winPos.X <= wa.X + margin;
-                bool nearRight = winPos.X + (int)window.Width >= wa.Right - margin;
-                bool nearTop = winPos.Y <= wa.Y + margin;
-                bool nearBottom = winPos.Y + (int)window.Height >= wa.Bottom - margin;
+                    bool nearLeft = winPos.X <= wa.X + margin;
+                    bool nearRight = winPos.X + (int)window.Width >= wa.Right - margin;
+                    bool nearTop = winPos.Y <= wa.Y + margin;
+                    bool nearBottom = winPos.Y + (int)window.Height >= wa.Bottom - margin;
 
-                if (nearLeft && !nearRight)
-                {
-                    // 右半环（-90..90）
-                    dynamicStartDeg = -90;
-                    dynamicSweepDeg = 180;
-                }
-                else if (nearRight && !nearLeft)
-                {
-                    // 左半环（90..270）
-                    dynamicStartDeg = 90;
-                    dynamicSweepDeg = 180;
-                }
-                else if (nearTop && !nearBottom)
-                {
-                    // 下半环（0..180）
-                    dynamicStartDeg = 0;
-                    dynamicSweepDeg = 180;
-                }
-                else if (nearBottom && !nearTop)
-                {
-                    // 上半环（180..360）
-                    dynamicStartDeg = 180;
-                    dynamicSweepDeg = 180;
-                }
-                else
-                {
-                    dynamicStartDeg = StartAngleDegrees;
-                    dynamicSweepDeg = SweepAngleDegrees;
+                    if (nearLeft && !nearRight)
+                    {
+                        // 右半环（-90..90）
+                        dynamicStartDeg = -90;
+                        dynamicSweepDeg = 180;
+                    }
+                    else if (nearRight && !nearLeft)
+                    {
+                        // 左半环（90..270）
+                        dynamicStartDeg = 90;
+                        dynamicSweepDeg = 180;
+                    }
+                    else if (nearTop && !nearBottom)
+                    {
+                        // 下半环（0..180）
+                        dynamicStartDeg = 0;
+                        dynamicSweepDeg = 180;
+                    }
+                    else if (nearBottom && !nearTop)
+                    {
+                        // 上半环（180..360）
+                        dynamicStartDeg = 180;
+                        dynamicSweepDeg = 180;
+                    }
+                    else
+                    {
+                        dynamicStartDeg = StartAngleDegrees;
+                        dynamicSweepDeg = SweepAngleDegrees;
+                    }
                 }
             }
+        }
+        else
+        {
+            dynamicStartDeg = StartAngleDegrees;
+            dynamicSweepDeg = SweepAngleDegrees;
         }
 
         double startRad = dynamicStartDeg * Math.PI / 180.0;
@@ -258,5 +275,7 @@ public partial class CircularLauncherView : UserControl
         ILauncherItem item = element.DataContext as ILauncherItem;
         if (item == null) return;
         item.OnTrigger?.Invoke();
+        // 防止事件冒泡导致父级兜底触发（例如 MiniBallWindow 命中检测）
+        e.Handled = true;
     }
 }

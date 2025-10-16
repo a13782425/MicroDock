@@ -22,6 +22,15 @@ public class SettingsTabViewModel : ViewModelBase
     private bool _alwaysOnTop;
     private bool _isMiniModeEnabled;
     private Color _customAccentColor = Color.FromRgb(255,0,0);
+
+    // P1: 迷你模式配置
+    private int _longPressMs = 500;
+    private double _miniRadius = 60;
+    private double _miniItemSize = 40;
+    private double _miniStartAngle = -90;
+    private double _miniSweepAngle = 360;
+    private bool _miniAutoDynamicArc = true;
+    private bool _miniAutoCollapseAfterTrigger = true;
     
     private AutoStartupService? _autoStartupService;
     private AutoHideService? _autoHideService;
@@ -106,6 +115,77 @@ public class SettingsTabViewModel : ViewModelBase
         }
     }
 
+    // === 迷你模式配置（P1） ===
+    public int LongPressMs
+    {
+        get => _longPressMs;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _longPressMs, value);
+            DBContext.UpdateSetting(s => s.LongPressMs = value);
+        }
+    }
+
+    public double MiniRadius
+    {
+        get => _miniRadius;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _miniRadius, value);
+            DBContext.UpdateSetting(s => s.MiniRadius = value);
+        }
+    }
+
+    public double MiniItemSize
+    {
+        get => _miniItemSize;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _miniItemSize, value);
+            DBContext.UpdateSetting(s => s.MiniItemSize = value);
+        }
+    }
+
+    public double MiniStartAngle
+    {
+        get => _miniStartAngle;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _miniStartAngle, value);
+            DBContext.UpdateSetting(s => s.MiniStartAngle = value);
+        }
+    }
+
+    public double MiniSweepAngle
+    {
+        get => _miniSweepAngle;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _miniSweepAngle, value);
+            DBContext.UpdateSetting(s => s.MiniSweepAngle = value);
+        }
+    }
+
+    public bool MiniAutoDynamicArc
+    {
+        get => _miniAutoDynamicArc;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _miniAutoDynamicArc, value);
+            DBContext.UpdateSetting(s => s.MiniAutoDynamicArc = value);
+        }
+    }
+
+    public bool MiniAutoCollapseAfterTrigger
+    {
+        get => _miniAutoCollapseAfterTrigger;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _miniAutoCollapseAfterTrigger, value);
+            DBContext.UpdateSetting(s => s.MiniAutoCollapseAfterTrigger = value);
+        }
+    }
+
     public List<Color> PredefinedColors => AppConfig.PredefAccentColors;
     public Color CustomAccentColor
     {
@@ -174,12 +254,29 @@ public class SettingsTabViewModel : ViewModelBase
         _autoHide = settings.AutoHide;
         _alwaysOnTop = settings.AlwaysOnTop;
         _isMiniModeEnabled = settings.IsMiniModeEnabled;
+
+        // 迷你模式配置
+        _longPressMs = settings.LongPressMs;
+        _miniRadius = settings.MiniRadius;
+        _miniItemSize = settings.MiniItemSize;
+        _miniStartAngle = settings.MiniStartAngle;
+        _miniSweepAngle = settings.MiniSweepAngle;
+        _miniAutoDynamicArc = settings.MiniAutoDynamicArc;
+        _miniAutoCollapseAfterTrigger = settings.MiniAutoCollapseAfterTrigger;
         
         // 通知UI更新
         this.RaisePropertyChanged(nameof(AutoStartup));
         this.RaisePropertyChanged(nameof(AutoHide));
         this.RaisePropertyChanged(nameof(AlwaysOnTop));
         this.RaisePropertyChanged(nameof(IsMiniModeEnabled));
+
+        this.RaisePropertyChanged(nameof(LongPressMs));
+        this.RaisePropertyChanged(nameof(MiniRadius));
+        this.RaisePropertyChanged(nameof(MiniItemSize));
+        this.RaisePropertyChanged(nameof(MiniStartAngle));
+        this.RaisePropertyChanged(nameof(MiniSweepAngle));
+        this.RaisePropertyChanged(nameof(MiniAutoDynamicArc));
+        this.RaisePropertyChanged(nameof(MiniAutoCollapseAfterTrigger));
     }
     
     /// <summary>
