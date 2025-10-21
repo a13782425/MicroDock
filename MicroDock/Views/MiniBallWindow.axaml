@@ -12,23 +12,32 @@
         SystemDecorations="None"
         Background="Transparent"
         TransparencyLevelHint="Transparent"
-        Width="64" Height="64"
-        WindowStartupLocation="CenterScreen">
+        WindowStartupLocation="CenterScreen"
+        Topmost="True"
+        ShowInTaskbar="False">
     <Window.Resources>
         <ext:HalfValueConverter x:Key="HalfValueConverter"/>
     </Window.Resources>
-    <Grid>
+    <!-- Root overlay: non-hit-testable; only children (Ball/Menu) accept input -->
+    <Canvas>
+
         <Border Name="Ball" 
                 Width="64"
                 Height="64"
                 CornerRadius="32"
                 Background="Gray"
+                IsHitTestVisible="True"
                 PointerPressed="OnPointerPressed"
-                PointerReleased="OnPointerReleased">
+                PointerReleased="OnPointerReleased"
+                PointerEntered="OnInteractivePointerEntered"
+                PointerExited="OnInteractivePointerExited">
         </Border>
         
         <controls:CircularLauncherView Name="LauncherView"
-                                         IsVisible="False"/>
+                                       IsVisible="False"
+                                       IsHitTestVisible="True"
+                                       PointerEntered="OnInteractivePointerEntered"
+                                       PointerExited="OnInteractivePointerExited"/>
 
         <!-- <Button Name="CancelButton" -->
         <!--         Content="取消" -->
@@ -36,5 +45,5 @@
         <!--         HorizontalAlignment="Center" -->
         <!--         VerticalAlignment="Center" -->
         <!--         Click="CancelButton_Click"/> -->
-    </Grid>
+    </Canvas>
 </Window>

@@ -9,6 +9,7 @@ using Avalonia;
 using Avalonia.Media;
 using Avalonia.Platform;
 using Avalonia.Media.Imaging;
+using System.Runtime.InteropServices;
 
 namespace MicroDock.Views;
 
@@ -21,6 +22,18 @@ public partial class MiniBallWindow : Window
     private readonly IMiniModeService? _miniModeService;
     private PixelPoint? _fixedCenterPxDuringExpand;
 
+    // P0: Full-screen transparent host flag (default enabled). TODO: move to DB setting.
+    private const bool UseFullscreenHost = true;
+
+    // Visual-based dragging (when full-screen host is enabled)
+    private double _ballLeft;
+    private double _ballTop;
+    private Avalonia.Point _pressPointInBall;
+
+    // Windows click-through
+    private nint _hwnd;
+    private bool _clickThrough;
+
     // Parameterless for designer
     public MiniBallWindow()
     {
@@ -28,6 +41,44 @@ public partial class MiniBallWindow : Window
         _longPressTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
         _longPressTimer.Tick += OnLongPress;
         _isExpanded = false;
+
+        // Initialize full-screen host and place ball at screen center
+        this.Opened += (_, __) =>
+        {
+            if (UseFullscreenHost)
+            {
+                try
+                {
+                    WindowState = WindowState.Maximized;
+                }
+                catch { }
+
+  
+                // Center ball in the current screen working area
+                var screen = Screens.ScreenFromWindow(this) ?? Screens.Primary;
+                var wa = screen?.WorkingArea ?? new PixelRect(0, 0, (int)Bounds.Width, (int)Bounds.Height);
+                double centerX = wa.Width / (2.0 * RenderScaling);
+                double centerY = wa.Height / (2.0 * RenderScaling);
+                // Ball size is 64x64 DIP
+                _ballLeft = centerX - 32;
+                _ballTop = centerY - 32;
+                Canvas.SetLeft(Ball, _ballLeft);
+                Canvas.SetTop(Ball, _ballTop);
+
+                // Ensure launcher starts hidden
+                LauncherView.IsVisible = false;
+                LauncherView.Opacity = 0;
+
+                // Initialize Windows click-through (outside interactive areas)
+                TryInitHwnd();
+                SetWindowClickThrough(true);
+            }
+            else
+            {
+                // legacy small-window path keeps current Width/Height/Position
+            }
+        };
+
         this.KeyDown += (_, e) =>
         {
             if (e.Handled) return;
@@ -43,6 +94,17 @@ public partial class MiniBallWindow : Window
     {
         _miniModeService = miniModeService;
         LauncherView.MiniModeService = miniModeService;
+        // 设置球体位置获取接口
+        LauncherView.BallPositionProvider = GetBallPosition;
+    }
+
+    /// <summary>
+    /// 获取球体在窗口中的实际位置
+    /// </summary>
+    /// <returns>球体的左上角坐标</returns>
+    private (double left, double top) GetBallPosition()
+    {
+        return (_ballLeft, _ballTop);
     }
 
     private void OnPointerPressed(object? sender, PointerPressedEventArgs e)
@@ -56,13 +118,41 @@ public partial class MiniBallWindow : Window
 
         _isDragging = false;
         _dragStartArgs = e;
+        if (UseFullscreenHost)
+        {
+            // 记录指针相对球体左上角的偏移，便于平滑拖拽
+            _pressPointInBall = e.GetPosition(Ball);
+            // 捕获指针到窗口以获得全窗移动事件
+            e.Pointer.Capture(this);
+        }
         _longPressTimer.Start();
         e.Handled = true;
     }
 
     private void OnPointerReleased(object? sender, PointerReleasedEventArgs e)
     {
+        // Ball 元素上的释放处理（保持与窗口级一致）
+        HandlePointerReleased(e);
+        e.Handled = true;
+    }
+
+    protected override void OnPointerReleased(PointerReleasedEventArgs e)
+    {
+        base.OnPointerReleased(e);
+        if (e.Handled)
+            return;
+        // 当释放发生在 Ball 之外（例如拖到外部后松开）时，也需要结束拖拽/交互
+        HandlePointerReleased(e);
+    }
+
+    private void HandlePointerReleased(PointerReleasedEventArgs e)
+    {
         _longPressTimer.Stop();
+        if (UseFullscreenHost)
+        {
+            // 释放指针捕获
+            e.Pointer.Capture(null);
+        }
         if (_isExpanded)
         {
             bool triggered = TryTriggerItemUnderPointer(e);
@@ -77,7 +167,14 @@ public partial class MiniBallWindow : Window
             ResetToBall();
         }
         _dragStartArgs = null;
-        e.Handled = true;
+        _isDragging = false;
+
+        if (UseFullscreenHost)
+        {
+            // 交互结束且未展开时恢复点击穿透
+            if (!_isExpanded)
+                SetWindowClickThrough(true);
+        }
     }
 
     private void OnLongPress(object? sender, EventArgs e)
@@ -85,26 +182,39 @@ public partial class MiniBallWindow : Window
         _longPressTimer.Stop();
         _isDragging = false;
         _isExpanded = true;
+        if (UseFullscreenHost)
+        {
+            // 展开菜单期间需要可命中
+            SetWindowClickThrough(false);
+        }
 
         var settings = DBContext.GetSetting();
         var apps = DBContext.GetApplications();
 
-        // 计算展开窗口尺寸：2*(半径 + 项半径) + 16 边距
+        // 计算展开区域尺寸：2*(半径 + 项半径) + 16 边距
         double radius = settings.MiniRadius > 0 ? settings.MiniRadius : 60;
         double item = settings.MiniItemSize > 0 ? settings.MiniItemSize : 40;
         int targetSize = (int)Math.Round(2 * (radius + item / 2) + 16);
 
-        // 记录展开前的像素中心，确保收起时完全回到同一中心（避免舍入误差导致的1px漂移）
+        if (!UseFullscreenHost)
         {
-            double scale = RenderScaling;
-            if (scale <= 0) scale = 1;
-            int oldWidthPx = (int)Math.Round(Width * scale);
-            int oldHeightPx = (int)Math.Round(Height * scale);
-            var oldPosPx = Position;
-            _fixedCenterPxDuringExpand = new PixelPoint(oldPosPx.X + oldWidthPx / 2, oldPosPx.Y + oldHeightPx / 2);
+            // 记录展开前的像素中心，确保收起时完全回到同一中心（避免舍入误差导致的1px漂移）
+            {
+                double scale = RenderScaling;
+                if (scale <= 0) scale = 1;
+                int oldWidthPx = (int)Math.Round(Width * scale);
+                int oldHeightPx = (int)Math.Round(Height * scale);
+                var oldPosPx = Position;
+                _fixedCenterPxDuringExpand = new PixelPoint(oldPosPx.X + oldWidthPx / 2, oldPosPx.Y + oldHeightPx / 2);
+            }
+            // 保持中心不变（DPI安全）
+            ResizeWindowKeepingCenter(targetSize, targetSize);
         }
-        // 保持中心不变（DPI安全）
-        ResizeWindowKeepingCenter(targetSize, targetSize);
+        else
+        {
+            // 全屏宿主：不调整窗口，仅在画布上定位 LauncherView
+            PositionLauncherAroundBall(targetSize);
+        }
 
         // 配置并淡入显示 LauncherView
         LauncherView.Opacity = 0;
@@ -179,8 +289,22 @@ public partial class MiniBallWindow : Window
     
     private void ResetToBall()
     {
+        // 强制结束任何进行中的拖拽/指针捕获，避免松开后仍然跟随
+        if (_dragStartArgs != null)
+        {
+            try { _dragStartArgs.Pointer.Capture(null); } catch { }
+        }
+        _isDragging = false;
+        _dragStartArgs = null;
+
         void ApplyBallSize()
         {
+            if (UseFullscreenHost)
+            {
+                // 全屏宿主下不调整窗口尺寸，仅隐藏菜单
+                _fixedCenterPxDuringExpand = null;
+                return;
+            }
             if (_fixedCenterPxDuringExpand.HasValue)
             {
                 ResizeWindowAroundCenterPx(64, 64, _fixedCenterPxDuringExpand.Value);
@@ -201,12 +325,16 @@ public partial class MiniBallWindow : Window
                 t.Stop();
                 LauncherView.IsVisible = false;
                 ApplyBallSize();
+                if (UseFullscreenHost)
+                    SetWindowClickThrough(true);
             };
             t.Start();
         }
         else
         {
             ApplyBallSize();
+            if (UseFullscreenHost)
+                SetWindowClickThrough(true);
         }
 
         _isExpanded = false;
@@ -215,6 +343,49 @@ public partial class MiniBallWindow : Window
     protected override void OnPointerMoved(PointerEventArgs e)
     {
         base.OnPointerMoved(e);
+
+        // 如果没有按下任何主键，确保终止拖拽状态，防止松开后仍然跟随
+        var props = e.GetCurrentPoint(this).Properties;
+        if (!props.IsLeftButtonPressed && !props.IsRightButtonPressed && !props.IsMiddleButtonPressed)
+        {
+            if (_isDragging)
+            {
+                _isDragging = false;
+                _dragStartArgs = null;
+                if (UseFullscreenHost && !_isExpanded)
+                {
+                    // 交互结束，恢复点击穿透
+                    SetWindowClickThrough(true);
+                }
+            }
+            return;
+        }
+
+        if (UseFullscreenHost)
+        {
+            if (!_isExpanded && _longPressTimer.IsEnabled && _dragStartArgs != null)
+            {
+                _longPressTimer.Stop();
+                _isDragging = true;
+                // 进入拖拽时保证可命中
+                SetWindowClickThrough(false);
+            }
+            if (_isDragging)
+            {
+                var pos = e.GetPosition(this);
+                _ballLeft = pos.X - _pressPointInBall.X;
+                _ballTop = pos.Y - _pressPointInBall.Y;
+                Canvas.SetLeft(Ball, _ballLeft);
+                Canvas.SetTop(Ball, _ballTop);
+                if (LauncherView.IsVisible)
+                {
+                    // 保持菜单以球心为中心
+                    if (_lastLauncherSize > 0)
+                        PositionLauncherAroundBall(_lastLauncherSize);
+                }
+            }
+            return;
+        }
         if (!_isExpanded && _longPressTimer.IsEnabled && _dragStartArgs != null)
         {
             _longPressTimer.Stop();
@@ -255,6 +426,63 @@ public partial class MiniBallWindow : Window
         return false;
     }
 
+    // Interactive area enter/exit: toggle click-through on Windows
+    private void OnInteractivePointerEntered(object? sender, PointerEventArgs e)
+    {
+        if (UseFullscreenHost)
+            SetWindowClickThrough(false);
+    }
+
+    private void OnInteractivePointerExited(object? sender, PointerEventArgs e)
+    {
+        if (UseFullscreenHost)
+        {
+            // 只有在非交互状态下才恢复点击穿透
+            if (!_isExpanded && !_isDragging)
+                SetWindowClickThrough(true);
+        }
+    }
+
+    private void TryInitHwnd()
+    {
+        if (_hwnd != 0)
+            return;
+        try
+        {
+            var handle = this.TryGetPlatformHandle();
+            if (handle != null && string.Equals(handle.HandleDescriptor, "HWND", StringComparison.OrdinalIgnoreCase))
+            {
+                _hwnd = handle.Handle;
+            }
+        }
+        catch { }
+    }
+
+    private void SetWindowClickThrough(bool enable)
+    {
+        if (_hwnd == 0)
+            return;
+        try
+        {
+            const int GWL_EXSTYLE = -20;
+            const int WS_EX_TRANSPARENT = 0x00000020;
+            int ex = GetWindowLong(_hwnd, GWL_EXSTYLE);
+            if (enable)
+                ex |= WS_EX_TRANSPARENT;
+            else
+                ex &= ~WS_EX_TRANSPARENT;
+            SetWindowLong(_hwnd, GWL_EXSTYLE, ex);
+            _clickThrough = enable;
+        }
+        catch { }
+    }
+
+    [DllImport("user32.dll", EntryPoint = "GetWindowLongW")]
+    private static extern int GetWindowLong(nint hWnd, int nIndex);
+
+    [DllImport("user32.dll", EntryPoint = "SetWindowLongW")]
+    private static extern int SetWindowLong(nint hWnd, int nIndex, int dwNewLong);
+
     private static IImage? LoadAssetIcon(string fileName)
     {
         try
@@ -267,6 +495,18 @@ public partial class MiniBallWindow : Window
         {
             return null;
         }
+    }
+
+    private int _lastLauncherSize;
+    private void PositionLauncherAroundBall(int size)
+    {
+        _lastLauncherSize = size;
+        LauncherView.Width = size;
+        LauncherView.Height = size;
+        double centerX = _ballLeft + 32;
+        double centerY = _ballTop + 32;
+        Canvas.SetLeft(LauncherView, centerX - size / 2.0);
+        Canvas.SetTop(LauncherView, centerY - size / 2.0);
     }
 
     // 在调整窗口大小时保持中心点不变（考虑 DPI 缩放）

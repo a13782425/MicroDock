@@ -73,6 +73,11 @@ public partial class CircularLauncherView : UserControl
 
     public static readonly StyledProperty<bool> AutoDynamicArcProperty =
         AvaloniaProperty.Register<CircularLauncherView, bool>(nameof(AutoDynamicArc), true);
+
+    /// <summary>
+    /// 球体位置提供者
+    /// </summary>
+    public Func<(double left, double top)>? BallPositionProvider { get; set; }
     
     static CircularLauncherView()
     {
@@ -198,19 +203,27 @@ public partial class CircularLauncherView : UserControl
         if (AutoDynamicArc)
         {
             Window? window = this.VisualRoot as Window;
-            if (window != null)
+            if (window != null && BallPositionProvider != null)
             {
+                // 获取球体在窗口中的实际位置
+                var (ballLeft, ballTop) = BallPositionProvider();
+
+                // 计算球体中心在屏幕中的绝对坐标
                 Avalonia.PixelPoint winPos = window.Position;
+                double ballCenterScreenX = winPos.X + ballLeft + 32; // 32是球体半径
+                double ballCenterScreenY = winPos.Y + ballTop + 32;
+
                 Avalonia.Platform.Screen? screen = window.Screens.ScreenFromWindow(window);
                 if (screen != null)
                 {
                     Avalonia.PixelRect wa = screen.WorkingArea;
                     int margin = 48; // 边缘阈值
 
-                    bool nearLeft = winPos.X <= wa.X + margin;
-                    bool nearRight = winPos.X + (int)window.Width >= wa.Right - margin;
-                    bool nearTop = winPos.Y <= wa.Y + margin;
-                    bool nearBottom = winPos.Y + (int)window.Height >= wa.Bottom - margin;
+                    // 使用球体中心坐标进行边缘检测
+                    bool nearLeft = ballCenterScreenX <= wa.X + margin;
+                    bool nearRight = ballCenterScreenX >= wa.Right - margin;
+                    bool nearTop = ballCenterScreenY <= wa.Y + margin;
+                    bool nearBottom = ballCenterScreenY >= wa.Bottom - margin;
 
                     if (nearLeft && !nearRight)
                     {
