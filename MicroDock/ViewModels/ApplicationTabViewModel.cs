@@ -97,6 +97,16 @@ public class ApplicationTabViewModel : ViewModelBase
         }
     }
 
+    public void RemoveApplication(ApplicationDB app)
+    {
+        if (app != null)
+        {
+            DBContext.DeleteApplication(app.Id);
+            _applications.Remove(app);
+            this.RaisePropertyChanged(nameof(HasApplications));
+        }
+    }
+
     private void LoadApplications()
     {
         _applications.Clear();
