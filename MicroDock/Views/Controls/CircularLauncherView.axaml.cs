@@ -28,7 +28,8 @@ public class LauncherAppItem : ILauncherItem
     {
         Application = app;
         OnTrigger = customAction ?? (() => LaunchApplication(app));
-        Icon = IconService.ImageFromBytes(app.Icon);
+        byte[]? iconData = Database.DBContext.GetIconData(app.IconHash);
+        Icon = IconService.ImageFromBytes(iconData);
     }
     
     private void LaunchApplication(ApplicationDB app)
@@ -73,6 +74,17 @@ public partial class CircularLauncherView : UserControl
 
     public static readonly StyledProperty<bool> AutoDynamicArcProperty =
         AvaloniaProperty.Register<CircularLauncherView, bool>(nameof(AutoDynamicArc), true);
+    
+    // 用于保存展开前的窗口位置，用于精确的边缘判定
+    public static readonly StyledProperty<PixelPoint?> OriginalWindowPositionProperty =
+        AvaloniaProperty.Register<CircularLauncherView, PixelPoint?>(nameof(OriginalWindowPosition), null);
+    
+    // 指定环形菜单的中心点（相对于窗口的坐标）
+    public static readonly StyledProperty<double> CenterPointXProperty =
+        AvaloniaProperty.Register<CircularLauncherView, double>(nameof(CenterPointX), -1);
+    
+    public static readonly StyledProperty<double> CenterPointYProperty =
+        AvaloniaProperty.Register<CircularLauncherView, double>(nameof(CenterPointY), -1);
     
     static CircularLauncherView()
     {
@@ -119,6 +131,24 @@ public partial class CircularLauncherView : UserControl
     {
         get => GetValue(AutoDynamicArcProperty);
         set => SetValue(AutoDynamicArcProperty, value);
+    }
+    
+    public PixelPoint? OriginalWindowPosition
+    {
+        get => GetValue(OriginalWindowPositionProperty);
+        set => SetValue(OriginalWindowPositionProperty, value);
+    }
+    
+    public double CenterPointX
+    {
+        get => GetValue(CenterPointXProperty);
+        set => SetValue(CenterPointXProperty, value);
+    }
+    
+    public double CenterPointY
+    {
+        get => GetValue(CenterPointYProperty);
+        set => SetValue(CenterPointYProperty, value);
     }
 
     public CircularLauncherView()
@@ -188,8 +218,10 @@ public partial class CircularLauncherView : UserControl
         if (count == 0) return;
 
         double radius = Radius > 0 ? Radius : Math.Min(panel.Bounds.Width, panel.Bounds.Height) / 2.5;
-        double centerX = panel.Bounds.Width / 2;
-        double centerY = panel.Bounds.Height / 2;
+        
+        // 使用指定的中心点，如果未指定则使用面板中心
+        double centerX = CenterPointX >= 0 ? CenterPointX : panel.Bounds.Width / 2;
+        double centerY = CenterPointY >= 0 ? CenterPointY : panel.Bounds.Height / 2;
 
         // 动态边缘自适应：根据窗口靠近的边缘设置半环方向
         double dynamicStartDeg = StartAngleDegrees;
@@ -200,47 +232,27 @@ public partial class CircularLauncherView : UserControl
             Window? window = this.VisualRoot as Window;
             if (window != null)
             {
-                Avalonia.PixelPoint winPos = window.Position;
                 Avalonia.Platform.Screen? screen = window.Screens.ScreenFromWindow(window);
                 if (screen != null)
                 {
                     Avalonia.PixelRect wa = screen.WorkingArea;
                     int margin = 48; // 边缘阈值
+                    double scale = window.RenderScaling;
+                    if (scale <= 0) scale = 1;
 
-                    bool nearLeft = winPos.X <= wa.X + margin;
-                    bool nearRight = winPos.X + (int)window.Width >= wa.Right - margin;
-                    bool nearTop = winPos.Y <= wa.Y + margin;
-                    bool nearBottom = winPos.Y + (int)window.Height >= wa.Bottom - margin;
+                    // 使用原始窗口位置（展开前）进行边缘判定，如果没有则使用当前位置
+                    Avalonia.PixelPoint positionToCheck = OriginalWindowPosition ?? window.Position;
+                    
+                    // 使用 WindowPositionCalculator 进行边缘检测
+                    (bool nearLeft, bool nearRight, bool nearTop, bool nearBottom) = 
+                        Services.WindowPositionCalculator.CheckEdgeProximity(
+                            positionToCheck, window.Width, window.Height, wa, margin, scale);
 
-                    if (nearLeft && !nearRight)
-                    {
-                        // 右半环（-90..90）
-                        dynamicStartDeg = -90;
-                        dynamicSweepDeg = 180;
-                    }
-                    else if (nearRight && !nearLeft)
-                    {
-                        // 左半环（90..270）
-                        dynamicStartDeg = 90;
-                        dynamicSweepDeg = 180;
-                    }
-                    else if (nearTop && !nearBottom)
-                    {
-                        // 下半环（0..180）
-                        dynamicStartDeg = 0;
-                        dynamicSweepDeg = 180;
-                    }
-                    else if (nearBottom && !nearTop)
-                    {
-                        // 上半环（180..360）
-                        dynamicStartDeg = 180;
-                        dynamicSweepDeg = 180;
-                    }
-                    else
-                    {
-                        dynamicStartDeg = StartAngleDegrees;
-                        dynamicSweepDeg = SweepAngleDegrees;
-                    }
+                    // 使用 WindowPositionCalculator 计算最佳弧线方向
+                    (dynamicStartDeg, dynamicSweepDeg) = 
+                        Services.WindowPositionCalculator.CalculateOptimalArc(
+                            nearLeft, nearRight, nearTop, nearBottom,
+                            StartAngleDegrees, SweepAngleDegrees);
                 }
             }
         }

@@ -2,14 +2,61 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:MicroDock.ViewModels"
+             xmlns:controls="clr-namespace:MicroDock.Views.Controls"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-             x:Class="MicroDock.Views.ApplicationTabView">
+             x:Class="MicroDock.Views.ApplicationTabView"
+             x:DataType="vm:ApplicationTabViewModel">
+    <UserControl.DataContext>
+        <vm:ApplicationTabViewModel/>
+    </UserControl.DataContext>
     <StackPanel>
         <TextBlock Text="应用列表" FontSize="18" FontWeight="Bold" Margin="0,0,0,10"/>
         <Button Content="+ 添加应用"
+                Command="{Binding AddApplicationCommand}"
                 HorizontalAlignment="Left"
                 Margin="0,0,0,10"/>
-        <TextBlock Text="这里将显示应用程序图标列表"
-                   Foreground="Gray"/>
+
+        <ListBox ItemsSource="{Binding Applications}" Margin="0,10,0,0">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <Border BorderBrush="LightGray" BorderThickness="1" CornerRadius="4" Margin="0,2" Padding="8">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <Image Source="{Binding ., Converter={x:Static controls:IconConverter.Instance}}"
+                                   Width="32" Height="32"
+                                   Margin="0,0,10,0"/>
+
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding Name}" FontWeight="Bold"/>
+                                <TextBlock Text="{Binding FilePath}"
+                                           FontSize="10"
+                                           Foreground="Gray"
+                                           TextTrimming="CharacterEllipsis"/>
+                            </StackPanel>
+
+                            <Button Grid.Column="2"
+                                    Content="启动"
+                                    Click="LaunchButton_Click"
+                                    Background="LightBlue"
+                                    Foreground="White"
+                                    BorderThickness="0"
+                                    Padding="8,4"/>
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <TextBlock Text="暂无应用程序，请在设置页面添加"
+                   Foreground="Gray"
+                   HorizontalAlignment="Center"
+                   Margin="0,20,0,0"
+                   IsVisible="{Binding !HasApplications}"/>
     </StackPanel>
 </UserControl>

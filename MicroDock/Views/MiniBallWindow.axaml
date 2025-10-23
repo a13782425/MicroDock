@@ -4,7 +4,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:controls="clr-namespace:MicroDock.Views.Controls"
         xmlns:ext="using:MicroDock.Extension"
-        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        mc:Ignorable="d" d:DesignWidth="128" d:DesignHeight="128"
         x:Class="MicroDock.Views.MiniBallWindow"
         Title="MiniBallWindow"
         CanResize="False"
@@ -13,22 +13,25 @@
         Background="Transparent"
         TransparencyLevelHint="Transparent"
         Width="64" Height="64"
+        SizeToContent="Manual"
         WindowStartupLocation="CenterScreen">
     <Window.Resources>
-        <ext:HalfValueConverter x:Key="HalfValueConverter"/>
+        <!--<ext:HalfValueConverter x:Key="HalfValueConverter"/>-->
     </Window.Resources>
-    <Grid>
+    <Grid Name="MiniBg" Background="Red">
         <Border Name="Ball" 
                 Width="64"
                 Height="64"
                 CornerRadius="32"
                 Background="Gray"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
                 PointerPressed="OnPointerPressed"
                 PointerReleased="OnPointerReleased">
         </Border>
         
         <controls:CircularLauncherView Name="LauncherView"
-                                         IsVisible="False"/>
+                                       IsVisible="False"/>
 
         <!-- <Button Name="CancelButton" -->
         <!--         Content="取消" -->

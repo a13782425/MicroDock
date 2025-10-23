@@ -226,10 +226,9 @@ public class SettingsTabViewModel : ViewModelBase
                 ApplicationDB app = new ApplicationDB
                 {
                     Name = Path.GetFileNameWithoutExtension(filePath),
-                    FilePath = filePath,
-                    Icon = iconBytes
+                    FilePath = filePath
                 };
-                DBContext.AddApplication(app);
+                DBContext.AddApplication(app, iconBytes);
                 Applications.Add(app);
             }
         }
