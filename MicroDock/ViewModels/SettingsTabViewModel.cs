@@ -208,7 +208,7 @@ public class SettingsTabViewModel : ViewModelBase
         OpenFileDialog dialog = new OpenFileDialog
         {
             Title = "选择要添加的应用程序",
-            AllowMultiple = false,
+            AllowMultiple = true,
             Filters = new List<FileDialogFilter>
             {
                 new() { Name = "Applications", Extensions = { "exe", "lnk" } },
@@ -221,15 +221,17 @@ public class SettingsTabViewModel : ViewModelBase
             string[]? result = await dialog.ShowAsync(desktop.MainWindow);
             if (result != null && result.Length > 0)
             {
-                string filePath = result[0];
-                byte[]? iconBytes = IconService.TryExtractFileIconBytes(filePath);
-                ApplicationDB app = new ApplicationDB
+                foreach (string filePath in result)
                 {
-                    Name = Path.GetFileNameWithoutExtension(filePath),
-                    FilePath = filePath
-                };
-                DBContext.AddApplication(app, iconBytes);
-                Applications.Add(app);
+                    byte[]? iconBytes = IconService.TryExtractFileIconBytes(filePath);
+                    ApplicationDB app = new ApplicationDB
+                    {
+                        Name = Path.GetFileNameWithoutExtension(filePath),
+                        FilePath = filePath
+                    };
+                    DBContext.AddApplication(app, iconBytes);
+                    Applications.Add(app);
+                }
             }
         }
     }

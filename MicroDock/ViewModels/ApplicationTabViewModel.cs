@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Reactive;
 using System.Windows.Input;
+using Avalonia.Controls;
 using MicroDock.Database;
 using MicroDock.Services;
 using ReactiveUI;
@@ -33,10 +34,10 @@ public class ApplicationTabViewModel : ViewModelBase
 
     private async System.Threading.Tasks.Task AddApplication()
     {
-        var dialog = new Avalonia.Controls.OpenFileDialog
+        OpenFileDialog dialog = new OpenFileDialog
         {
             Title = "选择要添加的应用程序",
-            AllowMultiple = false,
+            AllowMultiple = true,
             Filters = new List<Avalonia.Controls.FileDialogFilter>
             {
                 new() { Name = "Applications", Extensions = { "exe", "lnk" } },
@@ -46,21 +47,46 @@ public class ApplicationTabViewModel : ViewModelBase
 
         if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
         {
-            var result = await dialog.ShowAsync(desktop.MainWindow);
+            string[]? result = await dialog.ShowAsync(desktop.MainWindow);
             if (result != null && result.Length > 0)
             {
-                string filePath = result[0];
-                byte[]? iconBytes = IconService.TryExtractFileIconBytes(filePath);
-                ApplicationDB app = new ApplicationDB
+                foreach (string filePath in result)
                 {
-                    Name = Path.GetFileNameWithoutExtension(filePath),
-                    FilePath = filePath
-                };
-
-                DBContext.AddApplication(app, iconBytes);
-                LoadApplications();
+                    AddApplicationFromPath(filePath);
+                }
             }
         }
+    }
+
+    public void AddApplicationFromPath(string filePath)
+    {
+        if (string.IsNullOrWhiteSpace(filePath))
+            return;
+            
+        // 检查文件/文件夹是否存在
+        bool isDirectory = Directory.Exists(filePath);
+        bool isFile = File.Exists(filePath);
+        
+        if (!isDirectory && !isFile)
+            return;
+        
+        // 提取图标
+        byte[]? iconBytes = IconService.TryExtractFileIconBytes(filePath);
+        
+        // 创建应用记录
+        string name = isDirectory 
+            ? Path.GetFileName(filePath) 
+            : Path.GetFileNameWithoutExtension(filePath);
+            
+        ApplicationDB app = new ApplicationDB
+        {
+            Name = name,
+            FilePath = filePath
+        };
+        
+        // 保存到数据库并刷新列表
+        DBContext.AddApplication(app, iconBytes);
+        LoadApplications();
     }
 
     private void LaunchApplication(ApplicationDB app)

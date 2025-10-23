@@ -10,8 +10,22 @@
     <UserControl.DataContext>
         <vm:ApplicationTabViewModel/>
     </UserControl.DataContext>
-    <StackPanel>
+    <StackPanel DragDrop.AllowDrop="True">
         <TextBlock Text="应用列表" FontSize="18" FontWeight="Bold" Margin="0,0,0,10"/>
+        
+        <!-- 拖放提示区域 -->
+        <Border Background="#F0F0F0" 
+                BorderBrush="#CCCCCC" 
+                BorderThickness="2" 
+                CornerRadius="4" 
+                Padding="20"
+                Margin="0,0,0,10">
+            <TextBlock Text="拖入文件、文件夹或快捷方式来添加应用" 
+                       HorizontalAlignment="Center"
+                       Foreground="#666666"
+                       FontStyle="Italic"/>
+        </Border>
+        
         <Button Content="+ 添加应用"
                 Command="{Binding AddApplicationCommand}"
                 HorizontalAlignment="Left"
