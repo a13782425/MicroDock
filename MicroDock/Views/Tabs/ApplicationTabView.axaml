@@ -4,27 +4,13 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:MicroDock.ViewModels"
              xmlns:controls="clr-namespace:MicroDock.Views.Controls"
-             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             mc:Ignorable="d" d:DesignWidth="500" d:DesignHeight="350"
              x:Class="MicroDock.Views.ApplicationTabView"
              x:DataType="vm:ApplicationTabViewModel">
     <UserControl.DataContext>
         <vm:ApplicationTabViewModel/>
     </UserControl.DataContext>
     <StackPanel DragDrop.AllowDrop="True">
-        <TextBlock Text="应用列表" FontSize="18" FontWeight="Bold" Margin="0,0,0,10"/>
-        
-        <!-- 拖放提示区域 -->
-        <Border Background="#F0F0F0" 
-                BorderBrush="#CCCCCC" 
-                BorderThickness="2" 
-                CornerRadius="4" 
-                Padding="20"
-                Margin="0,0,0,10">
-            <TextBlock Text="拖入文件、文件夹或快捷方式来添加应用" 
-                       HorizontalAlignment="Center"
-                       Foreground="#666666"
-                       FontStyle="Italic"/>
-        </Border>
         
         <Button Content="+ 添加应用"
                 Command="{Binding AddApplicationCommand}"
@@ -38,42 +24,12 @@
             <ItemsControl ItemsSource="{Binding Applications}">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
-                        <WrapPanel Orientation="Horizontal"/>
+                        <WrapPanel Orientation="Horizontal" ItemSpacing="2"/>
                     </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <Border Width="100" 
-                                Height="100" 
-                                Margin="5"
-                                Padding="5"
-                                Background="Transparent"
-                                CornerRadius="4"
-                                Cursor="Hand"
-                                DoubleTapped="AppItem_DoubleTapped"
-                                PointerPressed="AppItem_PointerPressed">
-                            <Border.Styles>
-                                <Style Selector="Border:pointerover">
-                                    <Setter Property="Background" Value="#20000000"/>
-                                </Style>
-                            </Border.Styles>
-                            <StackPanel HorizontalAlignment="Center" 
-                                        VerticalAlignment="Center"
-                                        Spacing="5">
-                                <Image Source="{Binding ., Converter={x:Static controls:IconConverter.Instance}}"
-                                       Width="48" 
-                                       Height="48"
-                                       HorizontalAlignment="Center"/>
-                                <TextBlock Text="{Binding Name}" 
-                                           FontSize="12"
-                                           TextAlignment="Center"
-                                           TextWrapping="Wrap"
-                                           MaxWidth="90"
-                                           MaxHeight="32"
-                                           TextTrimming="CharacterEllipsis"
-                                           HorizontalAlignment="Center"/>
-                            </StackPanel>
-                        </Border>
+                        <controls:AppItemControl />
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>

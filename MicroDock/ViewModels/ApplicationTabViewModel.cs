@@ -74,9 +74,7 @@ public class ApplicationTabViewModel : ViewModelBase
         byte[]? iconBytes = IconService.TryExtractFileIconBytes(filePath);
         
         // 创建应用记录
-        string name = isDirectory 
-            ? Path.GetFileName(filePath) 
-            : Path.GetFileNameWithoutExtension(filePath);
+        string name = Path.GetFileName(filePath);
             
         ApplicationDB app = new ApplicationDB
         {
