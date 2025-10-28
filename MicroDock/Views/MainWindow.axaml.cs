@@ -198,5 +198,18 @@ namespace MicroDock.Views
             }
             return null;
         }
+
+        /// <summary>
+        /// 窗口关闭事件 - 释放资源
+        /// </summary>
+        protected override void OnClosing(WindowClosingEventArgs e)
+        {
+            base.OnClosing(e);
+            
+            // 释放服务资源
+            _autoHideService?.Dispose();
+            
+            System.Diagnostics.Debug.WriteLine("[MainWindow] 资源已释放");
+        }
     }
 }
