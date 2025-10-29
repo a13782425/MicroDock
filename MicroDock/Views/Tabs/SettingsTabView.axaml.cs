@@ -1,7 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
-using Avalonia.VisualTree;
 using MicroDock.ViewModels;
+using MicroDock.Infrastructure;
 
 namespace MicroDock.Views
 {
@@ -24,13 +24,8 @@ namespace MicroDock.Views
         /// </summary>
         private void AddCustomTab_OnClick(object? sender, RoutedEventArgs e)
         {
-            // 查找父级的 MainWindow
-            MainWindow? mainWindow = this.FindAncestorOfType<MainWindow>();
-            if (mainWindow?.DataContext is MainWindowViewModel mainViewModel)
-            {
-                // 调用主窗口 ViewModel 的命令
-                mainViewModel.AddCustomTabCommand.Execute(default);
-            }
+            // 通过事件聚合器发布添加自定义标签页请求
+            EventAggregator.Instance.Publish(new AddCustomTabRequestMessage());
         }
     }
 }

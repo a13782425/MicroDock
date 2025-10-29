@@ -1,6 +1,7 @@
 using Avalonia.Media;
 using MicroDock.Database;
 using MicroDock.Services;
+using MicroDock.Infrastructure;
 using ReactiveUI;
 using System;
 using System.Collections.Generic;
@@ -31,11 +32,6 @@ public class SettingsTabViewModel : ViewModelBase
     private double _miniSweepAngle = 360;
     private bool _miniAutoDynamicArc = true;
     private bool _miniAutoCollapseAfterTrigger = true;
-    
-    private AutoStartupService? _autoStartupService;
-    private AutoHideService? _autoHideService;
-    private TopMostService? _topMostService;
-    private MiniModeService? _miniModeService;
 
     public SettingsTabViewModel()
     {
@@ -43,23 +39,48 @@ public class SettingsTabViewModel : ViewModelBase
         AddApplicationCommand = ReactiveCommand.CreateFromTask(AddApplication);
         RemoveApplicationCommand = ReactiveCommand.Create<ApplicationDB>(RemoveApplication);
         LoadSettings();
+        
+        // 订阅服务状态变更通知
+        EventAggregator.Instance.Subscribe<ServiceStateChangedMessage>(OnServiceStateChanged);
     }
-
+    
     /// <summary>
-    /// 初始化服务，由主窗口调用
+    /// 处理服务状态变更通知
     /// </summary>
-    public void InitializeServices(AutoStartupService autoStartupService, AutoHideService autoHideService, TopMostService topMostService, MiniModeService miniModeService)
+    private void OnServiceStateChanged(ServiceStateChangedMessage message)
     {
-        _autoStartupService = autoStartupService;
-        _autoHideService = autoHideService;
-        _topMostService = topMostService;
-        _miniModeService = miniModeService;
-
-        // 应用初始配置
-        ApplyServiceState(_autoStartupService, AutoStartup);
-        ApplyServiceState(_autoHideService, AutoHide);
-        ApplyServiceState(_topMostService, AlwaysOnTop);
-        ApplyMiniModeServiceState(_miniModeService, IsMiniModeEnabled);
+        // 当服务状态从外部变更时，同步到ViewModel
+        switch (message.ServiceName)
+        {
+            case "AutoStartup":
+                if (_autoStartup != message.IsEnabled)
+                {
+                    _autoStartup = message.IsEnabled;
+                    this.RaisePropertyChanged(nameof(AutoStartup));
+                }
+                break;
+            case "AutoHide":
+                if (_autoHide != message.IsEnabled)
+                {
+                    _autoHide = message.IsEnabled;
+                    this.RaisePropertyChanged(nameof(AutoHide));
+                }
+                break;
+            case "AlwaysOnTop":
+                if (_alwaysOnTop != message.IsEnabled)
+                {
+                    _alwaysOnTop = message.IsEnabled;
+                    this.RaisePropertyChanged(nameof(AlwaysOnTop));
+                }
+                break;
+            case "MiniMode":
+                if (_isMiniModeEnabled != message.IsEnabled)
+                {
+                    _isMiniModeEnabled = message.IsEnabled;
+                    this.RaisePropertyChanged(nameof(IsMiniModeEnabled));
+                }
+                break;
+        }
     }
     
     /// <summary>
@@ -72,7 +93,8 @@ public class SettingsTabViewModel : ViewModelBase
         {
             this.RaiseAndSetIfChanged(ref _autoStartup, value);
             SaveSetting(nameof(AutoStartup), value);
-            ApplyServiceState(_autoStartupService, value);
+            // 通过事件请求改变服务状态
+            EventAggregator.Instance.Publish(new AutoStartupChangeRequestMessage(value));
         }
     }
     
@@ -86,7 +108,8 @@ public class SettingsTabViewModel : ViewModelBase
         {
             this.RaiseAndSetIfChanged(ref _autoHide, value);
             SaveSetting(nameof(AutoHide), value);
-            ApplyServiceState(_autoHideService, value);
+            // 通过事件请求改变服务状态
+            EventAggregator.Instance.Publish(new AutoHideChangeRequestMessage(value));
         }
     }
     
@@ -100,7 +123,8 @@ public class SettingsTabViewModel : ViewModelBase
         {
             this.RaiseAndSetIfChanged(ref _alwaysOnTop, value);
             SaveSetting(nameof(AlwaysOnTop), value);
-            ApplyServiceState(_topMostService, value);
+            // 通过事件请求改变服务状态
+            EventAggregator.Instance.Publish(new WindowTopmostChangeRequestMessage(value));
         }
     }
 
@@ -111,7 +135,8 @@ public class SettingsTabViewModel : ViewModelBase
         {
             this.RaiseAndSetIfChanged(ref _isMiniModeEnabled, value);
             SaveSetting(nameof(IsMiniModeEnabled), value);
-            ApplyMiniModeServiceState(_miniModeService, value);
+            // 通过事件请求改变服务状态
+            EventAggregator.Instance.Publish(new MiniModeChangeRequestMessage(value));
         }
     }
 
@@ -246,7 +271,7 @@ public class SettingsTabViewModel : ViewModelBase
     }
     
     /// <summary>
-    /// 从数据库加载配置
+    /// 从数据库加载配置（仅加载到私有字段，不触发事件）
     /// </summary>
     private void LoadSettings()
     {
@@ -265,7 +290,7 @@ public class SettingsTabViewModel : ViewModelBase
         _miniAutoDynamicArc = settings.MiniAutoDynamicArc;
         _miniAutoCollapseAfterTrigger = settings.MiniAutoCollapseAfterTrigger;
         
-        // 通知UI更新
+        // 通知UI更新（仅UI，不触发setter中的事件发布）
         this.RaisePropertyChanged(nameof(AutoStartup));
         this.RaisePropertyChanged(nameof(AutoHide));
         this.RaisePropertyChanged(nameof(AlwaysOnTop));
@@ -303,26 +328,6 @@ public class SettingsTabViewModel : ViewModelBase
                     break;
             }
         });
-    }
-
-    private void ApplyServiceState(IWindowService? service, bool enable)
-    {
-        if (service == null) return;
-
-        if (enable)
-            service.Enable();
-        else
-            service.Disable();
-    }
-    
-    private void ApplyMiniModeServiceState(MiniModeService? service, bool enable)
-    {
-        if (service == null) return;
-
-        if (enable)
-            service.Enable();
-        else
-            service.Disable();
     }
 }
 

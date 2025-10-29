@@ -8,6 +8,7 @@ using MicroDock.Database;
 using MicroDock.Models;
 using MicroDock.Services;
 using MicroDock.ViewModels;
+using MicroDock.Infrastructure;
 using System;
 using System.ComponentModel;
 
@@ -29,9 +30,18 @@ namespace MicroDock.Views
             _autoStartupService = new AutoStartupService();
             _autoHideService = new AutoHideService(this);
             _topMostService = new TopMostService(this);
-            _miniModeService = new MiniModeService(this);
+            _miniModeService = new MiniModeService();
+
+            // 注册服务到ServiceLocator
+            ServiceLocator.Instance.Register(_autoStartupService);
+            ServiceLocator.Instance.Register<AutoHideService>(_autoHideService);
+            ServiceLocator.Instance.Register<TopMostService>(_topMostService);
+            ServiceLocator.Instance.Register<MiniModeService>(_miniModeService);
 
             InitializeTrayIcon();
+            
+            // 订阅事件消息
+            SubscribeToMessages();
             
             // 在窗口打开后初始化设置
             this.Opened += OnWindowOpened;
@@ -42,7 +52,141 @@ namespace MicroDock.Views
         /// </summary>
         private void OnWindowOpened(object? sender, EventArgs e)
         {
-            InitializeSettings();
+            // 从数据库加载设置并应用服务状态
+            InitializeServicesFromSettings();
+        }
+        
+        /// <summary>
+        /// 订阅事件消息
+        /// </summary>
+        private void SubscribeToMessages()
+        {
+            EventAggregator.Instance.Subscribe<WindowShowRequestMessage>(OnWindowShowRequest);
+            EventAggregator.Instance.Subscribe<WindowHideRequestMessage>(OnWindowHideRequest);
+            EventAggregator.Instance.Subscribe<MiniModeChangeRequestMessage>(OnMiniModeChangeRequest);
+            EventAggregator.Instance.Subscribe<AutoHideChangeRequestMessage>(OnAutoHideChangeRequest);
+            EventAggregator.Instance.Subscribe<AutoStartupChangeRequestMessage>(OnAutoStartupChangeRequest);
+            EventAggregator.Instance.Subscribe<WindowTopmostChangeRequestMessage>(OnTopmostChangeRequest);
+        }
+        
+        /// <summary>
+        /// 处理窗口显示请求
+        /// </summary>
+        private void OnWindowShowRequest(WindowShowRequestMessage message)
+        {
+            if (message.WindowName == "MainWindow")
+            {
+                this.Show();
+                this.Activate();
+            }
+        }
+        
+        /// <summary>
+        /// 处理窗口隐藏请求
+        /// </summary>
+        private void OnWindowHideRequest(WindowHideRequestMessage message)
+        {
+            if (message.WindowName == "MainWindow")
+            {
+                this.Hide();
+            }
+        }
+        
+        /// <summary>
+        /// 处理迷你模式变更请求
+        /// </summary>
+        private void OnMiniModeChangeRequest(MiniModeChangeRequestMessage message)
+        {
+            if (message.Enable)
+            {
+                _miniModeService.Enable();
+            }
+            else
+            {
+                _miniModeService.Disable();
+            }
+        }
+        
+        /// <summary>
+        /// 处理自动隐藏变更请求
+        /// </summary>
+        private void OnAutoHideChangeRequest(AutoHideChangeRequestMessage message)
+        {
+            if (message.Enable)
+            {
+                _autoHideService.Enable();
+            }
+            else
+            {
+                _autoHideService.Disable();
+            }
+            
+            EventAggregator.Instance.Publish(new ServiceStateChangedMessage("AutoHide", message.Enable));
+        }
+        
+        /// <summary>
+        /// 处理开机自启动变更请求
+        /// </summary>
+        private void OnAutoStartupChangeRequest(AutoStartupChangeRequestMessage message)
+        {
+            if (message.Enable)
+            {
+                _autoStartupService.Enable();
+            }
+            else
+            {
+                _autoStartupService.Disable();
+            }
+            
+            EventAggregator.Instance.Publish(new ServiceStateChangedMessage("AutoStartup", message.Enable));
+        }
+        
+        /// <summary>
+        /// 处理置顶状态变更请求
+        /// </summary>
+        private void OnTopmostChangeRequest(WindowTopmostChangeRequestMessage message)
+        {
+            if (message.Enable)
+            {
+                // 切换置顶状态
+                this.Topmost = !this.Topmost;
+                _topMostService.Enable();
+            }
+            else
+            {
+                _topMostService.Disable();
+            }
+            
+            EventAggregator.Instance.Publish(new ServiceStateChangedMessage("AlwaysOnTop", this.Topmost));
+        }
+        
+        /// <summary>
+        /// 从数据库设置初始化服务状态
+        /// </summary>
+        private void InitializeServicesFromSettings()
+        {
+            SettingDB settings = DBContext.GetSetting();
+            
+            // 应用初始配置
+            if (settings.AutoStartup)
+            {
+                _autoStartupService.Enable();
+            }
+            
+            if (settings.AutoHide)
+            {
+                _autoHideService.Enable();
+            }
+            
+            if (settings.AlwaysOnTop)
+            {
+                _topMostService.Enable();
+            }
+            
+            if (settings.IsMiniModeEnabled)
+            {
+                _miniModeService.Enable();
+            }
         }
 
         /// <summary>
@@ -153,50 +297,6 @@ namespace MicroDock.Views
         private void CloseButton_OnClick(object? sender, RoutedEventArgs e)
         {
             this.Hide();
-        }
-
-        /// <summary>
-        /// 初始化设置并订阅配置变更事件
-        /// </summary>
-        private void InitializeSettings()
-        {
-            // 查找 SettingsTabView 并订阅其 ViewModel 的事件
-            SettingsTabView? settingsTab = FindSettingsTabView();
-            if (settingsTab?.ViewModel != null)
-            {
-                // 将服务实例传递给 ViewModel
-                settingsTab.ViewModel.InitializeServices(_autoStartupService, _autoHideService, _topMostService, _miniModeService);
-                // settingsTab.ViewModel.PropertyChanged += OnSettingChanged;
-            }
-        }
-
-        /*private void OnSettingChanged(object? sender, PropertyChangedEventArgs e)
-        {
-            if (e.PropertyName == nameof(SettingsTabViewModel.IsMiniModeEnabled))
-            {
-                if ((sender as SettingsTabViewModel).IsMiniModeEnabled)
-                    _miniModeService.Enable();
-                else
-                    _miniModeService.Disable();
-            }
-        }*/
-        
-        /// <summary>
-        /// 查找 SettingsTabView
-        /// </summary>
-        private SettingsTabView? FindSettingsTabView()
-        {
-            if (this.DataContext is MainWindowViewModel viewModel)
-            {
-                foreach (TabItemModel tab in viewModel.Tabs)
-                {
-                    if (tab.Content is SettingsTabView settingsView)
-                    {
-                        return settingsView;
-                    }
-                }
-            }
-            return null;
         }
 
         /// <summary>

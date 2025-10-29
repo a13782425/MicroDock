@@ -10,7 +10,7 @@
     <UserControl.DataContext>
         <vm:ApplicationTabViewModel/>
     </UserControl.DataContext>
-    <StackPanel DragDrop.AllowDrop="True">
+    <StackPanel DragDrop.AllowDrop="True" Background="Transparent">
         
         <Button Content="+ 添加应用"
                 Command="{Binding AddApplicationCommand}"

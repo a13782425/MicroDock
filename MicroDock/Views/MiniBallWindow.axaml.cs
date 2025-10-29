@@ -4,6 +4,7 @@ using Avalonia.Interactivity;
 using Avalonia.Threading;
 using MicroDock.Database;
 using MicroDock.Services;
+using MicroDock.Infrastructure;
 using System;
 using Avalonia;
 using Avalonia.Media;
@@ -30,10 +31,9 @@ public partial class MiniBallWindow : Window
     private bool _isDragging;
     private BallState _currentState;
     private PointerPressedEventArgs? _dragStartArgs;
-    private readonly IMiniModeService? _miniModeService;
     private PixelPoint _savedCenterPx;  // 保存悬浮球的屏幕中心点
     private PixelPoint _originPos;
-    // Parameterless for designer
+    
     public MiniBallWindow()
     {
         InitializeComponent();
@@ -55,12 +55,6 @@ public partial class MiniBallWindow : Window
 
             this.Position = new PixelPoint(2560-121, 1440-64);
         };
-    }
-
-    public MiniBallWindow(IMiniModeService miniModeService) : this()
-    {
-        _miniModeService = miniModeService;
-        LauncherView.MiniModeService = miniModeService;
     }
 
     private void OnPointerPressed(object? sender, PointerPressedEventArgs e)
@@ -198,33 +192,31 @@ public partial class MiniBallWindow : Window
     private void ConfigureLauncherActions()
     {
         LauncherView.ClearCustomItems();
+        
+        // 显示主窗 - 通过事件禁用迷你模式
         LauncherView.AddCustomItem("显示主窗", () =>
         {
-            this.Hide();
-            _miniModeService?.Disable();
+            EventAggregator.Instance.Publish(new MiniModeChangeRequestMessage(false));
         }, LoadAssetIcon("FloatBall.png"));
+        
+        // 置顶切换 - 通过事件请求切换置顶状态
         LauncherView.AddCustomItem("置顶切换", () =>
         {
-            if (Owner is MainWindow mw)
-            {
-                mw.Topmost = !mw.Topmost;
-            }
+            EventAggregator.Instance.Publish(new WindowTopmostChangeRequestMessage(true));
         }, LoadAssetIcon("Test.png"));
+        
+        // 打开设置 - 禁用迷你模式并导航到设置标签页
         LauncherView.AddCustomItem("打开设置", () =>
         {
-            _miniModeService?.Disable();
-            if (App.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime life && life.MainWindow != null)
-            {
-                life.MainWindow.Show();
-                life.MainWindow.Activate();
-            }
+            EventAggregator.Instance.Publish(new MiniModeChangeRequestMessage(false));
+            EventAggregator.Instance.Publish(new NavigateToTabMessage("设置"));
         }, LoadAssetIcon("Test.png"));
 
         // 追加插件动作
         string appDirectory = System.AppContext.BaseDirectory;
         string pluginDirectory = System.IO.Path.Combine(appDirectory, "Plugins");
-        var actions = Services.PluginLoader.LoadActions(pluginDirectory);
-        foreach (var act in actions)
+        System.Collections.Generic.List<MicroDock.Plugin.MicroAction> actions = Services.PluginLoader.LoadActions(pluginDirectory);
+        foreach (MicroDock.Plugin.MicroAction act in actions)
         {
             IImage? icon = Services.IconService.ImageFromBytes(act.IconBytes);
             LauncherView.AddCustomItem(act.Name, () =>
@@ -234,7 +226,7 @@ public partial class MiniBallWindow : Window
                     string args = string.IsNullOrWhiteSpace(act.Arguments) ? string.Empty : act.Arguments;
                     try
                     {
-                        var psi = new System.Diagnostics.ProcessStartInfo(act.Command, args)
+                        System.Diagnostics.ProcessStartInfo psi = new System.Diagnostics.ProcessStartInfo(act.Command, args)
                         {
                             UseShellExecute = true
                         };

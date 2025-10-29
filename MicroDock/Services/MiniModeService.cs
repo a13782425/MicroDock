@@ -1,3 +1,5 @@
+using MicroDock.Infrastructure;
+
 namespace MicroDock.Services;
 
 public interface IMiniModeService
@@ -9,12 +11,10 @@ public interface IMiniModeService
 
 public class MiniModeService : IMiniModeService
 {
-    private readonly Views.MainWindow _mainWindow;
     private Views.MiniBallWindow? _miniBallWindow;
     
-    public MiniModeService(Views.MainWindow mainWindow)
+    public MiniModeService()
     {
-        _mainWindow = mainWindow;
     }
 
     public bool IsEnabled { get; private set; }
@@ -23,16 +23,26 @@ public class MiniModeService : IMiniModeService
     {
         if (IsEnabled) return;
         
-        _mainWindow.Hide();
+        // 通过事件通知隐藏主窗口
+        EventAggregator.Instance.Publish(new WindowHideRequestMessage("MainWindow"));
         
         if (_miniBallWindow == null)
         {
-            _miniBallWindow = new Views.MiniBallWindow(this);
-            _miniBallWindow.Closed += (s, e) => _miniBallWindow = null;
+            _miniBallWindow = new Views.MiniBallWindow();
+            _miniBallWindow.Closed += (s, e) => 
+            {
+                _miniBallWindow = null;
+                IsEnabled = false;
+                // 通知服务状态变更
+                EventAggregator.Instance.Publish(new ServiceStateChangedMessage("MiniMode", false));
+            };
         }
         
         _miniBallWindow.Show();
         IsEnabled = true;
+        
+        // 通知服务状态变更
+        EventAggregator.Instance.Publish(new ServiceStateChangedMessage("MiniMode", true));
     }
 
     public void Disable()
@@ -40,7 +50,14 @@ public class MiniModeService : IMiniModeService
         if (!IsEnabled) return;
         
         _miniBallWindow?.Close();
-        _mainWindow.Show();
+        _miniBallWindow = null;
+        
+        // 通过事件通知显示主窗口
+        EventAggregator.Instance.Publish(new WindowShowRequestMessage("MainWindow"));
+        
         IsEnabled = false;
+        
+        // 通知服务状态变更
+        EventAggregator.Instance.Publish(new ServiceStateChangedMessage("MiniMode", false));
     }
 }

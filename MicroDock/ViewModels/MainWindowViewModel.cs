@@ -8,6 +8,7 @@ using MicroDock.Database;
 using MicroDock.Models;
 using MicroDock.Services;
 using MicroDock.Views;
+using MicroDock.Infrastructure;
 using ReactiveUI;
 
 namespace MicroDock.ViewModels
@@ -45,6 +46,43 @@ namespace MicroDock.ViewModels
 
             // 默认选中第一个页签
             SelectedTabIndex = 0;
+            
+            // 订阅事件消息
+            EventAggregator.Instance.Subscribe<NavigateToTabMessage>(OnNavigateToTab);
+            EventAggregator.Instance.Subscribe<AddCustomTabRequestMessage>(OnAddCustomTabRequest);
+        }
+        
+        /// <summary>
+        /// 处理导航到标签页消息
+        /// </summary>
+        private void OnNavigateToTab(NavigateToTabMessage message)
+        {
+            if (message.TabIndex.HasValue)
+            {
+                if (message.TabIndex.Value >= 0 && message.TabIndex.Value < Tabs.Count)
+                {
+                    SelectedTabIndex = message.TabIndex.Value;
+                }
+            }
+            else if (!string.IsNullOrEmpty(message.TabName))
+            {
+                for (int i = 0; i < Tabs.Count; i++)
+                {
+                    if (Tabs[i].Header == message.TabName)
+                    {
+                        SelectedTabIndex = i;
+                        break;
+                    }
+                }
+            }
+        }
+        
+        /// <summary>
+        /// 处理添加自定义标签页请求
+        /// </summary>
+        private void OnAddCustomTabRequest(AddCustomTabRequestMessage message)
+        {
+            ExecuteAddCustomTab();
         }
 
         /// <summary>

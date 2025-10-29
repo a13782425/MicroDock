@@ -6,7 +6,7 @@ using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
 using MicroDock.Database;
-using MicroDock.Services;
+using MicroDock.Infrastructure;
 
 namespace MicroDock.Views.Controls;
 
@@ -29,12 +29,12 @@ public class LauncherAppItem : ILauncherItem
         Application = app;
         OnTrigger = customAction ?? (() => LaunchApplication(app));
         byte[]? iconData = Database.DBContext.GetIconData(app.IconHash);
-        Icon = IconService.ImageFromBytes(iconData);
+        Icon = Services.IconService.ImageFromBytes(iconData);
     }
     
     private void LaunchApplication(ApplicationDB app)
     {
-        IconService.TryStartProcess(app.FilePath);
+        Services.IconService.TryStartProcess(app.FilePath);
     }
 }
 
@@ -56,9 +56,6 @@ public partial class CircularLauncherView : UserControl
 {
     public static readonly StyledProperty<IEnumerable<ApplicationDB>> ApplicationsProperty =
         AvaloniaProperty.Register<CircularLauncherView, IEnumerable<ApplicationDB>>(nameof(Applications));
-    
-    public static readonly StyledProperty<IMiniModeService?> MiniModeServiceProperty =
-        AvaloniaProperty.Register<CircularLauncherView, IMiniModeService?>(nameof(MiniModeService));
     
     public static readonly StyledProperty<double> StartAngleDegreesProperty =
         AvaloniaProperty.Register<CircularLauncherView, double>(nameof(StartAngleDegrees), -90);
@@ -95,12 +92,6 @@ public partial class CircularLauncherView : UserControl
     {
         get => GetValue(ApplicationsProperty);
         set => SetValue(ApplicationsProperty, value);
-    }
-
-    public IMiniModeService? MiniModeService
-    {
-        get => GetValue(MiniModeServiceProperty);
-        set => SetValue(MiniModeServiceProperty, value);
     }
     
     public double StartAngleDegrees
@@ -202,8 +193,9 @@ public partial class CircularLauncherView : UserControl
         // 添加自定义项
         items.AddRange(_customItems);
         
-        // 添加退出mini模式按钮
-        items.Add(new LauncherActionItem("退出", () => MiniModeService?.Disable()));
+        // 添加退出mini模式按钮 - 通过事件请求禁用迷你模式
+        items.Add(new LauncherActionItem("退出", () => 
+            EventAggregator.Instance.Publish(new MiniModeChangeRequestMessage(false))));
         
         ItemsControl.ItemsSource = items;
     }
