@@ -49,7 +49,7 @@ public class SettingsTabViewModel : ViewModelBase
     /// </summary>
     private void OnServiceStateChanged(ServiceStateChangedMessage message)
     {
-        // 当服务状态从外部变更时，同步到ViewModel
+        // 当服务状态从外部变更时，同步到ViewModel和数据库
         switch (message.ServiceName)
         {
             case "AutoStartup":
@@ -57,6 +57,7 @@ public class SettingsTabViewModel : ViewModelBase
                 {
                     _autoStartup = message.IsEnabled;
                     this.RaisePropertyChanged(nameof(AutoStartup));
+                    SaveSetting(nameof(AutoStartup), message.IsEnabled);
                 }
                 break;
             case "AutoHide":
@@ -64,6 +65,7 @@ public class SettingsTabViewModel : ViewModelBase
                 {
                     _autoHide = message.IsEnabled;
                     this.RaisePropertyChanged(nameof(AutoHide));
+                    SaveSetting(nameof(AutoHide), message.IsEnabled);
                 }
                 break;
             case "AlwaysOnTop":
@@ -71,6 +73,7 @@ public class SettingsTabViewModel : ViewModelBase
                 {
                     _alwaysOnTop = message.IsEnabled;
                     this.RaisePropertyChanged(nameof(AlwaysOnTop));
+                    SaveSetting(nameof(AlwaysOnTop), message.IsEnabled);
                 }
                 break;
             case "MiniMode":
@@ -78,6 +81,7 @@ public class SettingsTabViewModel : ViewModelBase
                 {
                     _isMiniModeEnabled = message.IsEnabled;
                     this.RaisePropertyChanged(nameof(IsMiniModeEnabled));
+                    SaveSetting(nameof(IsMiniModeEnabled), message.IsEnabled);
                 }
                 break;
         }
