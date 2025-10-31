@@ -5,32 +5,46 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:vm="using:MicroDock.ViewModels"
 	xmlns:models="using:MicroDock.Models"
+	xmlns:fa="clr-namespace:FluentAvalonia.UI.Controls;assembly=FluentAvalonia"
     mc:Ignorable="d"
-    d:DesignWidth="500"
-    d:DesignHeight="350"
-	Width="500"
-	Height="350"
+    d:DesignWidth="850"
+    d:DesignHeight="600"
+	Width="850"
+	Height="600"
+	MinWidth="700"
+	MinHeight="500"
     x:Class="MicroDock.Views.MainWindow"
     x:DataType="vm:MainWindowViewModel"
     ExtendClientAreaToDecorationsHint="True"
     ExtendClientAreaChromeHints="NoChrome"
-    CanResize="False"
+    CanResize="True"
     Icon="/Assets/avalonia-logo.ico">
 
 	<Window.Styles>
-		<!-- 鼠标悬停时的样式 -->
+		<!-- 关闭按钮样式 -->
 		<Style Selector="Button.CloseButton:pointerover">
 			<Setter Property="Background" Value="{DynamicResource ButtonBackgroundPointerOver}"/>
 		</Style>
-		<!-- 按下时的样式 -->
 		<Style Selector="Button.CloseButton:pressed">
 			<Setter Property="Background" Value="{DynamicResource ButtonBackgroundPressed}"/>
 		</Style>
-		<!-- TabItem 样式 -->
-		<Style Selector="TabItem">
-			<Setter Property="Padding" Value="6,0,6,6"/>
-			<Setter Property="MinHeight" Value="36"/>
+		
+		<!-- NavigationViewItem 样式 -->
+		<Style Selector="fa|NavigationViewItem">
+			<Setter Property="Padding" Value="12,8"/>
+			<Setter Property="MinHeight" Value="40"/>
 		</Style>
+		
+		<!-- 选中状态样式 -->
+		<Style Selector="fa|NavigationViewItem:selected /template/ Border#LayoutRoot">
+			<Setter Property="Background" Value="{DynamicResource SystemAccentColorLight2}"/>
+		</Style>
+		
+		<!-- 悬停状态样式 -->
+		<Style Selector="fa|NavigationViewItem:pointerover /template/ Border#LayoutRoot">
+			<Setter Property="Background" Value="{DynamicResource SystemAccentColorLight3}"/>
+		</Style>
+		
 	</Window.Styles>
 
 	<Design.DataContext>
@@ -64,42 +78,36 @@
                     Click="CloseButton_OnClick"/>
 		</Grid>
 
-		<!-- 内容区域 - 页签容器 -->
-		<TabControl Grid.Row="1"
-                    ItemsSource="{Binding Tabs}"
-                    SelectedIndex="{Binding SelectedTabIndex}"
-                    Background="Transparent">
-			<TabControl.ItemTemplate>
-				<DataTemplate DataType="models:TabItemModel">
-					<StackPanel Orientation="Horizontal">
-						<TextBlock Text="{Binding Header}"
-								   FontSize="16"
-								   FontWeight="Bold"
-								   HorizontalAlignment="Center"
-								   VerticalAlignment="Center"/>
-						<!-- 可关闭的页签显示关闭按钮 -->
-						<Button Content="x"
-                                FontSize="16"
-                                Width="20"
-                                Padding="0"
-								Background="Transparent"
-								VerticalAlignment="Center"
-								HorizontalContentAlignment="Center"
-                                IsVisible="{Binding IsClosable}"
-                                Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).RemoveTabCommand}"
-                                CommandParameter="{Binding}"/>
-					</StackPanel>
-				</DataTemplate>
-			</TabControl.ItemTemplate>
-			<TabControl.ContentTemplate>
-				<DataTemplate DataType="models:TabItemModel">
-					<Border Background="#40FFFFFF" Padding="2">
-						<!-- 直接绑定 Content 属性，控件实例在 ViewModel 中创建 -->
-						<ContentControl Content="{Binding Content}"/>
-					</Border>
-				</DataTemplate>
-			</TabControl.ContentTemplate>
-		</TabControl>
+	<!-- 内容区域 - NavigationView -->
+	<fa:NavigationView Grid.Row="1"
+						x:Name="MainNav"
+						OpenPaneLength="250"
+						CompactPaneLength="48"
+						CompactModeThresholdWidth="700"
+						IsPaneToggleButtonVisible="True"
+						IsBackButtonVisible="False"
+						PaneDisplayMode="Left"
+						Background="Transparent">
+		
+		<!-- 主导航菜单项（动态添加在代码中） -->
+		<fa:NavigationView.MenuItems>
+			<!-- 菜单项将在MainWindow.axaml.cs中动态添加 -->
+		</fa:NavigationView.MenuItems>
+		
+		<!-- 底部固定菜单（设置） -->
+<!--		<fa:NavigationView.FooterMenuItems>
+			<fa:NavigationViewItem Content="设置" Tag="Settings">
+				<fa:NavigationViewItem.IconSource>
+					<fa:SymbolIconSource Symbol="Setting"/>
+				</fa:NavigationViewItem.IconSource>
+			</fa:NavigationViewItem>
+		</fa:NavigationView.FooterMenuItems>-->
+		
+		<!-- 内容区域 -->
+		<fa:NavigationView.Content>
+			<ContentControl Content="{Binding CurrentView}"/>
+		</fa:NavigationView.Content>
+	</fa:NavigationView>
 
 	</Grid>
 	<!-- <Panel> -->

@@ -4,6 +4,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform;
 using DesktopNotifications;
+using FluentAvalonia.UI.Controls;
 using MicroDock.Database;
 using MicroDock.Models;
 using MicroDock.Services;
@@ -54,6 +55,104 @@ namespace MicroDock.Views
         {
             // 从数据库加载设置并应用服务状态
             InitializeServicesFromSettings();
+            
+            // 初始化NavigationView菜单项
+            InitializeNavigationItems();
+        }
+        
+        /// <summary>
+        /// 初始化NavigationView的菜单项
+        /// </summary>
+        private void InitializeNavigationItems()
+        {
+            if (DataContext is not MainWindowViewModel viewModel)
+                return;
+            
+            // 获取NavigationView控件
+            var navView = this.FindControl<NavigationView>("MainNav");
+            if (navView == null)
+                return;
+            
+            // 清空现有菜单项
+            navView.MenuItems.Clear();
+            
+            // 添加导航项
+            foreach (var navItem in viewModel.NavigationItems)
+            {
+                var menuItem = new NavigationViewItem
+                {
+                    Content = navItem.Title,
+                    Tag = navItem
+                };
+                
+                // 设置图标
+                if (!string.IsNullOrEmpty(navItem.Icon))
+                {
+                    try
+                    {
+                        var symbolName = MapIconNameToSymbol(navItem.Icon);
+                        if (!string.IsNullOrEmpty(symbolName) && 
+                            Enum.TryParse<Symbol>(symbolName, out var symbol))
+                        {
+                            menuItem.IconSource = new SymbolIconSource { Symbol = symbol };
+                        }
+                    }
+                    catch
+                    {
+                        // 图标设置失败，忽略
+                    }
+                }
+                
+                navView.MenuItems.Add(menuItem);
+            }
+            
+            // 设置选中项
+            if (viewModel.NavigationItems.Count > 0)
+            {
+                navView.SelectedItem = navView.MenuItems[0];
+            }
+            
+            // 订阅选中项变更事件
+            navView.SelectionChanged += OnNavigationSelectionChanged;
+        }
+        
+        /// <summary>
+        /// 将图标名称映射到FluentAvalonia的Symbol
+        /// </summary>
+        private string? MapIconNameToSymbol(string iconName)
+        {
+            return iconName switch
+            {
+                "Apps" => "Apps",
+                "Library" => "Library",
+                "Setting" => "Setting",
+                "Document" => "Document",
+                "Folder" => "Folder",
+                "Code" => "Code",
+                "Globe" => "Globe",
+                "Edit" => "Edit",
+                _ => null
+            };
+        }
+        
+        /// <summary>
+        /// 导航项选中变更事件处理
+        /// </summary>
+        private void OnNavigationSelectionChanged(object? sender, NavigationViewSelectionChangedEventArgs e)
+        {
+            if (DataContext is not MainWindowViewModel viewModel)
+                return;
+                
+            if (e.SelectedItem is NavigationViewItem item && item.Tag is NavigationItemModel navItem)
+            {
+                // 更新ViewModel的选中项
+                viewModel.SelectedNavItem = navItem;
+            }
+            else if (e.SelectedItem is NavigationViewItem settingsItem && settingsItem.Tag as string == "设置")
+            {
+                // 选中了设置项
+                viewModel.SelectedNavItem = viewModel.SettingsNavItem;
+            }
         }
         
         /// <summary>

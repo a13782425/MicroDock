@@ -2,6 +2,7 @@
 using System.Collections.ObjectModel;
 using System.Reactive;
 using System.IO;
+using System.Linq;
 using Avalonia.Controls;
 using Avalonia.Media;
 using MicroDock.Database;
@@ -15,64 +16,77 @@ namespace MicroDock.ViewModels
 {
     public class MainWindowViewModel : ViewModelBase
     {
-        private int _selectedTabIndex;
+        private NavigationItemModel? _selectedNavItem;
+        private object? _currentView;
 
         public MainWindowViewModel()
         {
-            // 初始化页签集合
-            Tabs = new ObservableCollection<TabItemModel>();
-
-            // 添加固定的"应用"页签（不可关闭）
-            TabItemModel applicationTab = new TabItemModel("应用", TabType.Application)
-            {
-                Content = new ApplicationTabView()
-            };
-            Tabs.Add(applicationTab);
-
-            // 加载插件页签
-            LoadPluginTabs();
-
-            // 添加固定的"设置"页签（不可关闭）
-            TabItemModel settingsTab = new TabItemModel("设置", TabType.Settings)
-            {
-                Content = new SettingsTabView() // SettingsTabView 有自己的 ViewModel
-            };
-            Tabs.Add(settingsTab);
-
-            // 初始化命令
-            AddCustomTabCommand = ReactiveCommand.Create(ExecuteAddCustomTab);
-            // 删除页签
-            RemoveTabCommand = ReactiveCommand.Create<TabItemModel>(ExecuteRemoveTab);
-
-            // 默认选中第一个页签
-            SelectedTabIndex = 0;
+            // 初始化导航项集合
+            NavigationItems = new ObservableCollection<NavigationItemModel>();
             
             // 订阅事件消息
             EventAggregator.Instance.Subscribe<NavigateToTabMessage>(OnNavigateToTab);
             EventAggregator.Instance.Subscribe<AddCustomTabRequestMessage>(OnAddCustomTabRequest);
+            
+            // 初始化NavigationView相关
+            InitializeNavigationItems();
         }
         
         /// <summary>
-        /// 处理导航到标签页消息
+        /// 初始化导航项
+        /// </summary>
+        private void InitializeNavigationItems()
+        {
+            // 添加"应用"导航项
+            var appNavItem = new NavigationItemModel
+            {
+                Title = "应用",
+                Icon = "Apps",
+                Content = new ApplicationTabView(),
+                NavType = NavigationType.Application
+            };
+            NavigationItems.Add(appNavItem);
+            
+            // 加载插件导航项
+            LoadPluginNavigationItems();
+            
+            // 创建设置导航项（单独管理，不加入NavigationItems）
+            SettingsNavItem = new NavigationItemModel
+            {
+                Title = "设置",
+                Icon = "Setting",
+                Content = new SettingsTabView(),
+                NavType = NavigationType.Settings
+            };
+            
+            // 默认选中第一个导航项
+            SelectedNavItem = NavigationItems.FirstOrDefault();
+        }
+        
+        /// <summary>
+        /// 处理导航到标签页消息（已迁移到NavigationView）
         /// </summary>
         private void OnNavigateToTab(NavigateToTabMessage message)
         {
-            if (message.TabIndex.HasValue)
+            // 通过名称查找并选中导航项
+            if (!string.IsNullOrEmpty(message.TabName))
             {
-                if (message.TabIndex.Value >= 0 && message.TabIndex.Value < Tabs.Count)
+                var navItem = NavigationItems.FirstOrDefault(n => n.Title == message.TabName);
+                if (navItem != null)
                 {
-                    SelectedTabIndex = message.TabIndex.Value;
+                    SelectedNavItem = navItem;
+                }
+                else if (message.TabName == "设置")
+                {
+                    SelectedNavItem = SettingsNavItem;
                 }
             }
-            else if (!string.IsNullOrEmpty(message.TabName))
+            // 通过索引查找（仅支持非设置项）
+            else if (message.TabIndex.HasValue)
             {
-                for (int i = 0; i < Tabs.Count; i++)
+                if (message.TabIndex.Value >= 0 && message.TabIndex.Value < NavigationItems.Count)
                 {
-                    if (Tabs[i].Header == message.TabName)
-                    {
-                        SelectedTabIndex = i;
-                        break;
-                    }
+                    SelectedNavItem = NavigationItems[message.TabIndex.Value];
                 }
             }
         }
@@ -82,90 +96,61 @@ namespace MicroDock.ViewModels
         /// </summary>
         private void OnAddCustomTabRequest(AddCustomTabRequestMessage message)
         {
-            ExecuteAddCustomTab();
+            // TODO: 实现添加自定义导航项的功能
+            // 暂时不支持动态添加导航项
         }
 
+        #region NavigationView相关属性
+        
         /// <summary>
-        /// 页签集合
+        /// 导航项集合（不包含设置）
         /// </summary>
-        public ObservableCollection<TabItemModel> Tabs { get; }
-
+        public ObservableCollection<NavigationItemModel> NavigationItems { get; }
+        
         /// <summary>
-        /// 当前选中的页签索引
+        /// 设置导航项（单独管理，固定在底部）
         /// </summary>
-        public int SelectedTabIndex
+        public NavigationItemModel SettingsNavItem { get; private set; } = null!;
+        
+        /// <summary>
+        /// 当前选中的导航项
+        /// </summary>
+        public NavigationItemModel? SelectedNavItem
         {
-            get => _selectedTabIndex;
-            set => this.RaiseAndSetIfChanged(ref _selectedTabIndex, value);
-        }
-
-        /// <summary>
-        /// 添加自定义页签命令
-        /// </summary>
-        public ReactiveCommand<Unit, Unit> AddCustomTabCommand { get; }
-
-        /// <summary>
-        /// 删除页签命令
-        /// </summary>
-        public ReactiveCommand<TabItemModel, Unit> RemoveTabCommand { get; }
-
-        /// <summary>
-        /// 执行添加自定义页签
-        /// </summary>
-        private void ExecuteAddCustomTab()
-        {
-            int customTabCount = Tabs.Count - 1; // 减去设置页签
-            string tabName = $"自定义 {customTabCount}";
-            
-            // 创建自定义页签的内容
-            StackPanel customContent = new StackPanel();
-            customContent.Children.Add(new TextBlock
+            get => _selectedNavItem;
+            set
             {
-                Text = tabName,
-                FontSize = 18,
-                FontWeight = FontWeight.Bold,
-                Margin = new Avalonia.Thickness(0, 0, 0, 10)
-            });
-            customContent.Children.Add(new TextBlock
-            {
-                Text = "这是一个自定义页签的内容区域",
-                Foreground = Brushes.Gray
-            });
-            
-            TabItemModel newTab = new TabItemModel(tabName, TabType.Custom)
-            {
-                Content = customContent
-            };
-
-            // 插入到倒数第二个位置（设置页签之前）
-            Tabs.Insert(Tabs.Count - 1, newTab);
-
-            // 选中新添加的页签
-            SelectedTabIndex = Tabs.Count - 2;
-        }
-
-        /// <summary>
-        /// 执行删除页签
-        /// </summary>
-        private void ExecuteRemoveTab(TabItemModel tab)
-        {
-            if (tab != null && tab.IsClosable && Tabs.Contains(tab))
-            {
-                int index = Tabs.IndexOf(tab);
-                Tabs.Remove(tab);
-
-                // 如果删除的是当前选中的页签，调整选中索引
-                if (SelectedTabIndex >= Tabs.Count)
-                {
-                    SelectedTabIndex = Tabs.Count - 1;
-                }
+                this.RaiseAndSetIfChanged(ref _selectedNavItem, value);
+                UpdateCurrentView();
             }
         }
+        
+        /// <summary>
+        /// 当前显示的视图内容
+        /// </summary>
+        public object? CurrentView
+        {
+            get => _currentView;
+            set => this.RaiseAndSetIfChanged(ref _currentView, value);
+        }
+        
+        /// <summary>
+        /// 更新当前视图
+        /// </summary>
+        private void UpdateCurrentView()
+        {
+            if (SelectedNavItem != null)
+            {
+                CurrentView = SelectedNavItem.Content;
+            }
+        }
+        
+        #endregion
 
         /// <summary>
-        /// 加载插件页签
+        /// 加载插件导航项（新）
         /// </summary>
-        private void LoadPluginTabs()
+        private void LoadPluginNavigationItems()
         {
             // 获取插件目录路径（在应用程序目录下的Plugins文件夹）
             string appDirectory = System.AppContext.BaseDirectory;
@@ -174,18 +159,18 @@ namespace MicroDock.ViewModels
             // 加载所有插件
             System.Collections.Generic.List<Control> plugins = PluginLoader.LoadPlugins(pluginDirectory);
 
-            // 为每个插件创建页签
+            // 为每个插件创建导航项
             foreach (Control plugin in plugins)
             {
                 string pluginName = PluginLoader.GetPluginName(plugin);
-                TabItemModel pluginTab = new TabItemModel(
-                    pluginName,
-                    TabType.Plugin
-                )
+                NavigationItemModel pluginNavItem = new NavigationItemModel
                 {
-                    Content = plugin  // 将插件控件设置为内容
+                    Title = pluginName,
+                    Icon = "Library", // 插件使用Library图标
+                    Content = plugin,
+                    NavType = NavigationType.Plugin
                 };
-                Tabs.Add(pluginTab);
+                NavigationItems.Add(pluginNavItem);
             }
         }
 

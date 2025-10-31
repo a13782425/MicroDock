@@ -19,7 +19,7 @@ public class AutoHideService : IWindowService, IDisposable
     private Timer? _hideTimer;
     private Timer? _showCheckTimer;
     private Timer? _animationTimer;
-    
+
     // 配置参数（QQ 风格）
     private const int EDGE_THRESHOLD = 5;        // 触发靠边的阈值
     private const int HIDE_OFFSET = 2;           // 隐藏后可见像素（更接近QQ）
@@ -28,19 +28,19 @@ public class AutoHideService : IWindowService, IDisposable
     private const int HIDE_DELAY = 1000;         // 隐藏延迟（毫秒）
     private const int ANIMATION_DURATION = 250;  // 动画时长（毫秒）
     private const int ANIMATION_FPS = 60;        // 动画帧率
-    
+
     // 状态管理
     private AutoHideState _state = AutoHideState.Visible;
     private EdgePosition _hiddenEdge = EdgePosition.None;
     private PixelPoint _positionBeforeHide;      // 隐藏前的精确位置
     private Screen? _hiddenScreen = null;        // 窗口隐藏时所在的屏幕
-    
+
     // 动画相关
     private DateTime _animationStartTime;
     private PixelPoint _animationStartPos;
     private PixelPoint _animationTargetPos;
     private Action? _animationOnComplete;        // 动画完成回调
-    
+
     private bool _disposed = false;
 
     // Windows API 调用获取全局鼠标位置
@@ -73,15 +73,15 @@ public class AutoHideService : IWindowService, IDisposable
     public AutoHideService(Window window)
     {
         _window = window;
-        
+
         _hideTimer = new Timer(HIDE_DELAY);
         _hideTimer.Elapsed += OnHideTimerElapsed;
         _hideTimer.AutoReset = false;
-        
+
         _showCheckTimer = new Timer(100);
         _showCheckTimer.Elapsed += OnShowCheckTimerElapsed;
         _showCheckTimer.AutoReset = true;
-        
+
         _animationTimer = new Timer(1000.0 / ANIMATION_FPS);
         _animationTimer.Elapsed += OnAnimationTimerElapsed;
         _animationTimer.AutoReset = true;
@@ -100,7 +100,7 @@ public class AutoHideService : IWindowService, IDisposable
             _showCheckTimer?.Start();
             _isEnabled = true;
             System.Diagnostics.Debug.WriteLine("[AutoHide] 服务已启用");
-            
+
             // 立即检查当前位置是否在边缘
             CheckAndStartHideTimer();
         }
@@ -117,13 +117,13 @@ public class AutoHideService : IWindowService, IDisposable
         _hideTimer?.Stop();
         _showCheckTimer?.Stop();
         _animationTimer?.Stop();
-        
+
         // 如果窗口处于隐藏状态，立即恢复显示（无动画）
         if (_state == AutoHideState.Hidden || _state == AutoHideState.Hiding)
         {
             RestoreWindowImmediate();
         }
-        
+
         _isEnabled = false;
         System.Diagnostics.Debug.WriteLine("[AutoHide] 服务已禁用");
     }
@@ -220,7 +220,7 @@ public class AutoHideService : IWindowService, IDisposable
     private void OnHideTimerElapsed(object? sender, ElapsedEventArgs e)
     {
         System.Diagnostics.Debug.WriteLine($"[AutoHide] 计时器到期: _isEnabled={_isEnabled}, _state={_state}, _hiddenEdge={_hiddenEdge}");
-        
+
         Dispatcher.UIThread.InvokeAsync(() =>
         {
             if (_isEnabled && _state == AutoHideState.Visible && _hiddenEdge != EdgePosition.None)
@@ -279,28 +279,28 @@ public class AutoHideService : IWindowService, IDisposable
         PixelRect workingArea = screen.WorkingArea;
         int windowWidth = (int)_window.Width;
         int windowHeight = (int)_window.Height;
-        
+
         // 如果计时器正在运行，使用更宽松的阈值（防止微小位移导致取消）
         int threshold = (_hideTimer?.Enabled == true) ? EDGE_THRESHOLD * 3 : EDGE_THRESHOLD;
-        
+
         int distanceLeft = position.X - workingArea.X;
         int distanceRight = workingArea.Right - (position.X + windowWidth);
         int distanceTop = position.Y - workingArea.Y;
-        
+
         // 检查是否靠近左边缘（允许负值，即窗口部分移出屏幕）
         if (distanceLeft <= threshold)
         {
             System.Diagnostics.Debug.WriteLine($"[AutoHide] 判定在Left边缘: X={position.X}, WorkingArea.X={workingArea.X}, Distance={distanceLeft}, Threshold={threshold}");
             return EdgePosition.Left;
         }
-        
+
         // 检查是否靠近右边缘（允许负值）
         if (distanceRight <= threshold)
         {
             System.Diagnostics.Debug.WriteLine($"[AutoHide] 判定在Right边缘: Distance={distanceRight}, Threshold={threshold}");
             return EdgePosition.Right;
         }
-        
+
         // 检查是否靠近上边缘（允许负值）
         if (distanceTop <= threshold)
         {
@@ -324,11 +324,11 @@ public class AutoHideService : IWindowService, IDisposable
         // 保存窗口隐藏时的状态
         _hiddenScreen = screen;
         _positionBeforeHide = _window.Position;
-        
+
         PixelRect workingArea = screen.WorkingArea;
         PixelPoint targetPosition = _window.Position;
-        int windowWidth = (int)_window.Width;
-        int windowHeight = (int)_window.Height;
+        int windowWidth = (int)(_window.Width * _window.DesktopScaling);
+        int windowHeight = (int)(_window.Height * _window.DesktopScaling);
 
         switch (edge)
         {
@@ -344,7 +344,7 @@ public class AutoHideService : IWindowService, IDisposable
         }
 
         System.Diagnostics.Debug.WriteLine($"[AutoHide] 开始隐藏: Edge={edge}, Position={_window.Position}, Target={targetPosition}");
-        
+
         _state = AutoHideState.Hiding;
         StartAnimation(_window.Position, targetPosition, () =>
         {
@@ -372,8 +372,8 @@ public class AutoHideService : IWindowService, IDisposable
         int windowHeight = (int)_window.Height;
 
         // 验证保存的位置是否仍然有效
-        bool positionValid = IsPositionValid(_positionBeforeHide, workingArea, windowWidth, windowHeight);
-        
+        bool positionValid = false;// IsPositionValid(_positionBeforeHide, workingArea, windowWidth, windowHeight);
+
         if (!positionValid)
         {
             // 位置已失效，根据边缘重新计算安全位置
@@ -393,7 +393,7 @@ public class AutoHideService : IWindowService, IDisposable
         }
 
         System.Diagnostics.Debug.WriteLine($"[AutoHide] 开始显示: Position={_window.Position}, Target={targetPosition}");
-        
+
         _state = AutoHideState.Showing;
         StartAnimation(_window.Position, targetPosition, () =>
         {
@@ -413,7 +413,7 @@ public class AutoHideService : IWindowService, IDisposable
             return;
 
         _animationTimer?.Stop();
-        
+
         Screen? screen = _hiddenScreen ?? _window.Screens.ScreenFromWindow(_window);
         if (screen == null)
             return;
@@ -423,7 +423,7 @@ public class AutoHideService : IWindowService, IDisposable
         int windowHeight = (int)_window.Height;
 
         bool positionValid = IsPositionValid(_positionBeforeHide, workingArea, windowWidth, windowHeight);
-        
+
         if (positionValid)
         {
             _window.Position = _positionBeforeHide;
@@ -450,7 +450,7 @@ public class AutoHideService : IWindowService, IDisposable
         _state = AutoHideState.Visible;
         _hiddenEdge = EdgePosition.None;
         _hiddenScreen = null;
-        
+
         System.Diagnostics.Debug.WriteLine($"[AutoHide] 立即恢复显示: Position={_window.Position}");
     }
 
@@ -489,30 +489,30 @@ public class AutoHideService : IWindowService, IDisposable
 
         // 根据隐藏的边缘判断鼠标是否在触发热区内
         bool inTriggerZone = false;
-        
+
         switch (_hiddenEdge)
         {
             case EdgePosition.Left:
                 // 左边缘：检查鼠标是否在触发热区内
-                inTriggerZone = mousePos.X >= workingArea.X - TRIGGER_EXTEND_MARGIN && 
+                inTriggerZone = mousePos.X >= workingArea.X - TRIGGER_EXTEND_MARGIN &&
                                mousePos.X <= workingArea.X + SHOW_TRIGGER_ZONE &&
-                               mousePos.Y >= windowPos.Y && 
+                               mousePos.Y >= windowPos.Y &&
                                mousePos.Y <= windowPos.Y + windowHeight;
                 break;
 
             case EdgePosition.Right:
                 // 右边缘：检查鼠标是否在触发热区内
-                inTriggerZone = mousePos.X >= workingArea.Right - SHOW_TRIGGER_ZONE && 
+                inTriggerZone = mousePos.X >= workingArea.Right - SHOW_TRIGGER_ZONE &&
                                mousePos.X <= workingArea.Right + TRIGGER_EXTEND_MARGIN &&
-                               mousePos.Y >= windowPos.Y && 
+                               mousePos.Y >= windowPos.Y &&
                                mousePos.Y <= windowPos.Y + windowHeight;
                 break;
 
             case EdgePosition.Top:
                 // 上边缘：检查鼠标是否在触发热区内
-                inTriggerZone = mousePos.Y >= workingArea.Y - TRIGGER_EXTEND_MARGIN && 
+                inTriggerZone = mousePos.Y >= workingArea.Y - TRIGGER_EXTEND_MARGIN &&
                                mousePos.Y <= workingArea.Y + SHOW_TRIGGER_ZONE &&
-                               mousePos.X >= windowPos.X && 
+                               mousePos.X >= windowPos.X &&
                                mousePos.X <= windowPos.X + windowWidth;
                 break;
 
@@ -537,7 +537,7 @@ public class AutoHideService : IWindowService, IDisposable
         _animationStartPos = from;
         _animationTargetPos = to;
         _animationOnComplete = onComplete;
-        
+
         _animationTimer?.Stop();
         _animationTimer?.Start();
     }
@@ -556,17 +556,17 @@ public class AutoHideService : IWindowService, IDisposable
         double elapsed = (DateTime.Now - _animationStartTime).TotalMilliseconds;
         double progress = Math.Min(1.0, elapsed / ANIMATION_DURATION);
         double eased = EaseInOutCubic(progress);
-        
+
         int x = (int)(_animationStartPos.X + (_animationTargetPos.X - _animationStartPos.X) * eased);
         int y = (int)(_animationStartPos.Y + (_animationTargetPos.Y - _animationStartPos.Y) * eased);
-        
+
         _window.Position = new PixelPoint(x, y);
-        
+
         if (progress >= 1.0)
         {
             _animationTimer?.Stop();
             System.Diagnostics.Debug.WriteLine($"[AutoHide] 动画完成100%: Position=({x},{y})");
-            
+
             // 执行完成回调
             Action? callback = _animationOnComplete;
             _animationOnComplete = null;
@@ -587,8 +587,8 @@ public class AutoHideService : IWindowService, IDisposable
     /// </summary>
     private static double EaseInOutCubic(double t)
     {
-        return t < 0.5 
-            ? 4 * t * t * t 
+        return t < 0.5
+            ? 4 * t * t * t
             : 1 - Math.Pow(-2 * t + 2, 3) / 2;
     }
 
@@ -603,28 +603,28 @@ public class AutoHideService : IWindowService, IDisposable
         System.Diagnostics.Debug.WriteLine("[AutoHide] 释放资源");
 
         Disable();
-        
+
         if (_hideTimer != null)
         {
             _hideTimer.Elapsed -= OnHideTimerElapsed;
             _hideTimer.Dispose();
             _hideTimer = null;
         }
-        
+
         if (_showCheckTimer != null)
         {
             _showCheckTimer.Elapsed -= OnShowCheckTimerElapsed;
             _showCheckTimer.Dispose();
             _showCheckTimer = null;
         }
-        
+
         if (_animationTimer != null)
         {
             _animationTimer.Elapsed -= OnAnimationTimerElapsed;
             _animationTimer.Dispose();
             _animationTimer = null;
         }
-        
+
         _disposed = true;
     }
 }
