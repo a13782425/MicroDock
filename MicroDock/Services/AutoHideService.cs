@@ -1,11 +1,11 @@
 using System;
-using System.Runtime.InteropServices;
 using System.Timers;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Platform;
 using Avalonia.Threading;
+using MicroDock.Services.Platform;
 
 namespace MicroDock.Services;
 
@@ -15,6 +15,7 @@ namespace MicroDock.Services;
 public class AutoHideService : IWindowService, IDisposable
 {
     private readonly Window _window;
+    private readonly IPlatformCursorService? _cursorService;
     private bool _isEnabled;
     private Timer? _hideTimer;
     private Timer? _showCheckTimer;
@@ -43,17 +44,6 @@ public class AutoHideService : IWindowService, IDisposable
 
     private bool _disposed = false;
 
-    // Windows API 调用获取全局鼠标位置
-    [DllImport("user32.dll")]
-    private static extern bool GetCursorPos(out POINT lpPoint);
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct POINT
-    {
-        public int X;
-        public int Y;
-    }
-
     public enum AutoHideState
     {
         Visible,      // 完全可见
@@ -73,6 +63,7 @@ public class AutoHideService : IWindowService, IDisposable
     public AutoHideService(Window window)
     {
         _window = window;
+        _cursorService = PlatformServiceFactory.CreateCursorService();
 
         _hideTimer = new Timer(HIDE_DELAY);
         _hideTimer.Elapsed += OnHideTimerElapsed;
@@ -473,13 +464,17 @@ public class AutoHideService : IWindowService, IDisposable
         if (_state != AutoHideState.Hidden || _hiddenScreen == null)
             return false;
 
-        // 仅在 Windows 平台上使用 P/Invoke 获取鼠标位置
-        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        // 使用平台光标服务获取鼠标位置
+        if (_cursorService == null || !_cursorService.IsSupported)
             return false;
 
         // 获取全局鼠标位置
-        if (!GetCursorPos(out POINT mousePos))
+        if (!_cursorService.TryGetCursorPosition(out Point mousePosition))
             return false;
+
+        // 转换为整数坐标
+        int mousePosX = (int)mousePosition.X;
+        int mousePosY = (int)mousePosition.Y;
 
         // 使用保存的屏幕信息
         PixelRect workingArea = _hiddenScreen.WorkingArea;
@@ -494,26 +489,26 @@ public class AutoHideService : IWindowService, IDisposable
         {
             case EdgePosition.Left:
                 // 左边缘：检查鼠标是否在触发热区内
-                inTriggerZone = mousePos.X >= workingArea.X - TRIGGER_EXTEND_MARGIN &&
-                               mousePos.X <= workingArea.X + SHOW_TRIGGER_ZONE &&
-                               mousePos.Y >= windowPos.Y &&
-                               mousePos.Y <= windowPos.Y + windowHeight;
+                inTriggerZone = mousePosX >= workingArea.X - TRIGGER_EXTEND_MARGIN &&
+                               mousePosX <= workingArea.X + SHOW_TRIGGER_ZONE &&
+                               mousePosY >= windowPos.Y &&
+                               mousePosY <= windowPos.Y + windowHeight;
                 break;
 
             case EdgePosition.Right:
                 // 右边缘：检查鼠标是否在触发热区内
-                inTriggerZone = mousePos.X >= workingArea.Right - SHOW_TRIGGER_ZONE &&
-                               mousePos.X <= workingArea.Right + TRIGGER_EXTEND_MARGIN &&
-                               mousePos.Y >= windowPos.Y &&
-                               mousePos.Y <= windowPos.Y + windowHeight;
+                inTriggerZone = mousePosX >= workingArea.Right - SHOW_TRIGGER_ZONE &&
+                               mousePosX <= workingArea.Right + TRIGGER_EXTEND_MARGIN &&
+                               mousePosY >= windowPos.Y &&
+                               mousePosY <= windowPos.Y + windowHeight;
                 break;
 
             case EdgePosition.Top:
                 // 上边缘：检查鼠标是否在触发热区内
-                inTriggerZone = mousePos.Y >= workingArea.Y - TRIGGER_EXTEND_MARGIN &&
-                               mousePos.Y <= workingArea.Y + SHOW_TRIGGER_ZONE &&
-                               mousePos.X >= windowPos.X &&
-                               mousePos.X <= windowPos.X + windowWidth;
+                inTriggerZone = mousePosY >= workingArea.Y - TRIGGER_EXTEND_MARGIN &&
+                               mousePosY <= workingArea.Y + SHOW_TRIGGER_ZONE &&
+                               mousePosX >= windowPos.X &&
+                               mousePosX <= windowPos.X + windowWidth;
                 break;
 
             default:
@@ -522,7 +517,7 @@ public class AutoHideService : IWindowService, IDisposable
 
         if (inTriggerZone)
         {
-            System.Diagnostics.Debug.WriteLine($"[AutoHide] 鼠标触发显示: MousePos=({mousePos.X},{mousePos.Y}), TriggerZone={SHOW_TRIGGER_ZONE}px");
+            System.Diagnostics.Debug.WriteLine($"[AutoHide] 鼠标触发显示: MousePos=({mousePosX},{mousePosY}), TriggerZone={SHOW_TRIGGER_ZONE}px");
         }
 
         return inTriggerZone;

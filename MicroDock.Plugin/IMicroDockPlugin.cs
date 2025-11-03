@@ -2,7 +2,7 @@
 /// <summary>
 /// 插件相关配置
 /// </summary>
-internal interface IMicroDockPlugin
+public interface IMicroDockPlugin
 {
     /// <summary>
     /// 唯一名字

@@ -1,3 +1,4 @@
+using System;
 using MicroDock.Infrastructure;
 
 namespace MicroDock.Services;
@@ -13,9 +14,10 @@ public interface IMiniModeService
 /// 迷你模式服务，管理悬浮球窗口的生命周期
 /// 悬浮球窗口内部会管理自己的功能栏窗口
 /// </summary>
-public class MiniModeService : IMiniModeService
+public class MiniModeService : IMiniModeService, IDisposable
 {
     private Views.MiniBallWindow? _miniBallWindow;
+    private bool _disposed = false;
     
     public MiniModeService()
     {
@@ -25,6 +27,9 @@ public class MiniModeService : IMiniModeService
 
     public void Enable()
     {
+        if (_disposed)
+            throw new ObjectDisposedException(nameof(MiniModeService));
+
         if (IsEnabled) return;
         
         // 通过事件通知隐藏主窗口
@@ -52,6 +57,7 @@ public class MiniModeService : IMiniModeService
 
     public void Disable()
     {
+        if (_disposed) return;
         if (!IsEnabled) return;
         
         IsEnabled = false;
@@ -64,6 +70,22 @@ public class MiniModeService : IMiniModeService
 
         // 通过事件通知显示主窗口
         EventAggregator.Instance.Publish(new WindowShowRequestMessage("MainWindow"));
-        
+    }
+
+    /// <summary>
+    /// 释放资源
+    /// </summary>
+    public void Dispose()
+    {
+        if (_disposed)
+            return;
+
+        // 禁用迷你模式并关闭窗口
+        if (IsEnabled)
+        {
+            Disable();
+        }
+
+        _disposed = true;
     }
 }

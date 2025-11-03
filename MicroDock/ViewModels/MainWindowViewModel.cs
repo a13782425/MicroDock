@@ -14,15 +14,20 @@ using ReactiveUI;
 
 namespace MicroDock.ViewModels
 {
-    public class MainWindowViewModel : ViewModelBase
+    public class MainWindowViewModel : ViewModelBase, IDisposable
     {
         private NavigationItemModel? _selectedNavItem;
         private object? _currentView;
+        private readonly PluginLoader _pluginLoader;
+        private bool _disposed = false;
 
         public MainWindowViewModel()
         {
             // 初始化导航项集合
             NavigationItems = new ObservableCollection<NavigationItemModel>();
+            
+            // 初始化插件加载器
+            _pluginLoader = new PluginLoader();
             
             // 订阅事件消息
             EventAggregator.Instance.Subscribe<NavigateToTabMessage>(OnNavigateToTab);
@@ -157,12 +162,12 @@ namespace MicroDock.ViewModels
             string pluginDirectory = Path.Combine(appDirectory, "Plugins");
 
             // 加载所有插件
-            System.Collections.Generic.List<Control> plugins = PluginLoader.LoadPlugins(pluginDirectory);
+            System.Collections.Generic.List<Control> plugins = _pluginLoader.LoadPlugins(pluginDirectory);
 
             // 为每个插件创建导航项
             foreach (Control plugin in plugins)
             {
-                string pluginName = PluginLoader.GetPluginName(plugin);
+                string pluginName = plugin is Plugin.IMicroTab tab ? tab.TabName : plugin.GetType().Name;
                 NavigationItemModel pluginNavItem = new NavigationItemModel
                 {
                     Title = pluginName,
@@ -174,5 +179,16 @@ namespace MicroDock.ViewModels
             }
         }
 
+        /// <summary>
+        /// 释放资源
+        /// </summary>
+        public void Dispose()
+        {
+            if (_disposed)
+                return;
+
+            _pluginLoader?.Dispose();
+            _disposed = true;
+        }
     }
 }

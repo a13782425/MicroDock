@@ -1,40 +1,23 @@
 using System;
 using System.Diagnostics;
-using System.Drawing;
-using System.Drawing.Imaging;
 using System.IO;
-using System.Runtime.InteropServices;
 using Avalonia.Media;
+using MicroDock.Services.Platform;
+using Serilog;
 
 namespace MicroDock.Services;
 
+/// <summary>
+/// 图标服务
+/// 使用平台抽象层，支持跨平台图标提取
+/// </summary>
 public static class IconService
 {
-    // Windows Shell API 常量
-    private const uint SHGFI_ICON = 0x100;
-    private const uint SHGFI_LARGEICON = 0x0;
-    private const uint SHGFI_SMALLICON = 0x1;
-    
-    // Shell API 结构体
-    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
-    private struct SHFILEINFO
-    {
-        public IntPtr hIcon;
-        public int iIcon;
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 260)]
-        public string szDisplayName;
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 80)]
-        public string szTypeName;
-        public uint dwAttributes;
-    }
-    
-    // Windows API 声明
-    [DllImport("shell32.dll", CharSet = CharSet.Auto)]
-    private static extern IntPtr SHGetFileInfo(string pszPath, uint dwFileAttributes, ref SHFILEINFO psfi, uint cbFileInfo, uint uFlags);
-    
-    [DllImport("user32.dll", SetLastError = true)]
-    private static extern bool DestroyIcon(IntPtr hIcon);
+    private static readonly IPlatformIconService? _platformIconService = PlatformServiceFactory.CreateIconService();
 
+    /// <summary>
+    /// 从字节数组创建图像（修复：使用using释放MemoryStream）
+    /// </summary>
     public static IImage? ImageFromBytes(byte[]? data)
     {
         if (data == null || data.Length == 0)
@@ -42,54 +25,37 @@ public static class IconService
             return null;
         }
 
-        MemoryStream stream = new MemoryStream(data);
-        return new Avalonia.Media.Imaging.Bitmap(stream);
+        using (MemoryStream stream = new MemoryStream(data, writable: false))
+        {
+            return new Avalonia.Media.Imaging.Bitmap(stream);
+        }
     }
 
+    /// <summary>
+    /// 尝试从文件提取图标字节数组
+    /// </summary>
     public static byte[]? TryExtractFileIconBytes(string filePath, int preferredSize = 48)
     {
+        if (_platformIconService == null || !_platformIconService.IsSupported)
+        {
+            Log.Warning("当前平台不支持图标提取功能");
+            return null;
+        }
+
         try
         {
-            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
-                return null;
-            }
-
-            // 使用 Shell API 获取图标（支持文件和文件夹）
-            SHFILEINFO shfi = new SHFILEINFO();
-            uint flags = SHGFI_ICON | (preferredSize > 32 ? SHGFI_LARGEICON : SHGFI_SMALLICON);
-            
-            IntPtr result = SHGetFileInfo(filePath, 0, ref shfi, (uint)Marshal.SizeOf(shfi), flags);
-            
-            if (result == IntPtr.Zero || shfi.hIcon == IntPtr.Zero)
-            {
-                return null;
-            }
-
-            try
-            {
-                // 从句柄创建 Icon 对象
-                using (Icon icon = Icon.FromHandle(shfi.hIcon))
-                using (Icon sized = new Icon(icon, preferredSize, preferredSize))
-                using (System.Drawing.Bitmap bitmap = sized.ToBitmap())
-                using (MemoryStream ms = new MemoryStream())
-                {
-                    bitmap.Save(ms, ImageFormat.Png);
-                    return ms.ToArray();
-                }
-            }
-            finally
-            {
-                // 释放图标句柄
-                DestroyIcon(shfi.hIcon);
-            }
+            return _platformIconService.ExtractIconBytes(filePath, preferredSize);
         }
-        catch
+        catch (Exception ex)
         {
+            Log.Error(ex, "提取图标失败: {FilePath}", filePath);
             return null;
         }
     }
 
+    /// <summary>
+    /// 尝试启动进程
+    /// </summary>
     public static bool TryStartProcess(string path)
     {
         try
@@ -99,10 +65,22 @@ public static class IconService
                 UseShellExecute = true
             };
             Process? process = Process.Start(psi);
-            return process != null;
+            bool success = process != null;
+            
+            if (success)
+            {
+                Log.Information("成功启动进程: {Path}", path);
+            }
+            else
+            {
+                Log.Warning("启动进程失败(返回null): {Path}", path);
+            }
+            
+            return success;
         }
-        catch
+        catch (Exception ex)
         {
+            Log.Error(ex, "启动进程失败: {Path}", path);
             return false;
         }
     }

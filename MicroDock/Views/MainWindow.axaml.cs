@@ -10,6 +10,7 @@ using MicroDock.Models;
 using MicroDock.Services;
 using MicroDock.ViewModels;
 using MicroDock.Infrastructure;
+using Serilog;
 using System;
 using System.ComponentModel;
 
@@ -366,12 +367,12 @@ namespace MicroDock.Views
         }
         private void OnNotificationDismissed(object? sender, NotificationDismissedEventArgs e)
         {
-            Console.WriteLine($"Notification dismissed: {e.Reason}");
+            Log.Debug("通知已关闭: {Reason}", e.Reason);
         }
 
         private void OnNotificationActivated(object? sender, NotificationActivatedEventArgs e)
         {
-            Console.WriteLine($"Notification activated: {e.ActionId}");
+            Log.Information("通知已激活: {ActionId}", e.ActionId);
         }
         /// <summary>
         /// 标题栏拖拽事件
@@ -405,10 +406,27 @@ namespace MicroDock.Views
         {
             base.OnClosing(e);
             
-            // 释放服务资源
-            _autoHideService?.Dispose();
-            
-            System.Diagnostics.Debug.WriteLine("[MainWindow] 资源已释放");
+            // 统一释放所有服务资源
+            try
+            {
+                Log.Information("MainWindow 正在释放服务资源...");
+                _autoHideService?.Dispose();
+                _topMostService?.Dispose();
+                _miniModeService?.Dispose();
+                // AutoStartupService不需要Dispose，因为它只操作注册表
+                
+                // 释放ViewModel（包括插件加载器）
+                if (this.DataContext is MainWindowViewModel viewModel)
+                {
+                    viewModel.Dispose();
+                }
+                
+                Log.Information("MainWindow 所有服务资源已成功释放");
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "MainWindow 释放资源时发生错误");
+            }
         }
     }
 }
