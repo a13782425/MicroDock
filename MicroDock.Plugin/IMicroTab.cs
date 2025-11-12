@@ -8,4 +8,8 @@ public interface IMicroTab
     /// 页签名字
     /// </summary>
     string TabName { get; }
+    /// <summary>
+    /// 页签图标
+    /// </summary>
+    IconSymbolEnum IconSymbol { get; }
 }

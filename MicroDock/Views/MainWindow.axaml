@@ -7,12 +7,12 @@
 	xmlns:models="using:MicroDock.Models"
 	xmlns:fa="clr-namespace:FluentAvalonia.UI.Controls;assembly=FluentAvalonia"
     mc:Ignorable="d"
-    d:DesignWidth="850"
-    d:DesignHeight="600"
-	Width="850"
+    d:DesignWidth="640"
+    d:DesignHeight="480"
+	Width="800"
 	Height="600"
-	MinWidth="700"
-	MinHeight="500"
+	MinWidth="640"
+	MinHeight="480"
     x:Class="MicroDock.Views.MainWindow"
     x:DataType="vm:MainWindowViewModel"
     ExtendClientAreaToDecorationsHint="True"
@@ -81,7 +81,7 @@
 	<!-- 内容区域 - NavigationView -->
 	<fa:NavigationView Grid.Row="1"
 						x:Name="MainNav"
-						OpenPaneLength="250"
+						OpenPaneLength="128"
 						CompactPaneLength="48"
 						CompactModeThresholdWidth="700"
 						IsPaneToggleButtonVisible="True"
@@ -110,59 +110,4 @@
 	</fa:NavigationView>
 
 	</Grid>
-	<!-- <Panel> -->
-	<!-- 毛玻璃背景层 -->
-	<!-- <ExperimentalAcrylicBorder IsHitTestVisible="False"> -->
-	<!--     <ExperimentalAcrylicBorder.Material> -->
-	<!--         <ExperimentalAcrylicMaterial -->
-	<!--             BackgroundSource="Digger" -->
-	<!--             TintColor="White" -->
-	<!--             TintOpacity="0.6" -->
-	<!--             MaterialOpacity="0.5" -->
-	<!--             FallbackColor="White"/> -->
-	<!--     </ExperimentalAcrylicBorder.Material> -->
-	<!-- </ExperimentalAcrylicBorder> -->
-	<!-- 毛玻璃背景 -->
-	<!-- <Border CornerRadius="15" -->
-	<!--         Margin="10" -->
-	<!--         Background="#40FFFFFF" -->
-	<!--         BorderBrush="#60FFFFFF" -->
-	<!--         BorderThickness="1"> -->
-	<!--     <Border.Effect> -->
-	<!--         <DropShadowEffect Color="Black"  -->
-	<!--                           BlurRadius="20"  -->
-	<!--                           Opacity="0.3"/> -->
-	<!--     </Border.Effect> -->
-	<!--      -->
-	<!--     ~1~ Dock 图标 @1@ -->
-	<!--     <StackPanel Orientation="Horizontal" -->
-	<!--                 Spacing="15" -->
-	<!--                 Margin="15,10" -->
-	<!--                 HorizontalAlignment="Center" -->
-	<!--                 VerticalAlignment="Center"> -->
-	<!--          -->
-	<!--         <Image Source="/Assets/avalonia-logo.ico"  -->
-	<!--                Width="48" Height="48" -->
-	<!--                Cursor="Hand"/> -->
-	<!--          -->
-	<!--         <Image Source="/Assets/avalonia-logo.ico"  -->
-	<!--                Width="48" Height="48" -->
-	<!--                Cursor="Hand"/> -->
-	<!--          -->
-	<!--         <Image Source="/Assets/avalonia-logo.ico"  -->
-	<!--                Width="48" Height="48" -->
-	<!--                Cursor="Hand"/> -->
-	<!--          -->
-	<!--         ~1~ 分隔线 @1@ -->
-	<!--         <Border Width="2" Height="40" -->
-	<!--                 Background="#80000000" -->
-	<!--                 CornerRadius="1" -->
-	<!--                 Margin="5,0"/> -->
-	<!--          -->
-	<!--         <Image Source="/Assets/avalonia-logo.ico"  -->
-	<!--                Width="48" Height="48" -->
-	<!--                Cursor="Hand"/> -->
-	<!--     </StackPanel> -->
-	<!-- </Border> -->
-	<!-- </Panel> -->
 </Window>

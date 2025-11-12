@@ -7,6 +7,9 @@ namespace Test;
 public partial class TestTab : UserControl, IMicroTab
 {
     public string TabName => "ssss";
+
+    public IconSymbolEnum IconSymbol => IconSymbolEnum.Library;
+
     public TestTab()
     {
         InitializeComponent();

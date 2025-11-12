@@ -12,9 +12,35 @@ public class IconDB
     
     public int ReferenceCount { get; set; }
     
-    public DateTime CreatedAt { get; set; }
+    /// <summary>
+    /// 创建时间戳（从2025年1月1日开始的毫秒数）
+    /// </summary>
+    public long CreatedAt { get; set; }
     
+    /// <summary>
+    /// 最后访问时间戳（从2025年1月1日开始的毫秒数）
+    /// </summary>
     [Indexed]
-    public DateTime LastAccessedAt { get; set; }
+    public long LastAccessedAt { get; set; }
+
+    /// <summary>
+    /// 创建时间（DateTime 包装器）
+    /// </summary>
+    [Ignore]
+    public DateTime CreatedAtDateTime
+    {
+        get => TimeStampHelper.ToDateTime(CreatedAt);
+        set => CreatedAt = TimeStampHelper.ToTimestamp(value);
+    }
+
+    /// <summary>
+    /// 最后访问时间（DateTime 包装器）
+    /// </summary>
+    [Ignore]
+    public DateTime LastAccessedAtDateTime
+    {
+        get => TimeStampHelper.ToDateTime(LastAccessedAt);
+        set => LastAccessedAt = TimeStampHelper.ToTimestamp(value);
+    }
 }
 

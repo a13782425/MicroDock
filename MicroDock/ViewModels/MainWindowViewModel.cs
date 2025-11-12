@@ -1,16 +1,15 @@
-﻿using System;
-using System.Collections.ObjectModel;
-using System.Reactive;
-using System.IO;
-using System.Linq;
-using Avalonia.Controls;
-using Avalonia.Media;
-using MicroDock.Database;
+﻿using Avalonia.Controls;
+using MicroDock.Infrastructure;
 using MicroDock.Models;
+using MicroDock.Plugin;
 using MicroDock.Services;
 using MicroDock.Views;
-using MicroDock.Infrastructure;
 using ReactiveUI;
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.IO;
+using System.Linq;
 
 namespace MicroDock.ViewModels
 {
@@ -25,18 +24,18 @@ namespace MicroDock.ViewModels
         {
             // 初始化导航项集合
             NavigationItems = new ObservableCollection<NavigationItemModel>();
-            
+
             // 初始化插件加载器
             _pluginLoader = new PluginLoader();
-            
+
             // 订阅事件消息
             EventAggregator.Instance.Subscribe<NavigateToTabMessage>(OnNavigateToTab);
             EventAggregator.Instance.Subscribe<AddCustomTabRequestMessage>(OnAddCustomTabRequest);
-            
+
             // 初始化NavigationView相关
             InitializeNavigationItems();
         }
-        
+
         /// <summary>
         /// 初始化导航项
         /// </summary>
@@ -46,15 +45,15 @@ namespace MicroDock.ViewModels
             var appNavItem = new NavigationItemModel
             {
                 Title = "应用",
-                Icon = "Apps",
+                Icon = "Home",//PreviewLink,ViewAll
                 Content = new ApplicationTabView(),
                 NavType = NavigationType.Application
             };
             NavigationItems.Add(appNavItem);
-            
+
             // 加载插件导航项
             LoadPluginNavigationItems();
-            
+
             // 创建设置导航项（单独管理，不加入NavigationItems）
             SettingsNavItem = new NavigationItemModel
             {
@@ -63,11 +62,11 @@ namespace MicroDock.ViewModels
                 Content = new SettingsTabView(),
                 NavType = NavigationType.Settings
             };
-            
+
             // 默认选中第一个导航项
             SelectedNavItem = NavigationItems.FirstOrDefault();
         }
-        
+
         /// <summary>
         /// 处理导航到标签页消息（已迁移到NavigationView）
         /// </summary>
@@ -95,7 +94,7 @@ namespace MicroDock.ViewModels
                 }
             }
         }
-        
+
         /// <summary>
         /// 处理添加自定义标签页请求
         /// </summary>
@@ -106,17 +105,17 @@ namespace MicroDock.ViewModels
         }
 
         #region NavigationView相关属性
-        
+
         /// <summary>
         /// 导航项集合（不包含设置）
         /// </summary>
         public ObservableCollection<NavigationItemModel> NavigationItems { get; }
-        
+
         /// <summary>
         /// 设置导航项（单独管理，固定在底部）
         /// </summary>
         public NavigationItemModel SettingsNavItem { get; private set; } = null!;
-        
+
         /// <summary>
         /// 当前选中的导航项
         /// </summary>
@@ -129,7 +128,7 @@ namespace MicroDock.ViewModels
                 UpdateCurrentView();
             }
         }
-        
+
         /// <summary>
         /// 当前显示的视图内容
         /// </summary>
@@ -138,7 +137,7 @@ namespace MicroDock.ViewModels
             get => _currentView;
             set => this.RaiseAndSetIfChanged(ref _currentView, value);
         }
-        
+
         /// <summary>
         /// 更新当前视图
         /// </summary>
@@ -149,7 +148,7 @@ namespace MicroDock.ViewModels
                 CurrentView = SelectedNavItem.Content;
             }
         }
-        
+
         #endregion
 
         /// <summary>
@@ -162,20 +161,40 @@ namespace MicroDock.ViewModels
             string pluginDirectory = Path.Combine(appDirectory, "Plugins");
 
             // 加载所有插件
-            System.Collections.Generic.List<Control> plugins = _pluginLoader.LoadPlugins(pluginDirectory);
+            List<PluginInfo> plugins = _pluginLoader.LoadPlugins(pluginDirectory);
 
-            // 为每个插件创建导航项
-            foreach (Control plugin in plugins)
+            // 为每个插件的每个标签页创建导航项
+            foreach (PluginInfo pluginInfo in plugins)
             {
-                string pluginName = plugin is Plugin.IMicroTab tab ? tab.TabName : plugin.GetType().Name;
-                NavigationItemModel pluginNavItem = new NavigationItemModel
+                if (pluginInfo.PluginInstance?.Tabs == null)
                 {
-                    Title = pluginName,
-                    Icon = "Library", // 插件使用Library图标
-                    Content = plugin,
-                    NavType = NavigationType.Plugin
-                };
-                NavigationItems.Add(pluginNavItem);
+                    continue;
+                }
+
+                foreach (IMicroTab tab in pluginInfo.PluginInstance.Tabs)
+                {
+                    if (tab is Control tabControl)
+                    {
+                        IconSymbolEnum iconSymbol = IconSymbolEnum.Library;
+                        try
+                        {
+                            iconSymbol = tab.IconSymbol;
+                        }
+                        finally
+                        {
+                            iconSymbol = IconSymbolEnum.Library;
+                        }
+
+                        NavigationItemModel pluginNavItem = new NavigationItemModel
+                        {
+                            Title = tab.TabName,
+                            Icon = iconSymbol.ToString(), // 插件使用Library图标
+                            Content = tabControl,
+                            NavType = NavigationType.Plugin
+                        };
+                        NavigationItems.Add(pluginNavItem);
+                    }
+                }
             }
         }
 
