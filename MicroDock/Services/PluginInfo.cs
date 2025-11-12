@@ -21,6 +21,12 @@ public class PluginInfo : IDisposable
     public string Name { get; set; } = string.Empty;
 
     /// <summary>
+    /// 插件唯一名字
+    /// 格式：com.xxxx.xxx
+    /// </summary>
+    public string UniqueName { get; set; } = string.Empty;
+
+    /// <summary>
     /// 插件程序集路径
     /// </summary>
     public string AssemblyPath { get; set; } = string.Empty;

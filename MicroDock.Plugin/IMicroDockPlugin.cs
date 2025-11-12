@@ -11,6 +11,11 @@ public interface IMicroDockPlugin
     string UniqueName { get; }
 
     /// <summary>
+    /// 显示名称
+    /// </summary>
+    string DisplayName { get; }
+
+    /// <summary>
     /// 依赖的插件列表
     /// </summary>
     string[] Dependencies { get; }

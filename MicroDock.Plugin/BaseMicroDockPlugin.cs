@@ -12,9 +12,14 @@ public abstract class BaseMicroDockPlugin : IMicroDockPlugin
 
     /// <summary>
     /// 插件唯一名称
+    /// 格式com.xxxx.xxx
     /// </summary>
     public abstract string UniqueName { get; }
-    
+    /// <summary>
+    /// 显示名称
+    /// </summary>
+    public virtual string DisplayName => UniqueName;
+
     /// <summary>
     /// 依赖的插件列表
     /// </summary>

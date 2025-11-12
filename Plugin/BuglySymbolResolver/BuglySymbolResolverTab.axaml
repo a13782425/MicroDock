@@ -1,0 +1,118 @@
+<UserControl
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    d:DesignWidth="800"
+    d:DesignHeight="600"
+    x:Class="BuglySymbolResolver.BuglySymbolResolverTab">
+    
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+        <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" MinHeight="600">
+        <!-- 输入区域 -->
+        <StackPanel Grid.Row="0" Margin="10" Spacing="8">
+            <TextBlock Text="输入崩溃/ANR信息" 
+                       FontSize="14" 
+                       FontWeight="SemiBold"
+                       Margin="0,0,0,4"/>
+            <TextBox x:Name="InputTextBox"
+                     AcceptsReturn="True"
+                     AcceptsTab="True"
+                     TextWrapping="Wrap"
+                     MinHeight="150"
+                     MaxHeight="200"
+                     ScrollViewer.VerticalScrollBarVisibility="Auto"
+                     Watermark="请粘贴崩溃或ANR信息..."/>
+        </StackPanel>
+        
+        <!-- 配置区域 -->
+        <Border Grid.Row="1" 
+                Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                CornerRadius="4"
+                Margin="10,0,10,10"
+                Padding="10">
+            <StackPanel Spacing="12">
+                <!-- 架构选择 -->
+                <StackPanel Spacing="4">
+                    <TextBlock Text="架构选择" 
+                               FontSize="13" 
+                               Foreground="Gray"/>
+                    <ComboBox x:Name="ArchitectureComboBox"
+                              SelectedIndex="0"
+                              MinWidth="200"
+                              HorizontalAlignment="Left">
+                        <ComboBoxItem Content="自动"/>
+                        <ComboBoxItem Content="32位"/>
+                        <ComboBoxItem Content="64位"/>
+                    </ComboBox>
+                </StackPanel>
+                
+                <!-- 符号文件路径 -->
+                <StackPanel Spacing="4">
+                    <TextBlock Text="符号文件路径" 
+                               FontSize="13" 
+                               Foreground="Gray"/>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBox x:Name="SymbolPathTextBox"
+                                 Watermark="请选择符号文件路径..."
+                                 MinWidth="400"
+                                 VerticalAlignment="Center"/>
+                        <Button x:Name="SymbolPathButton"
+                                Content="浏览"
+                                Padding="12,6"
+                                VerticalAlignment="Center"
+                                Click="SymbolPathButton_Click"/>
+                    </StackPanel>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+        
+        <!-- 操作按钮 -->
+        <StackPanel Grid.Row="2" 
+                    Orientation="Horizontal" 
+                    HorizontalAlignment="Right"
+                    Margin="10,0,10,10"
+                    Spacing="8">
+            <Button x:Name="ParseButton"
+                    Content="解析"
+                    Padding="20,8"
+                    Click="ParseButton_Click"/>
+            <Button x:Name="ClearButton"
+                    Content="清空"
+                    Padding="20,8"
+                    Click="ClearButton_Click"/>
+        </StackPanel>
+        
+        <!-- 输出区域 -->
+        <StackPanel Grid.Row="3" Margin="10,0,10,10" Spacing="8">
+            <TextBlock Text="解析结果" 
+                       FontSize="14" 
+                       FontWeight="SemiBold"
+                       Margin="0,0,0,4"/>
+            <TextBox x:Name="OutputTextBox"
+                     AcceptsReturn="True"
+                     IsReadOnly="True"
+                     TextWrapping="Wrap"
+                     Height="300"
+                     ScrollViewer.VerticalScrollBarVisibility="Auto"
+                     ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                     Background="{DynamicResource SystemControlBackgroundAltHighBrush}"/>
+        </StackPanel>
+        
+        <!-- 状态栏 -->
+        <Border Grid.Row="4"
+                Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
+                Padding="10,5"
+                Margin="10,0,10,10">
+            <TextBlock x:Name="StatusTextBlock"
+                       Text="就绪"
+                       FontSize="12"
+                       Foreground="Gray"/>
+        </Border>
+        </Grid>
+    </ScrollViewer>
+</UserControl>
+

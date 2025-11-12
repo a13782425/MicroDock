@@ -31,10 +31,10 @@
 		
 		<!-- NavigationViewItem 样式 -->
 		<Style Selector="fa|NavigationViewItem">
-			<Setter Property="Padding" Value="12,8"/>
+			<Setter Property="Margin" Value="0,8"/>
+			<Setter Property="Padding" Value="0,8"/>
 			<Setter Property="MinHeight" Value="40"/>
 		</Style>
-		
 		<!-- 选中状态样式 -->
 		<Style Selector="fa|NavigationViewItem:selected /template/ Border#LayoutRoot">
 			<Setter Property="Background" Value="{DynamicResource SystemAccentColorLight2}"/>

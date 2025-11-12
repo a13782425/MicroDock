@@ -27,7 +27,7 @@ namespace MicroDock.Views
         public MainWindow()
         {
             InitializeComponent();
-            
+
             // 初始化服务
             _autoStartupService = new AutoStartupService();
             _autoHideService = new AutoHideService(this);
@@ -41,14 +41,14 @@ namespace MicroDock.Views
             ServiceLocator.Instance.Register<MiniModeService>(_miniModeService);
 
             InitializeTrayIcon();
-            
+
             // 订阅事件消息
             SubscribeToMessages();
-            
+
             // 在窗口打开后初始化设置
             this.Opened += OnWindowOpened;
         }
-        
+
         /// <summary>
         /// 窗口打开事件处理
         /// </summary>
@@ -56,11 +56,11 @@ namespace MicroDock.Views
         {
             // 从数据库加载设置并应用服务状态
             InitializeServicesFromSettings();
-            
+
             // 初始化NavigationView菜单项
             InitializeNavigationItems();
         }
-        
+
         /// <summary>
         /// 初始化NavigationView的菜单项
         /// </summary>
@@ -68,15 +68,15 @@ namespace MicroDock.Views
         {
             if (DataContext is not MainWindowViewModel viewModel)
                 return;
-            
+
             // 获取NavigationView控件
             var navView = this.FindControl<NavigationView>("MainNav");
             if (navView == null)
                 return;
-            
+
             // 清空现有菜单项
             navView.MenuItems.Clear();
-            
+
             // 添加导航项
             foreach (var navItem in viewModel.NavigationItems)
             {
@@ -85,15 +85,13 @@ namespace MicroDock.Views
                     Content = navItem.Title,
                     Tag = navItem
                 };
-                
+
                 // 设置图标
                 if (!string.IsNullOrEmpty(navItem.Icon))
                 {
                     try
                     {
-                        var symbolName = MapIconNameToSymbol(navItem.Icon);
-                        if (!string.IsNullOrEmpty(symbolName) && 
-                            Enum.TryParse<Symbol>(symbolName, out var symbol))
+                        if (Enum.TryParse<Symbol>(navItem.Icon, out var symbol))
                         {
                             menuItem.IconSource = new SymbolIconSource { Symbol = symbol };
                         }
@@ -103,20 +101,20 @@ namespace MicroDock.Views
                         // 图标设置失败，忽略
                     }
                 }
-                
+
                 navView.MenuItems.Add(menuItem);
             }
-            
+
             // 设置选中项
             if (viewModel.NavigationItems.Count > 0)
             {
                 navView.SelectedItem = navView.MenuItems[0];
             }
-            
+
             // 订阅选中项变更事件
             navView.SelectionChanged += OnNavigationSelectionChanged;
         }
-        
+
         /// <summary>
         /// 将图标名称映射到FluentAvalonia的Symbol
         /// </summary>
@@ -135,7 +133,7 @@ namespace MicroDock.Views
                 _ => null
             };
         }
-        
+
         /// <summary>
         /// 导航项选中变更事件处理
         /// </summary>
@@ -143,7 +141,7 @@ namespace MicroDock.Views
         {
             if (DataContext is not MainWindowViewModel viewModel)
                 return;
-                
+
             if (e.SelectedItem is NavigationViewItem item && item.Tag is NavigationItemModel navItem)
             {
                 // 更新ViewModel的选中项
@@ -155,7 +153,7 @@ namespace MicroDock.Views
                 viewModel.SelectedNavItem = viewModel.SettingsNavItem;
             }
         }
-        
+
         /// <summary>
         /// 订阅事件消息
         /// </summary>
@@ -168,7 +166,7 @@ namespace MicroDock.Views
             EventAggregator.Instance.Subscribe<AutoStartupChangeRequestMessage>(OnAutoStartupChangeRequest);
             EventAggregator.Instance.Subscribe<WindowTopmostChangeRequestMessage>(OnTopmostChangeRequest);
         }
-        
+
         /// <summary>
         /// 处理窗口显示请求
         /// </summary>
@@ -180,7 +178,7 @@ namespace MicroDock.Views
                 this.Activate();
             }
         }
-        
+
         /// <summary>
         /// 处理窗口隐藏请求
         /// </summary>
@@ -191,7 +189,7 @@ namespace MicroDock.Views
                 this.Hide();
             }
         }
-        
+
         /// <summary>
         /// 处理迷你模式变更请求
         /// </summary>
@@ -206,7 +204,7 @@ namespace MicroDock.Views
                 _miniModeService.Disable();
             }
         }
-        
+
         /// <summary>
         /// 处理自动隐藏变更请求
         /// </summary>
@@ -220,10 +218,10 @@ namespace MicroDock.Views
             {
                 _autoHideService.Disable();
             }
-            
+
             EventAggregator.Instance.Publish(new ServiceStateChangedMessage("AutoHide", message.Enable));
         }
-        
+
         /// <summary>
         /// 处理开机自启动变更请求
         /// </summary>
@@ -237,10 +235,10 @@ namespace MicroDock.Views
             {
                 _autoStartupService.Disable();
             }
-            
+
             EventAggregator.Instance.Publish(new ServiceStateChangedMessage("AutoStartup", message.Enable));
         }
-        
+
         /// <summary>
         /// 处理置顶状态变更请求
         /// </summary>
@@ -256,33 +254,33 @@ namespace MicroDock.Views
             {
                 _topMostService.Disable();
             }
-            
+
             EventAggregator.Instance.Publish(new ServiceStateChangedMessage("AlwaysOnTop", this.Topmost));
         }
-        
+
         /// <summary>
         /// 从数据库设置初始化服务状态
         /// </summary>
         private void InitializeServicesFromSettings()
         {
             SettingDB settings = DBContext.GetSetting();
-            
+
             // 应用初始配置
             if (settings.AutoStartup)
             {
                 _autoStartupService.Enable();
             }
-            
+
             if (settings.AutoHide)
             {
                 _autoHideService.Enable();
             }
-            
+
             if (settings.AlwaysOnTop)
             {
                 _topMostService.Enable();
             }
-            
+
             if (settings.IsMiniModeEnabled)
             {
                 _miniModeService.Enable();
@@ -297,13 +295,13 @@ namespace MicroDock.Views
             Program.NotificationManager.NotificationActivated += OnNotificationActivated;
             Program.NotificationManager.NotificationDismissed += OnNotificationDismissed;
             _trayIcon = new TrayIcon();
-            
+
             // 设置托盘图标（使用应用程序图标）
             _trayIcon.Icon = new WindowIcon(AssetLoader.Open(new System.Uri("avares://MicroDock/Assets/avalonia-logo.ico")));
-            
+
             // 设置工具提示
             _trayIcon.ToolTipText = "MicroDock - 双击显示/隐藏";
-            
+
             // 双击托盘图标显示/隐藏窗口
             _trayIcon.Clicked += (sender, args) =>
             {
@@ -320,7 +318,7 @@ namespace MicroDock.Views
 
             // 创建右键菜单
             NativeMenu trayMenu = new NativeMenu();
-            
+
             NativeMenuItem showMenuItem = new NativeMenuItem("显示");
             showMenuItem.Click += (sender, args) =>
             {
@@ -338,13 +336,13 @@ namespace MicroDock.Views
                 };
                 Program.NotificationManager.ShowNotification(nf, DateTimeOffset.Now + TimeSpan.FromSeconds(5));
             };
-            
+
             NativeMenuItem hideMenuItem = new NativeMenuItem("隐藏");
             hideMenuItem.Click += (sender, args) =>
             {
                 this.Hide();
             };
-            
+
             NativeMenuItem exitMenuItem = new NativeMenuItem("退出");
             exitMenuItem.Click += (sender, args) =>
             {
@@ -354,14 +352,14 @@ namespace MicroDock.Views
                     desktop.Shutdown();
                 }
             };
-            
+
             trayMenu.Items.Add(showMenuItem);
             trayMenu.Items.Add(hideMenuItem);
             trayMenu.Items.Add(new NativeMenuItemSeparator());
             trayMenu.Items.Add(exitMenuItem);
-            
+
             _trayIcon.Menu = trayMenu;
-            
+
             // 显示托盘图标
             _trayIcon.IsVisible = true;
         }
@@ -405,7 +403,7 @@ namespace MicroDock.Views
         protected override void OnClosing(WindowClosingEventArgs e)
         {
             base.OnClosing(e);
-            
+
             // 统一释放所有服务资源
             try
             {
@@ -414,13 +412,13 @@ namespace MicroDock.Views
                 _topMostService?.Dispose();
                 _miniModeService?.Dispose();
                 // AutoStartupService不需要Dispose，因为它只操作注册表
-                
+
                 // 释放ViewModel（包括插件加载器）
                 if (this.DataContext is MainWindowViewModel viewModel)
                 {
                     viewModel.Dispose();
                 }
-                
+
                 Log.Information("MainWindow 所有服务资源已成功释放");
             }
             catch (Exception ex)

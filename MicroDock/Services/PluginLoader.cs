@@ -118,6 +118,7 @@ namespace MicroDock.Services
                             
                             // 2. 从实例读取元数据
                             string uniqueName = dockPlugin.UniqueName;
+                            string displayName = dockPlugin.DisplayName;
                             string[] dependencies = dockPlugin.Dependencies ?? Array.Empty<string>();
                             Version version = dockPlugin.PluginVersion;
                             
@@ -168,7 +169,8 @@ namespace MicroDock.Services
                             PluginInfo pluginInfo = new PluginInfo
                             {
                                 Id = Guid.NewGuid().ToString(),
-                                Name = uniqueName,
+                                Name = displayName,
+                                UniqueName = uniqueName,
                                 AssemblyPath = dllFile,
                                 LoadContext = loadContext,
                                 Assembly = assembly,
