@@ -74,4 +74,9 @@ internal class SettingDB
     /// 触发后是否自动收起
     /// </summary>
     public bool MiniAutoCollapseAfterTrigger { get; set; } = true;
+
+    /// <summary>
+    /// 是否显示日志查看器标签页
+    /// </summary>
+    public bool ShowLogViewer { get; set; } = false;
 }

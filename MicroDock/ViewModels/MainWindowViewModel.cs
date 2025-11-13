@@ -31,6 +31,7 @@ namespace MicroDock.ViewModels
             // 订阅事件消息
             EventAggregator.Instance.Subscribe<NavigateToTabMessage>(OnNavigateToTab);
             EventAggregator.Instance.Subscribe<AddCustomTabRequestMessage>(OnAddCustomTabRequest);
+            EventAggregator.Instance.Subscribe<LogViewerVisibilityChangedMessage>(OnLogViewerVisibilityChanged);
 
             // 初始化NavigationView相关
             InitializeNavigationItems();
@@ -53,6 +54,20 @@ namespace MicroDock.ViewModels
 
             // 加载插件导航项
             LoadPluginNavigationItems();
+
+            // 根据设置添加日志查看器标签页
+            var settings = Database.DBContext.GetSetting();
+            if (settings.ShowLogViewer)
+            {
+                var logNavItem = new NavigationItemModel
+                {
+                    Title = "日志",
+                    Icon = "Document",
+                    Content = new LogViewerTabView(),
+                    NavType = NavigationType.Settings,
+                };
+                NavigationItems.Add(logNavItem);
+            }
 
             // 创建设置导航项（单独管理，不加入NavigationItems）
             SettingsNavItem = new NavigationItemModel
@@ -102,6 +117,44 @@ namespace MicroDock.ViewModels
         {
             // TODO: 实现添加自定义导航项的功能
             // 暂时不支持动态添加导航项
+        }
+
+        /// <summary>
+        /// 处理日志查看器可见性变更消息
+        /// </summary>
+        private void OnLogViewerVisibilityChanged(LogViewerVisibilityChangedMessage message)
+        {
+            if (message.IsVisible)
+            {
+                // 添加日志标签页（如果不存在）
+                var existingLog = NavigationItems.FirstOrDefault(n => n.Title == "日志");
+                if (existingLog == null)
+                {
+                    var logNavItem = new NavigationItemModel
+                    {
+                        Title = "日志",
+                        Icon = "Document",
+                        Content = new LogViewerTabView(),
+                        NavType = NavigationType.Settings
+                    };
+                    // 在设置项之前插入（即最后一个位置）
+                    NavigationItems.Add(logNavItem);
+                }
+            }
+            else
+            {
+                // 移除日志标签页
+                var logItem = NavigationItems.FirstOrDefault(n => n.Title == "日志");
+                if (logItem != null)
+                {
+                    // 如果当前选中的是日志页，先切换到其他页
+                    if (SelectedNavItem == logItem)
+                    {
+                        SelectedNavItem = NavigationItems.FirstOrDefault();
+                    }
+                    NavigationItems.Remove(logItem);
+                }
+            }
         }
 
         #region NavigationView相关属性

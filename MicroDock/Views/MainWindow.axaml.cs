@@ -12,7 +12,10 @@ using MicroDock.ViewModels;
 using MicroDock.Infrastructure;
 using Serilog;
 using System;
+using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Linq;
+using System.Collections.Generic;
 
 namespace MicroDock.Views
 {
@@ -80,29 +83,7 @@ namespace MicroDock.Views
             // 添加导航项
             foreach (var navItem in viewModel.NavigationItems)
             {
-                var menuItem = new NavigationViewItem
-                {
-                    Content = navItem.Title,
-                    Tag = navItem
-                };
-
-                // 设置图标
-                if (!string.IsNullOrEmpty(navItem.Icon))
-                {
-                    try
-                    {
-                        if (Enum.TryParse<Symbol>(navItem.Icon, out var symbol))
-                        {
-                            menuItem.IconSource = new SymbolIconSource { Symbol = symbol };
-                        }
-                    }
-                    catch
-                    {
-                        // 图标设置失败，忽略
-                    }
-                }
-
-                navView.MenuItems.Add(menuItem);
+                AddNavigationMenuItem(navView, navItem);
             }
 
             // 设置选中项
@@ -113,25 +94,101 @@ namespace MicroDock.Views
 
             // 订阅选中项变更事件
             navView.SelectionChanged += OnNavigationSelectionChanged;
+
+            // 监听 NavigationItems 集合的变化
+            viewModel.NavigationItems.CollectionChanged += OnNavigationItemsCollectionChanged;
         }
 
         /// <summary>
-        /// 将图标名称映射到FluentAvalonia的Symbol
+        /// 添加导航菜单项
         /// </summary>
-        private string? MapIconNameToSymbol(string iconName)
+        private void AddNavigationMenuItem(NavigationView navView, NavigationItemModel navItem)
         {
-            return iconName switch
+            var menuItem = new NavigationViewItem
             {
-                "Apps" => "Apps",
-                "Library" => "Library",
-                "Setting" => "Setting",
-                "Document" => "Document",
-                "Folder" => "Folder",
-                "Code" => "Code",
-                "Globe" => "Globe",
-                "Edit" => "Edit",
-                _ => null
+                Content = navItem.Title,
+                Tag = navItem
             };
+
+            // 设置图标
+            if (!string.IsNullOrEmpty(navItem.Icon))
+            {
+                try
+                {
+                    if (Enum.TryParse<Symbol>(navItem.Icon, out var symbol))
+                    {
+                        menuItem.IconSource = new SymbolIconSource { Symbol = symbol };
+                    }
+                }
+                catch
+                {
+                    // 图标设置失败，忽略
+                }
+            }
+
+            if (navItem.NavType == NavigationType.Settings)
+            {
+                navView.FooterMenuItems.Add(menuItem);
+            }
+            else
+            {
+                navView.MenuItems.Add(menuItem);
+            }
+        }
+
+        /// <summary>
+        /// 处理 NavigationItems 集合变化
+        /// </summary>
+        private void OnNavigationItemsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+        {
+            if (DataContext is not MainWindowViewModel viewModel)
+                return;
+
+            var navView = this.FindControl<NavigationView>("MainNav");
+            if (navView == null)
+                return;
+
+            if (e.Action == NotifyCollectionChangedAction.Add && e.NewItems != null)
+            {
+                // 添加新项
+                foreach (NavigationItemModel newItem in e.NewItems)
+                {
+                    AddNavigationMenuItem(navView, newItem);
+                }
+            }
+            else if (e.Action == NotifyCollectionChangedAction.Remove && e.OldItems != null)
+            {
+                // 移除项
+                foreach (NavigationItemModel oldItem in e.OldItems)
+                {
+                    IList<object>? items = default;
+                    if (oldItem.NavType == NavigationType.Settings)
+                    {
+                        items = navView.FooterMenuItems;
+                    }
+                    else
+                    {
+                        items = navView.MenuItems;
+                    }
+                    var menuItemToRemove = items
+                            .OfType<NavigationViewItem>()
+                            .FirstOrDefault(item => item.Tag == oldItem);
+
+                    if (menuItemToRemove != null)
+                    {
+                        items.Remove(menuItemToRemove);
+                    }
+                }
+            }
+            else if (e.Action == NotifyCollectionChangedAction.Reset)
+            {
+                // 重置，清空并重新加载
+                navView.MenuItems.Clear();
+                foreach (var navItem in viewModel.NavigationItems)
+                {
+                    AddNavigationMenuItem(navView, navItem);
+                }
+            }
         }
 
         /// <summary>

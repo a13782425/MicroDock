@@ -11,57 +11,57 @@ namespace MicroDock.Infrastructure;
 public class EventAggregator
 {
     private static readonly Lazy<EventAggregator> _instance = new(() => new EventAggregator());
-    
+
     public static EventAggregator Instance => _instance.Value;
-    
-    private readonly Dictionary<Type, List<WeakReference>> _subscribers = new();
+
+    private readonly Dictionary<Type, List<object>> _subscribers = new();
     private readonly object _lock = new();
-    
+
     private EventAggregator()
     {
     }
-    
+
     /// <summary>
     /// 订阅指定类型的消息
     /// </summary>
-    public IDisposable Subscribe<T>(Action<T> handler)
+    public IDisposable Subscribe<T>(Action<T> handler) where T : IEventMessage
     {
         Type messageType = typeof(T);
-        
+
         lock (_lock)
         {
             if (!_subscribers.ContainsKey(messageType))
             {
-                _subscribers[messageType] = new List<WeakReference>();
+                _subscribers[messageType] = new List<object>();
             }
-            
-            WeakReference weakRef = new WeakReference(handler);
-            _subscribers[messageType].Add(weakRef);
-            
+
+            //WeakReference weakRef = new WeakReference(handler);
+            _subscribers[messageType].Add(handler);
+
             return new Subscription<T>(this, handler);
         }
     }
-    
+
     /// <summary>
     /// 发布指定类型的消息
     /// </summary>
-    public void Publish<T>(T message)
+    public void Publish<T>(T message) where T : IEventMessage
     {
         Type messageType = typeof(T);
         List<Action<T>> validHandlers = new();
-        
+
         lock (_lock)
         {
             if (!_subscribers.ContainsKey(messageType))
             {
                 return;
             }
-            
-            List<WeakReference> deadReferences = new();
-            
-            foreach (WeakReference weakRef in _subscribers[messageType])
+
+            List<object> deadReferences = new();
+
+            foreach (object weakRef in _subscribers[messageType])
             {
-                if (weakRef.IsAlive && weakRef.Target is Action<T> handler)
+                if (weakRef is Action<T> handler)
                 {
                     validHandlers.Add(handler);
                 }
@@ -70,14 +70,14 @@ public class EventAggregator
                     deadReferences.Add(weakRef);
                 }
             }
-            
+
             // 清理已失效的引用
             foreach (WeakReference deadRef in deadReferences)
             {
                 _subscribers[messageType].Remove(deadRef);
             }
         }
-        
+
         // 在锁外执行处理器，避免死锁
         foreach (Action<T> handler in validHandlers)
         {
@@ -91,46 +91,46 @@ public class EventAggregator
             }
         }
     }
-    
+
     /// <summary>
     /// 取消订阅
     /// </summary>
-    private void Unsubscribe<T>(Action<T> handler)
+    private void Unsubscribe<T>(Action<T> handler) where T : IEventMessage
     {
         Type messageType = typeof(T);
-        
+
         lock (_lock)
         {
             if (!_subscribers.ContainsKey(messageType))
             {
                 return;
             }
-            
-            WeakReference? refToRemove = _subscribers[messageType]
-                .FirstOrDefault(wr => wr.IsAlive && ReferenceEquals(wr.Target, handler));
-            
+
+            object? refToRemove = _subscribers[messageType]
+                .FirstOrDefault(wr => ReferenceEquals(wr, handler));
+
             if (refToRemove != null)
             {
                 _subscribers[messageType].Remove(refToRemove);
             }
         }
     }
-    
+
     /// <summary>
     /// 订阅令牌 - 用于取消订阅
     /// </summary>
-    private class Subscription<T> : IDisposable
+    private class Subscription<T> : IDisposable where T : IEventMessage
     {
         private readonly EventAggregator _aggregator;
         private readonly Action<T> _handler;
         private bool _disposed;
-        
+
         public Subscription(EventAggregator aggregator, Action<T> handler)
         {
             _aggregator = aggregator;
             _handler = handler;
         }
-        
+
         public void Dispose()
         {
             if (!_disposed)

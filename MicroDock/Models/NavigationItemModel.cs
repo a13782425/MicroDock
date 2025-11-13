@@ -65,6 +65,11 @@ namespace MicroDock.Models
         Plugin,
 
         /// <summary>
+        /// 系统功能（如日志查看器等）
+        /// </summary>
+        System,
+
+        /// <summary>
         /// 设置
         /// </summary>
         Settings

@@ -24,6 +24,7 @@ public class SettingsTabViewModel : ViewModelBase
     private bool _autoHide;
     private bool _alwaysOnTop;
     private bool _isMiniModeEnabled;
+    private bool _showLogViewer;
     private Color _customAccentColor = Color.FromRgb(255, 0, 0);
 
     // P1: 迷你模式配置
@@ -152,6 +153,21 @@ public class SettingsTabViewModel : ViewModelBase
             SaveSetting(nameof(IsMiniModeEnabled), value);
             // 通过事件请求改变服务状态
             EventAggregator.Instance.Publish(new MiniModeChangeRequestMessage(value));
+        }
+    }
+
+    /// <summary>
+    /// 是否显示日志查看器标签页
+    /// </summary>
+    public bool ShowLogViewer
+    {
+        get => _showLogViewer;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _showLogViewer, value);
+            SaveSetting(nameof(ShowLogViewer), value);
+            // 通过事件请求改变日志查看器可见性
+            EventAggregator.Instance.Publish(new LogViewerVisibilityChangedMessage(value));
         }
     }
 
@@ -344,6 +360,7 @@ public class SettingsTabViewModel : ViewModelBase
         _autoHide = settings.AutoHide;
         _alwaysOnTop = settings.AlwaysOnTop;
         _isMiniModeEnabled = settings.IsMiniModeEnabled;
+        _showLogViewer = settings.ShowLogViewer;
 
         // 迷你模式配置
         _longPressMs = settings.LongPressMs;
@@ -359,6 +376,7 @@ public class SettingsTabViewModel : ViewModelBase
         this.RaisePropertyChanged(nameof(AutoHide));
         this.RaisePropertyChanged(nameof(AlwaysOnTop));
         this.RaisePropertyChanged(nameof(IsMiniModeEnabled));
+        this.RaisePropertyChanged(nameof(ShowLogViewer));
 
         this.RaisePropertyChanged(nameof(LongPressMs));
         this.RaisePropertyChanged(nameof(MiniRadius));
@@ -389,6 +407,9 @@ public class SettingsTabViewModel : ViewModelBase
                     break;
                 case nameof(IsMiniModeEnabled):
                     settings.IsMiniModeEnabled = value;
+                    break;
+                case nameof(ShowLogViewer):
+                    settings.ShowLogViewer = value;
                     break;
             }
         });

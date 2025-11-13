@@ -29,6 +29,7 @@ namespace MicroDock
                 
                 BuildAvaloniaApp()
                     .StartWithClassicDesktopLifetime(args);
+                MicroDock.Services.LogService.Instance.IsInit = true;
             }
             catch (Exception ex)
             {
@@ -74,6 +75,7 @@ namespace MicroDock
                     outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {Message:lj}{NewLine}{Exception}",
                     fileSizeLimitBytes: 10 * 1024 * 1024, // 10MB per file
                     rollOnFileSizeLimit: true)
+                .WriteTo.Sink(MicroDock.Services.LogService.Instance)
                 .CreateLogger();
             
             Log.Information("日志系统初始化完成，日志目录: {LogDirectory}", logDirectory);

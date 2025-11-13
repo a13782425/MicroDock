@@ -88,14 +88,16 @@ public class BuglySymbolResolverPlugin : BaseMicroDockPlugin
         };
         resolver32Container.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
         resolver32Container.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+        var resolver32Path = LoadStringSetting("resolver_32bit", "");
         _resolver32BitTextBox = new TextBox
         {
-            Text = LoadStringSetting("resolver_32bit", ""),
+            Text = resolver32Path,
             Watermark = "请选择32位解析器路径...",
             VerticalAlignment = VerticalAlignment.Center,
+            IsReadOnly = true,
             [Grid.ColumnProperty] = 0
         };
-        ScrollViewer.SetHorizontalScrollBarVisibility(_resolver32BitTextBox, ScrollBarVisibility.Auto);
+        ToolTip.SetTip(_resolver32BitTextBox, resolver32Path);
         var resolver32Button = new Button
         {
             Content = "浏览",
@@ -106,6 +108,11 @@ public class BuglySymbolResolverPlugin : BaseMicroDockPlugin
         resolver32Button.Click += async (s, e) =>
         {
             await SelectResolverPath(_resolver32BitTextBox, "resolver_32bit", "选择32位解析器");
+            // 更新 ToolTip 显示完整路径
+            if (_resolver32BitTextBox != null && !string.IsNullOrEmpty(_resolver32BitTextBox.Text))
+            {
+                ToolTip.SetTip(_resolver32BitTextBox, _resolver32BitTextBox.Text);
+            }
         };
         resolver32Container.Children.Add(_resolver32BitTextBox);
         resolver32Container.Children.Add(resolver32Button);
@@ -127,14 +134,16 @@ public class BuglySymbolResolverPlugin : BaseMicroDockPlugin
         };
         resolver64Container.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
         resolver64Container.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+        var resolver64Path = LoadStringSetting("resolver_64bit", "");
         _resolver64BitTextBox = new TextBox
         {
-            Text = LoadStringSetting("resolver_64bit", ""),
+            Text = resolver64Path,
             Watermark = "请选择64位解析器路径...",
             VerticalAlignment = VerticalAlignment.Center,
+            IsReadOnly = true,
             [Grid.ColumnProperty] = 0
         };
-        ScrollViewer.SetHorizontalScrollBarVisibility(_resolver64BitTextBox, ScrollBarVisibility.Auto);
+        ToolTip.SetTip(_resolver64BitTextBox, resolver64Path);
         var resolver64Button = new Button
         {
             Content = "浏览",
@@ -145,6 +154,11 @@ public class BuglySymbolResolverPlugin : BaseMicroDockPlugin
         resolver64Button.Click += async (s, e) =>
         {
             await SelectResolverPath(_resolver64BitTextBox, "resolver_64bit", "选择64位解析器");
+            // 更新 ToolTip 显示完整路径
+            if (_resolver64BitTextBox != null && !string.IsNullOrEmpty(_resolver64BitTextBox.Text))
+            {
+                ToolTip.SetTip(_resolver64BitTextBox, _resolver64BitTextBox.Text);
+            }
         };
         resolver64Container.Children.Add(_resolver64BitTextBox);
         resolver64Container.Children.Add(resolver64Button);

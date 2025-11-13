@@ -16,15 +16,7 @@
     <UserControl.Styles>
         
     </UserControl.Styles>
-    <!-- 添加滚动视图 -->
-    <ScrollViewer HorizontalScrollBarVisibility="Disabled"
-                  VerticalScrollBarVisibility="Auto" VerticalSnapPointsType="None">
-        <ScrollViewer.Styles>
-            <Style Selector="ScrollBar">
-                <Setter Property="IsHitTestVisible" Value="False"/>
-            </Style>
-        </ScrollViewer.Styles>
-        <StackPanel Margin="0,12,12,12" Spacing="8">
+    <StackPanel Margin="0,12,12,12" Spacing="8">
             <!-- 基础设置分组 -->
             <fa:SettingsExpander Header="基础设置" 
                                  IconSource="Setting"
@@ -72,7 +64,7 @@
                                       OffContent=""/>
                     </Grid>
                     
-                    <Grid Margin="0,4">
+                    <Grid Margin="0,4" IsVisible="False">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
@@ -114,7 +106,8 @@
 
             <!-- 迷你模式设置 -->
             <fa:SettingsExpander Header="迷你模式设置"
-                                 IconSource="Emoji">
+                                 IconSource="Emoji"
+                                 IsVisible="False">
                 <StackPanel Margin="10,10,0,10" Spacing="8">
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -202,7 +195,8 @@
 
             <!-- 页签管理分组 -->
             <fa:SettingsExpander Header="页签管理" 
-                                 IconSource="Library">
+                                 IconSource="Library"
+                                 IsVisible="False">
                 <StackPanel Margin="10,10,0,10">
                     <TextBlock Text="自定义页签" 
                                FontSize="13" 
@@ -259,10 +253,25 @@
             <fa:SettingsExpander Header="高级设置" 
                                  IconSource="Code">
                 <StackPanel Margin="10,10,0,10">
+                    <!-- 显示日志查看器选项 -->
+                    <Grid Margin="0,4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="显示日志查看器" 
+                                   VerticalAlignment="Center"
+                                   Grid.Column="0"/>
+                        <ToggleSwitch IsChecked="{Binding ShowLogViewer, Mode=TwoWay}"
+                                      Grid.Column="1"
+                                      OnContent=""
+                                      OffContent=""/>
+                    </Grid>
+                    
                     <TextBlock Text="性能优化" 
                                FontSize="13" 
                                FontWeight="SemiBold" 
-                               Margin="0,0,0,8"
+                               Margin="0,15,0,8"
                                Foreground="#666"/>
                     <TextBlock Text="高级配置功能待实现..." 
                                Foreground="Gray"
@@ -302,6 +311,5 @@
                 </StackPanel>
             </Border>
         </StackPanel>
-    </ScrollViewer>
 </UserControl>
 

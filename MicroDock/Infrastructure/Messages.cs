@@ -1,12 +1,15 @@
 namespace MicroDock.Infrastructure;
 
+public interface IEventMessage { }
+
+
 /// <summary>
 /// 窗口显示请求消息
 /// </summary>
-public class WindowShowRequestMessage
+public class WindowShowRequestMessage : IEventMessage
 {
     public string WindowName { get; }
-    
+
     public WindowShowRequestMessage(string windowName)
     {
         WindowName = windowName;
@@ -16,10 +19,10 @@ public class WindowShowRequestMessage
 /// <summary>
 /// 窗口隐藏请求消息
 /// </summary>
-public class WindowHideRequestMessage
+public class WindowHideRequestMessage : IEventMessage
 {
     public string WindowName { get; }
-    
+
     public WindowHideRequestMessage(string windowName)
     {
         WindowName = windowName;
@@ -29,10 +32,10 @@ public class WindowHideRequestMessage
 /// <summary>
 /// 迷你模式变更请求消息
 /// </summary>
-public class MiniModeChangeRequestMessage
+public class MiniModeChangeRequestMessage : IEventMessage
 {
     public bool Enable { get; }
-    
+
     public MiniModeChangeRequestMessage(bool enable)
     {
         Enable = enable;
@@ -42,10 +45,10 @@ public class MiniModeChangeRequestMessage
 /// <summary>
 /// 窗口置顶状态变更请求消息
 /// </summary>
-public class WindowTopmostChangeRequestMessage
+public class WindowTopmostChangeRequestMessage : IEventMessage
 {
     public bool Enable { get; }
-    
+
     public WindowTopmostChangeRequestMessage(bool enable)
     {
         Enable = enable;
@@ -55,10 +58,10 @@ public class WindowTopmostChangeRequestMessage
 /// <summary>
 /// 窗口自动隐藏状态变更请求消息
 /// </summary>
-public class AutoHideChangeRequestMessage
+public class AutoHideChangeRequestMessage : IEventMessage
 {
     public bool Enable { get; }
-    
+
     public AutoHideChangeRequestMessage(bool enable)
     {
         Enable = enable;
@@ -68,10 +71,10 @@ public class AutoHideChangeRequestMessage
 /// <summary>
 /// 开机自启动状态变更请求消息
 /// </summary>
-public class AutoStartupChangeRequestMessage
+public class AutoStartupChangeRequestMessage : IEventMessage
 {
     public bool Enable { get; }
-    
+
     public AutoStartupChangeRequestMessage(bool enable)
     {
         Enable = enable;
@@ -81,11 +84,11 @@ public class AutoStartupChangeRequestMessage
 /// <summary>
 /// 服务状态变更通知消息
 /// </summary>
-public class ServiceStateChangedMessage
+public class ServiceStateChangedMessage : IEventMessage
 {
     public string ServiceName { get; }
     public bool IsEnabled { get; }
-    
+
     public ServiceStateChangedMessage(string serviceName, bool isEnabled)
     {
         ServiceName = serviceName;
@@ -96,17 +99,17 @@ public class ServiceStateChangedMessage
 /// <summary>
 /// 导航到标签页消息
 /// </summary>
-public class NavigateToTabMessage
+public class NavigateToTabMessage : IEventMessage
 {
     public string TabName { get; }
     public int? TabIndex { get; }
-    
+
     public NavigateToTabMessage(string tabName)
     {
         TabName = tabName;
         TabIndex = null;
     }
-    
+
     public NavigateToTabMessage(int tabIndex)
     {
         TabName = string.Empty;
@@ -117,7 +120,20 @@ public class NavigateToTabMessage
 /// <summary>
 /// 添加自定义标签页请求消息
 /// </summary>
-public class AddCustomTabRequestMessage
+public class AddCustomTabRequestMessage : IEventMessage
 {
+}
+
+/// <summary>
+/// 日志查看器可见性变更消息
+/// </summary>
+public class LogViewerVisibilityChangedMessage : IEventMessage
+{
+    public bool IsVisible { get; }
+
+    public LogViewerVisibilityChangedMessage(bool isVisible)
+    {
+        IsVisible = isVisible;
+    }
 }
 

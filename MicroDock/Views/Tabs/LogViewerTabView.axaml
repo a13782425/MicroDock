@@ -1,0 +1,116 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:MicroDock.ViewModels"
+             xmlns:models="using:MicroDock.Models"
+             mc:Ignorable="d"
+             d:DesignWidth="480"
+             d:DesignHeight="360"
+             x:Class="MicroDock.Views.LogViewerTabView"
+             x:DataType="vm:LogViewerTabViewModel">
+    <Design.DataContext>
+        <vm:LogViewerTabViewModel />
+    </Design.DataContext>
+
+    <Grid RowDefinitions="Auto,*" Margin="12">
+        <!-- 筛选区域 -->
+        <StackPanel Grid.Row="0" Spacing="8" Margin="0,0,0,12">
+            <!-- 筛选控件行 -->
+            <Grid ColumnDefinitions="Auto,96,Auto,*,Auto,Auto">
+                <!-- 日志级别筛选 -->
+                <TextBlock Grid.Column="0" 
+                           Text="级别:" 
+                           VerticalAlignment="Center"
+                           Margin="0,0,8,0"/>
+                <ComboBox Grid.Column="1" 
+                          ItemsSource="{Binding LogLevels}"
+                          SelectedItem="{Binding SelectedLevel, Mode=TwoWay}"
+                          HorizontalAlignment="Stretch"/>
+
+                <!-- 关键字搜索 -->
+                <TextBlock Grid.Column="2" 
+                           Text="关键字:" 
+                           VerticalAlignment="Center"
+                           Margin="16,0,8,0"/>
+                <TextBox Grid.Column="3" 
+                         Text="{Binding SearchKeyword, Mode=TwoWay}"
+                         Watermark="输入关键字搜索..."
+                         HorizontalAlignment="Stretch"/>
+
+                <!-- 操作按钮 -->
+                <Button Grid.Column="4" 
+                        Content="文件夹"
+                        Command="{Binding OpenLogFolderCommand}"
+                        Margin="8,0,0,0"/>
+                <Button Grid.Column="5" 
+                        Content="清空"
+                        Command="{Binding ClearLogsCommand}"
+                        Margin="8,0,0,0"/>
+            </Grid>
+        </StackPanel>
+
+        <!-- 日志列表区域 -->
+        <Border Grid.Row="1" 
+                BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                CornerRadius="4"
+                Background="{DynamicResource CardBackgroundFillColorDefaultBrush}">
+            <Grid>
+                <ScrollViewer x:Name="LogScrollViewer"
+                              HorizontalScrollBarVisibility="Auto"
+                              VerticalScrollBarVisibility="Auto"
+                              Padding="0,12,0,12">
+                    <ItemsControl ItemsSource="{Binding FilteredLogs}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="models:LogEntry">
+                                <Border Padding="8,4" 
+                                        BorderThickness="0,0,0,1"
+                                        BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}">
+                                    <Grid ColumnDefinitions="Auto,Auto,*">
+                                        <!-- 时间戳 -->
+                                        <TextBlock Grid.Column="0" 
+                                                   Text="{Binding FormattedTimestamp}"
+                                                   FontFamily="Consolas"
+                                                   FontSize="12"
+                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                   VerticalAlignment="Top"
+                                                   Margin="0,0,12,0"/>
+
+                                        <!-- 日志级别 -->
+                                        <TextBlock Grid.Column="1" 
+                                                   Text="{Binding LevelString}"
+                                                   FontFamily="Consolas"
+                                                   FontSize="12"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="{Binding LevelColor}"
+                                                   VerticalAlignment="Top"
+                                                   MinWidth="80"
+                                                   Margin="0,0,12,0"/>
+
+                                        <!-- 日志消息 -->
+                                        <TextBlock Grid.Column="2" 
+                                                   Text="{Binding Message}"
+                                                   FontFamily="Consolas"
+                                                   FontSize="12"
+                                                   TextWrapping="Wrap"
+                                                   VerticalAlignment="Top"/>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+
+                <!-- 空日志提示 -->
+                <TextBlock Text="暂无日志记录"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                           FontSize="14"
+                           IsVisible="{Binding !FilteredLogs.Count}"/>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>
+
