@@ -2,29 +2,10 @@
 
 /// <summary>
 /// 插件接口
+/// 注意：插件元数据（名称、版本、依赖等）现在通过 plugin.json 配置文件提供
 /// </summary>
 public interface IMicroDockPlugin
 {
-    /// <summary>
-    /// 插件唯一名称
-    /// </summary>
-    string UniqueName { get; }
-
-    /// <summary>
-    /// 显示名称
-    /// </summary>
-    string DisplayName { get; }
-
-    /// <summary>
-    /// 依赖的插件列表
-    /// </summary>
-    string[] Dependencies { get; }
-
-    /// <summary>
-    /// 插件版本
-    /// </summary>
-    Version PluginVersion { get; }
-
     /// <summary>
     /// 初始化插件上下文（由框架调用，之后会调用 OnInit）
     /// </summary>

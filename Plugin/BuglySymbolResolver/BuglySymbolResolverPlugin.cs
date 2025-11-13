@@ -11,26 +11,10 @@ namespace BuglySymbolResolver;
 
 /// <summary>
 /// Bugly符号解析插件
+/// 注意：插件元数据现在通过 plugin.json 文件定义
 /// </summary>
 public class BuglySymbolResolverPlugin : BaseMicroDockPlugin
 {
-    /// <summary>
-    /// 插件唯一名称
-    /// </summary>
-    public override string UniqueName => "com.micro.buglysymbolresolver";
-
-    public override string DisplayName => "Bugly符号解析";
-
-    /// <summary>
-    /// 依赖的插件列表
-    /// </summary>
-    public override string[] Dependencies => Array.Empty<string>();
-    
-    /// <summary>
-    /// 插件版本
-    /// </summary>
-    public override Version PluginVersion => new Version(1, 0, 0);
-    
     // Tab实例
     private BuglySymbolResolverTab? _tab;
     

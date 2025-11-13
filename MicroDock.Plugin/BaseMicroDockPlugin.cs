@@ -2,6 +2,7 @@
 
 /// <summary>
 /// 插件基类，提供插件生命周期管理的基础实现
+/// 注意：插件元数据（名称、版本、依赖等）现在通过 plugin.json 配置文件提供
 /// </summary>
 public abstract class BaseMicroDockPlugin : IMicroDockPlugin
 {
@@ -11,33 +12,13 @@ public abstract class BaseMicroDockPlugin : IMicroDockPlugin
     protected IPluginContext? Context { get; private set; }
 
     /// <summary>
-    /// 插件唯一名称
-    /// 格式com.xxxx.xxx
-    /// </summary>
-    public abstract string UniqueName { get; }
-    /// <summary>
-    /// 显示名称
-    /// </summary>
-    public virtual string DisplayName => UniqueName;
-
-    /// <summary>
-    /// 依赖的插件列表
-    /// </summary>
-    public abstract string[] Dependencies { get; }
-    
-    /// <summary>
-    /// 插件版本
-    /// </summary>
-    public abstract Version PluginVersion { get; }
-
-    /// <summary>
     /// 初始化插件上下文（由框架调用）
     /// </summary>
     public void Initialize(IPluginContext context)
     {
         if (Context != null)
         {
-            throw new InvalidOperationException($"插件 '{UniqueName}' 的上下文已经被初始化");
+            throw new InvalidOperationException("插件的上下文已经被初始化");
         }
         
         Context = context ?? throw new ArgumentNullException(nameof(context));
@@ -310,7 +291,7 @@ public abstract class BaseMicroDockPlugin : IMicroDockPlugin
         if (Context == null)
         {
             throw new InvalidOperationException(
-                $"插件上下文未初始化。请确保插件 '{UniqueName}' 已通过 Initialize 方法正确初始化。");
+                "插件上下文未初始化。请确保插件已通过 Initialize 方法正确初始化。");
         }
     }
 }

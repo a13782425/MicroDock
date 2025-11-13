@@ -58,7 +58,7 @@
                 Background="{DynamicResource CardBackgroundFillColorDefaultBrush}">
             <Grid>
                 <ScrollViewer x:Name="LogScrollViewer"
-                              HorizontalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled"
                               VerticalScrollBarVisibility="Auto"
                               Padding="0,12,0,12">
                     <ItemsControl ItemsSource="{Binding FilteredLogs}">

@@ -12,28 +12,6 @@ namespace Test;
 /// </summary>
 public class TestPlugin : BaseMicroDockPlugin
 {
-    /// <summary>
-    /// 无参构造函数（用于创建实例以读取元数据）
-    /// </summary>
-    public TestPlugin()
-    {
-    }
-    
-    /// <summary>
-    /// 插件唯一名称
-    /// </summary>
-    public override string UniqueName => "TestPlugin";
-    
-    /// <summary>
-    /// 依赖的插件列表
-    /// </summary>
-    public override string[] Dependencies => Array.Empty<string>();
-    
-    /// <summary>
-    /// 插件版本
-    /// </summary>
-    public override Version PluginVersion => new Version(1, 0, 0);
-    
     // 测试Tab实例
     private TestTab? _testTab;
     
@@ -317,7 +295,7 @@ public class TestPlugin : BaseMicroDockPlugin
             
             // 设置键值对
             SetValue("test_key", "test_value");
-            SetValue("version", PluginVersion.ToString());
+            SetValue("version", "1.0.0");
             SetValue("init_time", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
             
             // 读取键值

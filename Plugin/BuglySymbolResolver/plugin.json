@@ -1,0 +1,14 @@
+{
+  "name": "com.microdock.buglysymbolresolver",
+  "displayName": "Bugly 符号解析器",
+  "version": "1.0.0",
+  "description": "用于解析 Bugly 崩溃堆栈的符号文件，提供崩溃分析和符号还原功能",
+  "author": "MicroDock Team",
+  "license": "MIT",
+  "main": "BuglySymbolResolver.dll",
+  "entryClass": "BuglySymbolResolver.BuglySymbolResolverPlugin",
+  "engines": {
+    "microdock": ">=1.0.0"
+  }
+}
+

@@ -52,6 +52,11 @@ public class PluginInfo : IDisposable
     public IMicroDockPlugin? PluginInstance { get; set; }
 
     /// <summary>
+    /// 插件清单（从 plugin.json 读取）
+    /// </summary>
+    public Models.PluginManifest? Manifest { get; set; }
+
+    /// <summary>
     /// 插件是否已初始化
     /// </summary>
     public bool IsInitialized { get; set; }
