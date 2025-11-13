@@ -38,7 +38,7 @@ namespace MicroDock
                 
                 BuildAvaloniaApp()
                     .StartWithClassicDesktopLifetime(args);
-                MicroDock.Services.LogService.Instance.IsInit = true;
+                MicroDock.Infrastructure.ServiceLocator.Get<MicroDock.Services.LogService>().IsInit = true;
             }
             catch (Exception ex)
             {
@@ -67,6 +67,10 @@ namespace MicroDock
             
             string logFilePath = Path.Combine(logDirectory, "log-.txt");
             
+            // 提前创建 LogService 并注册到 ServiceLocator
+            var logService = new MicroDock.Services.LogService();
+            MicroDock.Infrastructure.ServiceLocator.Register(logService);
+            
             Log.Logger = new LoggerConfiguration()
 #if DEBUG
                 .MinimumLevel.Debug()
@@ -84,7 +88,7 @@ namespace MicroDock
                     outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {Message:lj}{NewLine}{Exception}",
                     fileSizeLimitBytes: 10 * 1024 * 1024, // 10MB per file
                     rollOnFileSizeLimit: true)
-                .WriteTo.Sink(MicroDock.Services.LogService.Instance)
+                .WriteTo.Sink(logService)
                 .CreateLogger();
             
             Log.Information("日志系统初始化完成，日志目录: {LogDirectory}", logDirectory);

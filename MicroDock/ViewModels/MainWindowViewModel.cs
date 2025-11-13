@@ -211,8 +211,8 @@ namespace MicroDock.ViewModels
             string appDirectory = System.AppContext.BaseDirectory;
             string pluginDirectory = Path.Combine(appDirectory, "Plugins");
 
-            // 加载所有插件（使用单例实例）
-            List<PluginInfo> plugins = PluginLoader.Instance.LoadPlugins(pluginDirectory);
+            // 加载所有插件
+            List<PluginInfo> plugins = Infrastructure.ServiceLocator.Get<PluginLoader>().LoadPlugins(pluginDirectory);
 
             // 为每个插件的每个标签页创建导航项
             foreach (PluginInfo pluginInfo in plugins)
@@ -257,7 +257,7 @@ namespace MicroDock.ViewModels
             if (_disposed)
                 return;
 
-            PluginLoader.Instance?.Dispose();
+            Infrastructure.ServiceLocator.GetService<PluginLoader>()?.Dispose();
             _disposed = true;
         }
     }

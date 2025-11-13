@@ -275,8 +275,8 @@ public class SettingsTabViewModel : ViewModelBase
         string appDirectory = System.AppContext.BaseDirectory;
         string pluginDirectory = Path.Combine(appDirectory, "Plugins");
 
-        // 加载所有插件（使用单例实例）
-        IReadOnlyList<PluginInfo> plugins = PluginLoader.Instance.LoadedPlugins;
+        // 加载所有插件
+        IReadOnlyList<PluginInfo> plugins = Infrastructure.ServiceLocator.Get<PluginLoader>().LoadedPlugins;
 
         // 为每个插件创建设置项
         foreach (PluginInfo pluginInfo in plugins)
@@ -541,7 +541,7 @@ public class PluginSettingItem : ViewModelBase
             return;
 
         Tools.Clear();
-        var tools = ToolRegistry.Instance.GetPluginTools(UniqueName);
+        var tools = Infrastructure.ServiceLocator.Get<ToolRegistry>().GetPluginTools(UniqueName);
         foreach (var tool in tools)
         {
             Tools.Add(tool);

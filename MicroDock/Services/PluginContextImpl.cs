@@ -325,7 +325,7 @@ internal class PluginContextImpl : IPluginContext
         try
         {
             LogDebug($"调用工具: {toolName}" + (pluginName != null ? $" (插件: {pluginName})" : ""));
-            return await ToolRegistry.Instance.CallToolAsync(toolName, parameters, pluginName);
+            return await Infrastructure.ServiceLocator.Get<ToolRegistry>().CallToolAsync(toolName, parameters, pluginName);
         }
         catch (Exception ex)
         {
@@ -338,7 +338,7 @@ internal class PluginContextImpl : IPluginContext
     {
         try
         {
-            return ToolRegistry.Instance.GetAllTools();
+            return Infrastructure.ServiceLocator.Get<ToolRegistry>().GetAllTools();
         }
         catch (Exception ex)
         {
@@ -351,7 +351,7 @@ internal class PluginContextImpl : IPluginContext
     {
         try
         {
-            return ToolRegistry.Instance.GetPluginTools(pluginName);
+            return Infrastructure.ServiceLocator.Get<ToolRegistry>().GetPluginTools(pluginName);
         }
         catch (Exception ex)
         {
@@ -364,7 +364,7 @@ internal class PluginContextImpl : IPluginContext
     {
         try
         {
-            return ToolRegistry.Instance.GetToolInfo(toolName, pluginName);
+            return Infrastructure.ServiceLocator.Get<ToolRegistry>().GetToolInfo(toolName, pluginName);
         }
         catch (Exception ex)
         {

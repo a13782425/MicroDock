@@ -8,13 +8,32 @@ namespace MicroDock.Services;
 /// </summary>
 public class TopMostService : IWindowService, IDisposable
 {
-    private readonly Window _window;
+    private Window? _window;
     private bool _isEnabled;
+    private bool _isInitialized;
     private bool _disposed = false;
 
-    public TopMostService(Window window)
+    /// <summary>
+    /// 无参构造函数，用于 ServiceLocator 注册
+    /// </summary>
+    public TopMostService()
     {
+    }
+
+    /// <summary>
+    /// 初始化服务（在窗口创建后调用）
+    /// </summary>
+    public void Initialize(Window window)
+    {
+        if (_isInitialized)
+        {
+            Serilog.Log.Warning("TopMostService 已经初始化过");
+            return;
+        }
+
         _window = window;
+        _isInitialized = true;
+        Serilog.Log.Debug("TopMostService 已初始化");
     }
 
     /// <summary>
@@ -25,7 +44,9 @@ public class TopMostService : IWindowService, IDisposable
         if (_disposed)
             throw new ObjectDisposedException(nameof(TopMostService));
 
-        _window.Topmost = true;
+        if (!CheckWindow()) return;
+
+        _window!.Topmost = true;
         _isEnabled = true;
     }
 
@@ -37,8 +58,23 @@ public class TopMostService : IWindowService, IDisposable
         if (_disposed)
             return;
 
-        _window.Topmost = false;
+        if (!CheckWindow()) return;
+
+        _window!.Topmost = false;
         _isEnabled = false;
+    }
+
+    /// <summary>
+    /// 检查窗口是否已初始化
+    /// </summary>
+    private bool CheckWindow()
+    {
+        if (_window == null || !_isInitialized)
+        {
+            Serilog.Log.Warning("TopMostService: 服务未初始化或窗口为空");
+            return false;
+        }
+        return true;
     }
 
     /// <summary>

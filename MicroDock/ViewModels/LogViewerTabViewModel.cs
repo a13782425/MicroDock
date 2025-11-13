@@ -28,7 +28,7 @@ public class LogViewerTabViewModel : ViewModelBase, IDisposable
         FilteredLogs = new ObservableCollection<LogEntry>();
 
         // 监听 LogService 的日志变化
-        LogService.Instance.Logs.CollectionChanged += OnLogsCollectionChanged;
+        Infrastructure.ServiceLocator.Get<LogService>().Logs.CollectionChanged += OnLogsCollectionChanged;
 
         // 初始加载现有日志
         RefreshFilteredLogs();
@@ -122,7 +122,7 @@ public class LogViewerTabViewModel : ViewModelBase, IDisposable
     {
         FilteredLogs.Clear();
 
-        foreach (var log in LogService.Instance.Logs)
+        foreach (var log in Infrastructure.ServiceLocator.Get<LogService>().Logs)
         {
             if (IsLogMatched(log))
             {
@@ -159,7 +159,7 @@ public class LogViewerTabViewModel : ViewModelBase, IDisposable
     /// </summary>
     private void OpenLogFolder()
     {
-        LogService.Instance.OpenLogFolder();
+        Infrastructure.ServiceLocator.Get<LogService>().OpenLogFolder();
     }
 
     /// <summary>
@@ -167,7 +167,7 @@ public class LogViewerTabViewModel : ViewModelBase, IDisposable
     /// </summary>
     private void ClearLogs()
     {
-        LogService.Instance.ClearLogs();
+        Infrastructure.ServiceLocator.Get<LogService>().ClearLogs();
     }
 
     /// <summary>
@@ -179,7 +179,7 @@ public class LogViewerTabViewModel : ViewModelBase, IDisposable
             return;
 
         // 取消订阅事件
-        LogService.Instance.Logs.CollectionChanged -= OnLogsCollectionChanged;
+        Infrastructure.ServiceLocator.Get<LogService>().Logs.CollectionChanged -= OnLogsCollectionChanged;
 
         _disposed = true;
     }

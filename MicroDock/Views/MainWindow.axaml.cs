@@ -24,26 +24,10 @@ namespace MicroDock.Views
     public partial class MainWindow : Window
     {
         private TrayIcon? _trayIcon;
-        private readonly AutoStartupService _autoStartupService;
-        private readonly AutoHideService _autoHideService;
-        private readonly TopMostService _topMostService;
-        private readonly MiniModeService _miniModeService;
 
         public MainWindow()
         {
             InitializeComponent();
-
-            // 初始化服务
-            _autoStartupService = new AutoStartupService();
-            _autoHideService = new AutoHideService(this);
-            _topMostService = new TopMostService(this);
-            _miniModeService = new MiniModeService();
-
-            // 注册服务到ServiceLocator
-            ServiceLocator.Instance.Register(_autoStartupService);
-            ServiceLocator.Instance.Register<AutoHideService>(_autoHideService);
-            ServiceLocator.Instance.Register<TopMostService>(_topMostService);
-            ServiceLocator.Instance.Register<MiniModeService>(_miniModeService);
 
             InitializeTrayIcon();
 
@@ -328,13 +312,14 @@ namespace MicroDock.Views
         /// </summary>
         private void OnMiniModeChangeRequest(MiniModeChangeRequestMessage message)
         {
+            var miniModeService = ServiceLocator.Get<MiniModeService>();
             if (message.Enable)
             {
-                _miniModeService.Enable();
+                miniModeService.Enable();
             }
             else
             {
-                _miniModeService.Disable();
+                miniModeService.Disable();
             }
         }
 
@@ -343,13 +328,14 @@ namespace MicroDock.Views
         /// </summary>
         private void OnAutoHideChangeRequest(AutoHideChangeRequestMessage message)
         {
+            var autoHideService = ServiceLocator.Get<AutoHideService>();
             if (message.Enable)
             {
-                _autoHideService.Enable();
+                autoHideService.Enable();
             }
             else
             {
-                _autoHideService.Disable();
+                autoHideService.Disable();
             }
 
             EventAggregator.Instance.Publish(new ServiceStateChangedMessage("AutoHide", message.Enable));
@@ -360,13 +346,14 @@ namespace MicroDock.Views
         /// </summary>
         private void OnAutoStartupChangeRequest(AutoStartupChangeRequestMessage message)
         {
+            var autoStartupService = ServiceLocator.Get<AutoStartupService>();
             if (message.Enable)
             {
-                _autoStartupService.Enable();
+                autoStartupService.Enable();
             }
             else
             {
-                _autoStartupService.Disable();
+                autoStartupService.Disable();
             }
 
             EventAggregator.Instance.Publish(new ServiceStateChangedMessage("AutoStartup", message.Enable));
@@ -377,15 +364,16 @@ namespace MicroDock.Views
         /// </summary>
         private void OnTopmostChangeRequest(WindowTopmostChangeRequestMessage message)
         {
+            var topMostService = ServiceLocator.Get<TopMostService>();
             if (message.Enable)
             {
                 // 切换置顶状态
                 this.Topmost = !this.Topmost;
-                _topMostService.Enable();
+                topMostService.Enable();
             }
             else
             {
-                _topMostService.Disable();
+                topMostService.Disable();
             }
 
             EventAggregator.Instance.Publish(new ServiceStateChangedMessage("AlwaysOnTop", this.Topmost));
@@ -401,22 +389,22 @@ namespace MicroDock.Views
             // 应用初始配置
             if (settings.AutoStartup)
             {
-                _autoStartupService.Enable();
+                ServiceLocator.Get<AutoStartupService>().Enable();
             }
 
             if (settings.AutoHide)
             {
-                _autoHideService.Enable();
+                ServiceLocator.Get<AutoHideService>().Enable();
             }
 
             if (settings.AlwaysOnTop)
             {
-                _topMostService.Enable();
+                ServiceLocator.Get<TopMostService>().Enable();
             }
 
             if (settings.IsMiniModeEnabled)
             {
-                _miniModeService.Enable();
+                ServiceLocator.Get<MiniModeService>().Enable();
             }
         }
 
@@ -541,9 +529,9 @@ namespace MicroDock.Views
             try
             {
                 Log.Information("MainWindow 正在释放服务资源...");
-                _autoHideService?.Dispose();
-                _topMostService?.Dispose();
-                _miniModeService?.Dispose();
+                ServiceLocator.GetService<AutoHideService>()?.Dispose();
+                ServiceLocator.GetService<TopMostService>()?.Dispose();
+                ServiceLocator.GetService<MiniModeService>()?.Dispose();
                 // AutoStartupService不需要Dispose，因为它只操作注册表
 
                 // 释放ViewModel（包括插件加载器）

@@ -14,24 +14,20 @@ namespace MicroDock.Services;
 /// </summary>
 public class LogService : ILogEventSink
 {
-    private static LogService? _instance;
     private const int MaxLogCount = 1000;
     private readonly object _lock = new object();
-
-    /// <summary>
-    /// 单例实例
-    /// </summary>
-    public static LogService Instance => _instance ??= new LogService();
 
     /// <summary>
     /// 日志条目集合，供 UI 绑定
     /// </summary>
     public ObservableCollection<LogEntry> Logs { get; }
 
-
     public bool IsInit = false;
 
-    private LogService()
+    /// <summary>
+    /// 公共构造函数，用于 ServiceLocator 注册
+    /// </summary>
+    public LogService()
     {
         Logs = new ObservableCollection<LogEntry>();
     }

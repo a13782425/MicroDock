@@ -12,14 +12,11 @@ using Serilog;
 namespace MicroDock.Services;
 
 /// <summary>
-/// 工具注册表（单例）
+/// 工具注册表
 /// 负责工具的注册、查询、调用和统计
 /// </summary>
 public class ToolRegistry
 {
-    private static readonly Lazy<ToolRegistry> _instance = new(() => new ToolRegistry());
-    public static ToolRegistry Instance => _instance.Value;
-
     // 工具存储：插件名 -> 工具名 -> 工具定义
     private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, ToolDefinition>> _toolsByPlugin;
 
@@ -29,7 +26,10 @@ public class ToolRegistry
     // 统计数据：完整键（插件名.工具名）-> 统计信息
     private readonly ConcurrentDictionary<string, ToolStatistics> _statistics;
 
-    private ToolRegistry()
+    /// <summary>
+    /// 公共构造函数，用于 ServiceLocator 注册
+    /// </summary>
+    public ToolRegistry()
     {
         _toolsByPlugin = new ConcurrentDictionary<string, ConcurrentDictionary<string, ToolDefinition>>();
         _globalTools = new ConcurrentDictionary<string, ToolDefinition>();

@@ -14,9 +14,10 @@ namespace MicroDock.Services;
 /// </summary>
 public class AutoHideService : IWindowService, IDisposable
 {
-    private readonly Window _window;
-    private readonly IPlatformCursorService? _cursorService;
+    private Window? _window;
+    private IPlatformCursorService? _cursorService;
     private bool _isEnabled;
+    private bool _isInitialized;
     private Timer? _hideTimer;
     private Timer? _showCheckTimer;
     private Timer? _animationTimer;
@@ -60,8 +61,24 @@ public class AutoHideService : IWindowService, IDisposable
         Top
     }
 
-    public AutoHideService(Window window)
+    /// <summary>
+    /// 无参构造函数，用于 ServiceLocator 注册
+    /// </summary>
+    public AutoHideService()
     {
+    }
+
+    /// <summary>
+    /// 初始化服务（在窗口创建后调用）
+    /// </summary>
+    public void Initialize(Window window)
+    {
+        if (_isInitialized)
+        {
+            Serilog.Log.Warning("AutoHideService 已经初始化过");
+            return;
+        }
+
         _window = window;
         _cursorService = PlatformServiceFactory.CreateCursorService();
 
@@ -76,6 +93,9 @@ public class AutoHideService : IWindowService, IDisposable
         _animationTimer = new Timer(1000.0 / ANIMATION_FPS);
         _animationTimer.Elapsed += OnAnimationTimerElapsed;
         _animationTimer.AutoReset = true;
+
+        _isInitialized = true;
+        Serilog.Log.Debug("AutoHideService 已初始化");
     }
 
     /// <summary>
@@ -83,9 +103,11 @@ public class AutoHideService : IWindowService, IDisposable
     /// </summary>
     public void Enable()
     {
+        if (!CheckWindow()) return;
+        
         if (!_isEnabled)
         {
-            _window.PositionChanged += OnWindowPositionChanged;
+            _window!.PositionChanged += OnWindowPositionChanged;
             _window.PointerExited += OnWindowPointerExited;
             _window.Deactivated += OnWindowDeactivated;
             _showCheckTimer?.Start();
@@ -102,7 +124,9 @@ public class AutoHideService : IWindowService, IDisposable
     /// </summary>
     public void Disable()
     {
-        _window.PositionChanged -= OnWindowPositionChanged;
+        if (!CheckWindow()) return;
+        
+        _window!.PositionChanged -= OnWindowPositionChanged;
         _window.PointerExited -= OnWindowPointerExited;
         _window.Deactivated -= OnWindowDeactivated;
         _hideTimer?.Stop();
@@ -117,6 +141,19 @@ public class AutoHideService : IWindowService, IDisposable
 
         _isEnabled = false;
         System.Diagnostics.Debug.WriteLine("[AutoHide] 服务已禁用");
+    }
+
+    /// <summary>
+    /// 检查窗口是否已初始化
+    /// </summary>
+    private bool CheckWindow()
+    {
+        if (_window == null || !_isInitialized)
+        {
+            Serilog.Log.Warning("AutoHideService: 服务未初始化或窗口为空");
+            return false;
+        }
+        return true;
     }
 
     /// <summary>
