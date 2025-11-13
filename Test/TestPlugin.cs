@@ -385,4 +385,175 @@ public class TestPlugin : BaseMicroDockPlugin
         base.OnDestroy();
         LogInfo("测试插件正在销毁");
     }
+
+    public override void OnAllPluginsLoaded()
+    {
+        base.OnAllPluginsLoaded();
+        
+        LogInfo("所有插件已加载完成，可以安全地调用其他插件的工具了");
+        
+        // 演示工具查询
+        var availableTools = GetAvailableTools();
+        LogInfo($"当前可用工具数量: {availableTools.Count}");
+        foreach (var tool in availableTools)
+        {
+            LogInfo($"  - {tool.ProviderPlugin}.{tool.Name}: {tool.Description}");
+        }
+    }
+
+    #region 工具示例
+
+    /// <summary>
+    /// 示例工具：字符串反转
+    /// </summary>
+    [MicroTool("test.reverse",
+        Description = "反转字符串",
+        ReturnDescription = "反转后的字符串")]
+    public async Task<string> ReverseString(
+        [ToolParameter("input", Description = "要反转的字符串")] string input)
+    {
+        await Task.CompletedTask;
+        var reversed = new string(input.Reverse().ToArray());
+        LogInfo($"字符串反转: '{input}' -> '{reversed}'");
+        return reversed;
+    }
+
+    /// <summary>
+    /// 示例工具：计算两个数的和
+    /// </summary>
+    [MicroTool("test.add",
+        Description = "计算两个整数的和",
+        ReturnDescription = "计算结果（JSON 字符串）")]
+    public async Task<string> Add(
+        [ToolParameter("a", Description = "第一个整数")] int a,
+        [ToolParameter("b", Description = "第二个整数")] int b)
+    {
+        await Task.CompletedTask;
+        var result = a + b;
+        LogInfo($"计算: {a} + {b} = {result}");
+        return result.ToString();
+    }
+
+    /// <summary>
+    /// 示例工具：格式化问候语
+    /// </summary>
+    [MicroTool("test.greet",
+        Description = "生成格式化的问候语",
+        ReturnDescription = "格式化的问候消息")]
+    public async Task<string> Greet(
+        [ToolParameter("name", Description = "要问候的名字")] string name,
+        [ToolParameter("times", Description = "重复次数", Required = false)] int times = 1)
+    {
+        await Task.CompletedTask;
+        var greetings = new List<string>();
+        for (int i = 0; i < times; i++)
+        {
+            greetings.Add($"Hello, {name}!");
+        }
+        var result = string.Join("\n", greetings);
+        LogInfo($"生成问候语: {result.Replace("\n", " ")}");
+        return result;
+    }
+
+    /// <summary>
+    /// 示例工具：处理复杂对象
+    /// </summary>
+    [MicroTool("test.processData",
+        Description = "处理复杂数据对象",
+        ReturnDescription = "处理后的数据摘要（JSON）")]
+    public async Task<string> ProcessData(
+        [ToolParameter("items", Description = "字符串列表")] List<string> items,
+        [ToolParameter("prefix", Description = "前缀", Required = false)] string prefix = "Item")
+    {
+        await Task.CompletedTask;
+        var processed = items.Select((item, index) => $"{prefix}_{index + 1}: {item}").ToList();
+        var result = System.Text.Json.JsonSerializer.Serialize(processed);
+        LogInfo($"处理了 {items.Count} 个项目");
+        return result;
+    }
+
+    /// <summary>
+    /// 静态方法工具示例：格式化日期时间
+    /// </summary>
+    [MicroTool("test.static_format_date",
+        Description = "静态方法：格式化当前日期时间",
+        ReturnDescription = "格式化后的日期时间字符串")]
+    public static async Task<string> FormatCurrentDate(
+        [ToolParameter("format", Description = "日期格式 (如 yyyy-MM-dd)", Required = false)] string format = "yyyy-MM-dd HH:mm:ss")
+    {
+        await Task.CompletedTask;
+        return DateTime.Now.ToString(format);
+    }
+
+    #endregion
+}
+
+/// <summary>
+/// 辅助类工具示例（演示实例复用和状态管理）
+/// </summary>
+internal class TestHelper
+{
+    private int _callCount = 0;
+    private readonly List<string> _history = new();
+
+    /// <summary>
+    /// 工具：获取调用次数（演示实例复用）
+    /// </summary>
+    [MicroTool("test.helper_count",
+        Description = "辅助类方法：返回此工具实例的调用次数（演示实例复用）",
+        ReturnDescription = "调用次数")]
+    public async Task<string> GetCallCount()
+    {
+        await Task.CompletedTask;
+        _callCount++;
+        return $"此实例已被调用 {_callCount} 次";
+    }
+
+    /// <summary>
+    /// 工具：字符串反转（辅助类版本）
+    /// </summary>
+    [MicroTool("test.helper_reverse",
+        Description = "辅助类方法：反转字符串",
+        ReturnDescription = "反转后的字符串")]
+    public async Task<string> ReverseString(
+        [ToolParameter("text", Description = "要反转的字符串")] string text)
+    {
+        await Task.CompletedTask;
+        var reversed = new string(text.Reverse().ToArray());
+        _history.Add($"反转: {text} -> {reversed}");
+        return reversed;
+    }
+
+    /// <summary>
+    /// 工具：获取操作历史（演示状态持久化）
+    /// </summary>
+    [MicroTool("test.helper_history",
+        Description = "辅助类方法：获取所有操作历史",
+        ReturnDescription = "历史记录（JSON 数组）")]
+    public async Task<string> GetHistory()
+    {
+        await Task.CompletedTask;
+        return System.Text.Json.JsonSerializer.Serialize(_history);
+    }
+}
+
+/// <summary>
+/// 非公共辅助类（演示扫描非公共类）
+/// </summary>
+internal class PrivateHelper
+{
+    private DateTime _createdAt = DateTime.Now;
+
+    /// <summary>
+    /// 工具：获取实例创建时间
+    /// </summary>
+    [MicroTool("test.private_created_time",
+        Description = "非公共类方法：获取工具实例的创建时间",
+        ReturnDescription = "实例创建时间")]
+    public async Task<string> GetCreatedTime()
+    {
+        await Task.CompletedTask;
+        var elapsed = DateTime.Now - _createdAt;
+        return $"实例创建于 {_createdAt:HH:mm:ss}，已存活 {elapsed.TotalSeconds:F1} 秒";
+    }
 }

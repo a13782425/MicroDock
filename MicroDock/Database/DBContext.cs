@@ -27,6 +27,7 @@ internal static class DBContext
             _database.CreateTable<IconDB>();
             _database.CreateTable<PluginDataDB>();
             _database.CreateTable<PluginSettingsDB>();
+            _database.CreateTable<PluginToolStatisticsDB>();
 
             // 尝试迁移表结构以支持新增字段
             TableMapping mapping = _database.GetMapping<SettingDB>();
@@ -517,6 +518,136 @@ internal static class DBContext
             .Where(d => d.PluginName == pluginName)
             .Select(d => d.SettingsKey)
             .ToList();
+    }
+
+    #endregion
+
+    #region 插件工具统计
+
+    /// <summary>
+    /// 保存或更新工具统计
+    /// </summary>
+    public static void SavePluginToolStatistics(string pluginName, string toolName, Plugin.ToolStatistics stats)
+    {
+        if (string.IsNullOrEmpty(pluginName) || string.IsNullOrEmpty(toolName) || stats == null)
+        {
+            return;
+        }
+
+        string id = $"{pluginName}:{toolName}";
+        PluginToolStatisticsDB? db = _database.Table<PluginToolStatisticsDB>()
+            .FirstOrDefault(s => s.Id == id);
+
+        long now = TimeStampHelper.GetCurrentTimestamp();
+
+        if (db == null)
+        {
+            // 新建
+            db = new PluginToolStatisticsDB
+            {
+                Id = id,
+                PluginName = pluginName,
+                ToolName = toolName,
+                FirstCallTime = TimeStampHelper.ToTimestamp(stats.LastCallTime),
+                CreatedAt = now
+            };
+        }
+
+        // 更新统计数据
+        db.CallCount = stats.CallCount;
+        db.SuccessCount = stats.SuccessCount;
+        db.FailureCount = stats.FailureCount;
+        db.AverageDurationMs = (long)stats.AverageDuration.TotalMilliseconds;
+        db.LastCallTime = TimeStampHelper.ToTimestamp(stats.LastCallTime);
+        db.UpdatedAt = now;
+
+        _database.InsertOrReplace(db);
+    }
+
+    /// <summary>
+    /// 加载单个工具统计
+    /// </summary>
+    public static Plugin.ToolStatistics? LoadPluginToolStatistics(string pluginName, string toolName)
+    {
+        if (string.IsNullOrEmpty(pluginName) || string.IsNullOrEmpty(toolName))
+        {
+            return null;
+        }
+
+        string id = $"{pluginName}:{toolName}";
+        PluginToolStatisticsDB? db = _database.Table<PluginToolStatisticsDB>()
+            .FirstOrDefault(s => s.Id == id);
+
+        if (db == null) return null;
+
+        return new Plugin.ToolStatistics
+        {
+            ToolName = db.ToolName,
+            PluginName = db.PluginName,
+            CallCount = db.CallCount,
+            SuccessCount = db.SuccessCount,
+            FailureCount = db.FailureCount,
+            AverageDuration = TimeSpan.FromMilliseconds(db.AverageDurationMs),
+            LastCallTime = db.LastCallDateTime
+        };
+    }
+
+    /// <summary>
+    /// 加载所有工具统计
+    /// </summary>
+    public static List<Plugin.ToolStatistics> LoadAllPluginToolStatistics()
+    {
+        List<PluginToolStatisticsDB> dbStats = _database.Table<PluginToolStatisticsDB>().ToList();
+
+        return dbStats.Select(db => new Plugin.ToolStatistics
+        {
+            ToolName = db.ToolName,
+            PluginName = db.PluginName,
+            CallCount = db.CallCount,
+            SuccessCount = db.SuccessCount,
+            FailureCount = db.FailureCount,
+            AverageDuration = TimeSpan.FromMilliseconds(db.AverageDurationMs),
+            LastCallTime = db.LastCallDateTime
+        }).ToList();
+    }
+
+    /// <summary>
+    /// 加载指定插件的所有工具统计
+    /// </summary>
+    public static List<Plugin.ToolStatistics> LoadPluginToolStatisticsByPlugin(string pluginName)
+    {
+        if (string.IsNullOrEmpty(pluginName))
+        {
+            return new List<Plugin.ToolStatistics>();
+        }
+
+        List<PluginToolStatisticsDB> dbStats = _database.Table<PluginToolStatisticsDB>()
+            .Where(s => s.PluginName == pluginName)
+            .ToList();
+
+        return dbStats.Select(db => new Plugin.ToolStatistics
+        {
+            ToolName = db.ToolName,
+            PluginName = db.PluginName,
+            CallCount = db.CallCount,
+            SuccessCount = db.SuccessCount,
+            FailureCount = db.FailureCount,
+            AverageDuration = TimeSpan.FromMilliseconds(db.AverageDurationMs),
+            LastCallTime = db.LastCallDateTime
+        }).ToList();
+    }
+
+    /// <summary>
+    /// 清除指定插件的所有工具统计
+    /// </summary>
+    public static void ClearPluginToolStatistics(string pluginName)
+    {
+        if (string.IsNullOrEmpty(pluginName))
+        {
+            return;
+        }
+
+        _database.Execute("DELETE FROM PluginToolStatistics WHERE PluginName = ?", pluginName);
     }
 
     #endregion

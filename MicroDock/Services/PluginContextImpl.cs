@@ -314,5 +314,65 @@ internal class PluginContextImpl : IPluginContext
     public string DataPath => _pluginDirectory;
 
     #endregion
+
+    #region 工具调用 API
+
+    public async System.Threading.Tasks.Task<string> CallToolAsync(
+        string toolName,
+        Dictionary<string, string> parameters,
+        string? pluginName = null)
+    {
+        try
+        {
+            LogDebug($"调用工具: {toolName}" + (pluginName != null ? $" (插件: {pluginName})" : ""));
+            return await ToolRegistry.Instance.CallToolAsync(toolName, parameters, pluginName);
+        }
+        catch (Exception ex)
+        {
+            LogError($"工具调用失败: {toolName}", ex);
+            throw;
+        }
+    }
+
+    public List<Plugin.ToolInfo> GetAvailableTools()
+    {
+        try
+        {
+            return ToolRegistry.Instance.GetAllTools();
+        }
+        catch (Exception ex)
+        {
+            LogError("获取可用工具列表失败", ex);
+            return new List<Plugin.ToolInfo>();
+        }
+    }
+
+    public List<Plugin.ToolInfo> GetPluginTools(string pluginName)
+    {
+        try
+        {
+            return ToolRegistry.Instance.GetPluginTools(pluginName);
+        }
+        catch (Exception ex)
+        {
+            LogError($"获取插件工具列表失败: {pluginName}", ex);
+            return new List<Plugin.ToolInfo>();
+        }
+    }
+
+    public Plugin.ToolInfo? GetToolInfo(string toolName, string? pluginName = null)
+    {
+        try
+        {
+            return ToolRegistry.Instance.GetToolInfo(toolName, pluginName);
+        }
+        catch (Exception ex)
+        {
+            LogError($"获取工具信息失败: {toolName}", ex);
+            return null;
+        }
+    }
+
+    #endregion
 }
 

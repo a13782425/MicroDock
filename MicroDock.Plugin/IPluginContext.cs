@@ -133,4 +133,35 @@ public interface IPluginContext
     string DataPath { get; }
     
     #endregion
+    
+    #region 工具调用 API
+    
+    /// <summary>
+    /// 调用工具（异步）
+    /// </summary>
+    /// <param name="toolName">工具名称</param>
+    /// <param name="parameters">参数字典（键为参数名，值为参数值）</param>
+    /// <param name="pluginName">可选的插件名称，如果指定则只调用该插件的工具，否则调用全局第一个匹配的工具</param>
+    /// <returns>工具执行结果（JSON 字符串）</returns>
+    System.Threading.Tasks.Task<string> CallToolAsync(
+        string toolName,
+        System.Collections.Generic.Dictionary<string, string> parameters,
+        string? pluginName = null);
+    
+    /// <summary>
+    /// 获取所有可用工具
+    /// </summary>
+    System.Collections.Generic.List<ToolInfo> GetAvailableTools();
+    
+    /// <summary>
+    /// 获取指定插件的工具列表
+    /// </summary>
+    System.Collections.Generic.List<ToolInfo> GetPluginTools(string pluginName);
+    
+    /// <summary>
+    /// 获取工具详细信息
+    /// </summary>
+    ToolInfo? GetToolInfo(string toolName, string? pluginName = null);
+    
+    #endregion
 }

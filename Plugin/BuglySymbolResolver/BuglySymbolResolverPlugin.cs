@@ -17,11 +17,11 @@ public class BuglySymbolResolverPlugin : BaseMicroDockPlugin
 {
     // Tab实例
     private BuglySymbolResolverTab? _tab;
-    
+
     // 设置控件引用
     private TextBox? _resolver32BitTextBox;
     private TextBox? _resolver64BitTextBox;
-    
+
     /// <summary>
     /// 所有标签页
     /// </summary>
@@ -37,7 +37,7 @@ public class BuglySymbolResolverPlugin : BaseMicroDockPlugin
             return new IMicroTab[] { _tab };
         }
     }
-    
+
     /// <summary>
     /// 获取设置（供Tab访问）
     /// </summary>
@@ -45,7 +45,7 @@ public class BuglySymbolResolverPlugin : BaseMicroDockPlugin
     {
         return GetSettings(key);
     }
-    
+
     /// <summary>
     /// 获取插件的设置UI控件
     /// </summary>
@@ -57,7 +57,7 @@ public class BuglySymbolResolverPlugin : BaseMicroDockPlugin
             Spacing = 12,
             Margin = new Thickness(8, 0, 0, 0)
         };
-        
+
         // 32位解析器路径配置
         var resolver32Panel = new StackPanel { Spacing = 4 };
         var resolver32Label = new TextBlock
@@ -103,7 +103,7 @@ public class BuglySymbolResolverPlugin : BaseMicroDockPlugin
         resolver32Panel.Children.Add(resolver32Label);
         resolver32Panel.Children.Add(resolver32Container);
         mainPanel.Children.Add(resolver32Panel);
-        
+
         // 64位解析器路径配置
         var resolver64Panel = new StackPanel { Spacing = 4 };
         var resolver64Label = new TextBlock
@@ -149,17 +149,17 @@ public class BuglySymbolResolverPlugin : BaseMicroDockPlugin
         resolver64Panel.Children.Add(resolver64Label);
         resolver64Panel.Children.Add(resolver64Container);
         mainPanel.Children.Add(resolver64Panel);
-        
+
         return mainPanel;
     }
-    
+
     /// <summary>
     /// 选择解析器路径
     /// </summary>
     private async System.Threading.Tasks.Task SelectResolverPath(TextBox? textBox, string settingKey, string dialogTitle)
     {
         if (textBox == null) return;
-        
+
         var dialog = new OpenFileDialog
         {
             Title = dialogTitle,
@@ -170,7 +170,7 @@ public class BuglySymbolResolverPlugin : BaseMicroDockPlugin
                 new() { Name = "All files", Extensions = { "*" } }
             }
         };
-        
+
         if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
         {
             string[]? result = await dialog.ShowAsync(desktop.MainWindow);
@@ -183,7 +183,7 @@ public class BuglySymbolResolverPlugin : BaseMicroDockPlugin
             }
         }
     }
-    
+
     /// <summary>
     /// 加载字符串类型设置
     /// </summary>
@@ -197,7 +197,7 @@ public class BuglySymbolResolverPlugin : BaseMicroDockPlugin
         }
         return value;
     }
-    
+
     /// <summary>
     /// 保存字符串类型设置
     /// </summary>
@@ -205,7 +205,7 @@ public class BuglySymbolResolverPlugin : BaseMicroDockPlugin
     {
         SetSettings(key, value, $"字符串设置: {key}");
     }
-    
+
     /// <summary>
     /// 插件初始化
     /// </summary>
@@ -214,23 +214,75 @@ public class BuglySymbolResolverPlugin : BaseMicroDockPlugin
         base.OnInit();
         LogInfo("Bugly符号解析插件初始化完成");
     }
-    
+
     public override void OnEnable()
     {
         base.OnEnable();
         LogInfo("Bugly符号解析插件已启用");
     }
-    
+
     public override void OnDisable()
     {
         base.OnDisable();
         LogInfo("Bugly符号解析插件已禁用");
     }
-    
+
     public override void OnDestroy()
     {
         base.OnDestroy();
         LogInfo("Bugly符号解析插件正在销毁");
     }
+
+    /// <summary>
+    /// 示例工具：字符串反转
+    /// </summary>
+    [MicroTool("test.reverse",
+        Description = "反转字符串",
+        ReturnDescription = "反转后的字符串")]
+    public async Task<string> ReverseString(
+        [ToolParameter("input", Description = "要反转的字符串")] string input)
+    {
+        await Task.CompletedTask;
+        var reversed = new string(input.Reverse().ToArray());
+        LogInfo($"字符串反转: '{input}' -> '{reversed}'");
+        return reversed;
+    }
+
+    /// <summary>
+    /// 示例工具：计算两个数的和
+    /// </summary>
+    [MicroTool("test.add",
+        Description = "计算两个整数的和",
+        ReturnDescription = "计算结果（JSON 字符串）")]
+    public async Task<string> Add(
+        [ToolParameter("a", Description = "第一个整数")] int a,
+        [ToolParameter("b", Description = "第二个整数")] int b)
+    {
+        await Task.CompletedTask;
+        var result = a + b;
+        LogInfo($"计算: {a} + {b} = {result}");
+        return result.ToString();
+    }
 }
 
+/// <summary>
+/// 辅助类工具示例（演示实例复用和状态管理）
+/// </summary>
+internal class TestHelper
+{
+    private int _callCount = 0;
+    private readonly List<string> _history = new();
+
+    /// <summary>
+    /// 工具：获取调用次数（演示实例复用）
+    /// </summary>
+    [MicroTool("test.helper_count",
+        Description = "辅助类方法：返回此工具实例的调用次数（演示实例复用）",
+        ReturnDescription = "调用次数")]
+    public async Task<string> GetCallCount()
+    {
+        await Task.CompletedTask;
+        _callCount++;
+        return $"此实例已被调用 {_callCount} 次";
+    }
+}

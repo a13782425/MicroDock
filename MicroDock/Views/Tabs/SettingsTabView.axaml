@@ -213,42 +213,137 @@
                 </StackPanel>
             </fa:SettingsExpander>
             
-            <!-- 插件设置分组 -->
-            <fa:SettingsExpander Header="插件设置" 
-                                 IconSource="ViewAll">
-                <StackPanel Margin="0,4,0,4" Spacing="12">
-                    <!-- 插件设置列表 -->
-                    <ItemsControl ItemsSource="{Binding PluginSettings}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <fa:SettingsExpander Header="{Binding PluginName}"
-                                                     Margin="0,0,0,8">
-                                    <StackPanel Margin="0" Spacing="8">
-                                        <!-- 插件设置UI或提示信息 -->
-                                        <ContentControl Content="{Binding SettingsControl}"
-                                                        IsVisible="{Binding HasSettings}"/>
-                                        
-                                        <!-- 如果没有设置，显示提示 -->
-                                        <TextBlock Text="该插件没有设置项" 
-                                                   Foreground="Gray"
+            <!-- 插件管理分组 -->
+            <fa:SettingsExpander Header="插件管理" 
+                                 IconSource="ViewAll"
+                                 Description="查看已加载的插件和注册的工具">
+                <ItemsControl ItemsSource="{Binding PluginSettings}" Margin="0,0,0,0">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:PluginSettingItem">
+                            <fa:SettingsExpander Header="{Binding PluginName}" 
+                                                 Description="{Binding ToolCountText}"
+                                                 Margin="0,4">
+                                
+                                <StackPanel Margin="10,5" Spacing="8">
+                                    <!-- 插件设置控件 -->
+                                    <ContentControl Content="{Binding SettingsControl}" 
+                                                    IsVisible="{Binding HasSettings}"/>
+                                    
+                                    <!-- 工具列表 -->
+                                    <StackPanel IsVisible="{Binding HasTools}">
+                                        <TextBlock Text="注册的工具：" 
+                                                   FontWeight="SemiBold" 
                                                    FontSize="12"
-                                                   Margin="8,0,0,0"
-                                                   IsVisible="{Binding !HasSettings}"/>
+                                                   Margin="0,4,0,4"/>
+                                        
+                                        <ItemsControl ItemsSource="{Binding Tools}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Background="{DynamicResource SubtleFillColorSecondaryBrush}" 
+                                                            BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                                            BorderThickness="1"
+                                                            Padding="10,6"
+                                                            CornerRadius="6"
+                                                            Margin="0,3">
+                                                        <StackPanel>
+                                                            <TextBlock Text="{Binding Name}" 
+                                                                       FontFamily="Consolas"
+                                                                       FontSize="12"
+                                                                       FontWeight="SemiBold"
+                                                                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                                            
+                                                            <!-- 工具提示显示详细信息 -->
+                                                            <ToolTip.Tip>
+                                                                <StackPanel MaxWidth="360" Spacing="8">
+                                                                      <!-- 警告：首次调用创建实例 -->
+                                                                    <Border Background="#40FFA500"
+                                                                            BorderBrush="Orange"
+                                                                            BorderThickness="1"
+                                                                            CornerRadius="4"
+                                                                            Padding="8,4"
+                                                                            IsVisible="{Binding NeedsLazyInstance}">
+                                                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                                                            <TextBlock Text="⚠️" FontSize="12"/>
+                                                                            <TextBlock Text="首次调用创建实例，后续复用" 
+                                                                                       Foreground="Orange"
+                                                                                       FontSize="11"
+                                                                                       FontWeight="SemiBold"/>
+                                                                        </StackPanel>
+                                                                    </Border>
+                                                                    <!-- 描述 -->
+                                                                    <TextBlock Text="{Binding Description}" 
+                                                                               FontWeight="Bold"
+                                                                               TextWrapping="Wrap"
+                                                                               IsVisible="{Binding Description, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                                                    
+                                                                    <!-- 返回值 -->
+                                                                    <StackPanel IsVisible="{Binding ReturnDescription, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                                                        <TextBlock Text="返回值：" 
+                                                                                   FontWeight="SemiBold"
+                                                                                   FontSize="11"/>
+                                                                        <TextBlock Text="{Binding ReturnDescription}"
+                                                                                   TextWrapping="Wrap"
+                                                                                   FontSize="11"
+                                                                                   Margin="0,2,0,0"/>
+                                                                    </StackPanel>
+                                                                    
+                                                                    <!-- 参数列表 -->
+                                                                    <StackPanel IsVisible="{Binding !!Parameters.Count}">
+                                                                        <TextBlock Text="参数：" 
+                                                                                   FontWeight="SemiBold"
+                                                                                   FontSize="11"/>
+                                                                        <ItemsControl ItemsSource="{Binding Parameters}" Margin="0,2,0,0">
+                                                                            <ItemsControl.ItemTemplate>
+                                                                                <DataTemplate>
+                                                                                    <StackPanel Orientation="Horizontal" 
+                                                                                               Spacing="4"
+                                                                                               Margin="0,1">
+                                                                                        <TextBlock Text="{Binding Name}"
+                                                                                                   FontFamily="Consolas"
+                                                                                                   FontSize="10"
+                                                                                                   FontWeight="SemiBold"/>
+                                                                                        <TextBlock Text=":"
+                                                                                                   FontSize="10"/>
+                                                                                        <TextBlock Text="{Binding TypeName}"
+                                                                                                   Foreground="Gray"
+                                                                                                   FontSize="10"/>
+                                                                                        <TextBlock Text="-"
+                                                                                                   FontSize="10"
+                                                                                                   IsVisible="{Binding Description, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                                                                        <TextBlock Text="{Binding Description}"
+                                                                                                   TextWrapping="Wrap"
+                                                                                                   FontSize="10"
+                                                                                                   IsVisible="{Binding Description, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                                                                        <TextBlock Text="(可选)"
+                                                                                                   FontSize="10"
+                                                                                                   Foreground="Orange"
+                                                                                                   IsVisible="{Binding !Required}"/>
+                                                                                    </StackPanel>
+                                                                                </DataTemplate>
+                                                                            </ItemsControl.ItemTemplate>
+                                                                        </ItemsControl>
+                                                                    </StackPanel>
+                                                                </StackPanel>
+                                                            </ToolTip.Tip>
+                                                        </StackPanel>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
                                     </StackPanel>
-                                </fa:SettingsExpander>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                    
-                    <!-- 如果没有插件 -->
-                    <TextBlock Text="当前没有加载任何插件" 
-                               Foreground="Gray"
-                               FontSize="12"
-                               Margin="0,8,0,0"
-                               IsVisible="{Binding !PluginSettings.Count}"/>
-                </StackPanel>
+                                    
+                                    <!-- 无工具提示 -->
+                                    <TextBlock Text="（该插件未注册任何工具）"
+                                               Foreground="Gray"
+                                               FontSize="11"
+                                               IsVisible="{Binding !HasTools}"/>
+                                </StackPanel>
+                            </fa:SettingsExpander>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
             </fa:SettingsExpander>
-            
+
             <!-- 高级设置分组 -->
             <fa:SettingsExpander Header="高级设置" 
                                  IconSource="Code">

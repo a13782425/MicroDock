@@ -41,4 +41,9 @@ public interface IMicroDockPlugin
     /// 释放
     /// </summary>
     void OnDestroy();
+
+    /// <summary>
+    /// 所有插件初始化完成后调用（此时可以安全地调用其他插件的工具）
+    /// </summary>
+    void OnAllPluginsLoaded();
 }

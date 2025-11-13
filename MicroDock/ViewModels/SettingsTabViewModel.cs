@@ -299,10 +299,14 @@ public class SettingsTabViewModel : ViewModelBase
 
             PluginSettingItem settingItem = new PluginSettingItem
             {
-                PluginName = pluginInfo.Name,
+                UniqueName = pluginInfo.UniqueName,
+                PluginName = pluginInfo.Name, // 使用 UniqueName (plugin.json 中的 name 字段)
                 PluginInstance = pluginInfo.PluginInstance,
                 SettingsControl = settingsControl
             };
+
+            // 加载插件的工具
+            settingItem.LoadTools();
 
             PluginSettings.Add(settingItem);
         }
@@ -419,8 +423,12 @@ public class SettingsTabViewModel : ViewModelBase
 /// <summary>
 /// 插件设置项
 /// </summary>
-public class PluginSettingItem
+public class PluginSettingItem : ViewModelBase
 {
+    /// <summary>
+    /// 插件唯一名字
+    /// </summary>
+    public string UniqueName { get; set; } = string.Empty;
     /// <summary>
     /// 插件名称
     /// </summary>
@@ -440,5 +448,46 @@ public class PluginSettingItem
     /// 是否有设置
     /// </summary>
     public bool HasSettings => SettingsControl != null;
+
+    /// <summary>
+    /// 插件注册的工具列表
+    /// </summary>
+    public ObservableCollection<ToolInfo> Tools { get; set; } = new ObservableCollection<ToolInfo>();
+
+    /// <summary>
+    /// 是否有工具
+    /// </summary>
+    public bool HasTools => Tools.Count > 0;
+
+    /// <summary>
+    /// 工具数量
+    /// </summary>
+    public int ToolCount => Tools.Count;
+
+    /// <summary>
+    /// 工具数量显示文本
+    /// </summary>
+    public string ToolCountText => ToolCount > 0 ? $"({ToolCount} 个工具)" : "(无工具)";
+
+    /// <summary>
+    /// 加载插件的工具
+    /// </summary>
+    public void LoadTools()
+    {
+        if (string.IsNullOrEmpty(UniqueName))
+            return;
+
+        Tools.Clear();
+        var tools = ToolRegistry.Instance.GetPluginTools(UniqueName);
+        foreach (var tool in tools)
+        {
+            Tools.Add(tool);
+        }
+
+        this.RaisePropertyChanged(nameof(Tools));
+        this.RaisePropertyChanged(nameof(HasTools));
+        this.RaisePropertyChanged(nameof(ToolCount));
+        this.RaisePropertyChanged(nameof(ToolCountText));
+    }
 }
 

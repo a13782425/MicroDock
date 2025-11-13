@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text.Json;
+using System.Threading.Tasks;
 using Avalonia.Controls;
 using MicroDock.Models;
 using MicroDock.Plugin;
@@ -105,7 +106,205 @@ namespace MicroDock.Services
             }
 
             Log.Information("成功加载 {Count} 个插件", loadedPlugins.Count);
+            
+            // 第四阶段：所有插件加载完成，触发 OnAllPluginsLoaded 回调
+            foreach (var plugin in loadedPlugins)
+            {
+                try
+                {
+                    plugin.PluginInstance?.OnAllPluginsLoaded();
+                    Log.Debug("插件 {Name} 的 OnAllPluginsLoaded 回调已触发", plugin.UniqueName);
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "插件 {Name} 的 OnAllPluginsLoaded 回调失败", plugin.UniqueName);
+                }
+            }
+            
             return loadedPlugins;
+        }
+
+        /// <summary>
+        /// 获取友好的类型名称
+        /// </summary>
+        private string GetFriendlyTypeName(Type type)
+        {
+            // 处理可空类型
+            var underlyingType = Nullable.GetUnderlyingType(type);
+            if (underlyingType != null)
+            {
+                return GetFriendlyTypeName(underlyingType) + "?";
+            }
+            
+            // 基本类型
+            if (type == typeof(int)) return "int";
+            if (type == typeof(string)) return "string";
+            if (type == typeof(bool)) return "bool";
+            if (type == typeof(double)) return "double";
+            if (type == typeof(float)) return "float";
+            if (type == typeof(long)) return "long";
+            if (type == typeof(decimal)) return "decimal";
+            if (type == typeof(byte)) return "byte";
+            if (type == typeof(short)) return "short";
+            if (type == typeof(char)) return "char";
+            
+            // 泛型类型
+            if (type.IsGenericType)
+            {
+                var genericTypeDef = type.GetGenericTypeDefinition();
+                var genericArgs = type.GetGenericArguments();
+                
+                if (genericTypeDef == typeof(List<>))
+                {
+                    return $"List<{GetFriendlyTypeName(genericArgs[0])}>";
+                }
+                if (genericTypeDef == typeof(Dictionary<,>))
+                {
+                    return $"Dictionary<{GetFriendlyTypeName(genericArgs[0])}, {GetFriendlyTypeName(genericArgs[1])}>";
+                }
+                
+                // 其他泛型类型
+                var genericArgNames = string.Join(", ", genericArgs.Select(GetFriendlyTypeName));
+                return $"{type.Name.Split('`')[0]}<{genericArgNames}>";
+            }
+            
+            // 数组类型
+            if (type.IsArray)
+            {
+                return GetFriendlyTypeName(type.GetElementType()!) + "[]";
+            }
+            
+            // 复杂类型返回类名
+            return type.Name;
+        }
+
+        /// <summary>
+        /// 自动发现并注册插件工具
+        /// </summary>
+        private void DiscoverAndRegisterTools(IMicroDockPlugin plugin, string pluginName)
+        {
+            try
+            {
+                int toolCount = 0;
+                
+                // 获取插件程序集
+                var assembly = plugin.GetType().Assembly;
+                var pluginType = plugin.GetType();
+                
+                // 扫描程序集中的所有类型（公共和非公共）
+                var types = assembly.GetTypes();
+                
+                foreach (var type in types)
+                {
+                    // 跳过抽象类和接口
+                    if (type.IsAbstract || type.IsInterface)
+                        continue;
+                    
+                    // 扫描该类型的所有公共和非公共方法（实例 + 静态）
+                    var methods = type.GetMethods(
+                        BindingFlags.Public | BindingFlags.NonPublic | 
+                        BindingFlags.Instance | BindingFlags.Static | 
+                        BindingFlags.DeclaredOnly);
+                    
+                    foreach (var method in methods)
+                    {
+                        var toolAttr = method.GetCustomAttribute<Plugin.MicroToolAttribute>();
+                        if (toolAttr == null) continue;
+                        
+                        // 验证返回类型
+                        if (method.ReturnType != typeof(System.Threading.Tasks.Task<string>))
+                        {
+                            Log.Warning("插件 {Plugin} 的工具方法 {Type}.{Method} 必须返回 Task<string>，已跳过",
+                                pluginName, type.Name, method.Name);
+                            continue;
+                        }
+                        
+                        // 确定实例策略
+                        object? targetInstance = null;
+                        bool needsLazyInstance = false;
+                        
+                        if (method.IsStatic)
+                        {
+                            // 静态方法：不需要实例
+                            Log.Debug("发现静态工具方法: {Type}.{Method}", type.Name, method.Name);
+                        }
+                        else if (type == pluginType)
+                        {
+                            // 插件类实例方法：使用插件实例
+                            targetInstance = plugin;
+                            Log.Debug("发现插件实例工具方法: {Type}.{Method}", type.Name, method.Name);
+                        }
+                        else
+                        {
+                            // 其他类实例方法：延迟创建
+                            needsLazyInstance = true;
+                            Log.Debug("发现其他类实例工具方法: {Type}.{Method} (将延迟创建实例)", type.Name, method.Name);
+                        }
+                        
+                        // 提取参数信息
+                        var parameters = ExtractParameterInfo(method);
+                        
+                        // 创建工具定义
+                        var tool = new Plugin.ToolDefinition
+                        {
+                            Name = toolAttr.Name,
+                            Description = toolAttr.Description,
+                            ReturnDescription = toolAttr.ReturnDescription,
+                            ProviderPlugin = pluginName,
+                            Method = method,
+                            TargetType = type,
+                            TargetInstance = targetInstance,
+                            IsStatic = method.IsStatic,
+                            NeedsLazyInstance = needsLazyInstance,
+                            Parameters = parameters
+                        };
+                        
+                        // 注册到工具注册表
+                        ToolRegistry.Instance.RegisterTool(pluginName, tool);
+                        toolCount++;
+                        
+                        // 记录详细日志
+                        string methodTypeDesc = method.IsStatic ? "静态" : 
+                                               needsLazyInstance ? "实例(延迟创建)" : "实例";
+                        Log.Debug("注册工具: {Tool} ({Type}.{Method}, {MethodType})", 
+                            toolAttr.Name, type.Name, method.Name, methodTypeDesc);
+                    }
+                }
+                
+                if (toolCount > 0)
+                {
+                    Log.Information("插件 {Plugin} 注册了 {Count} 个工具", pluginName, toolCount);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "插件 {Plugin} 的工具发现失败", pluginName);
+            }
+        }
+
+        /// <summary>
+        /// 提取方法参数信息
+        /// </summary>
+        private List<Plugin.ToolParameterInfo> ExtractParameterInfo(MethodInfo method)
+        {
+            var parameters = new List<Plugin.ToolParameterInfo>();
+            
+            foreach (var param in method.GetParameters())
+            {
+                var paramAttr = param.GetCustomAttribute<Plugin.ToolParameterAttribute>();
+                
+                parameters.Add(new Plugin.ToolParameterInfo
+                {
+                    Name = paramAttr?.Name ?? param.Name!,
+                    Description = paramAttr?.Description ?? string.Empty,
+                    Type = param.ParameterType,
+                    TypeName = GetFriendlyTypeName(param.ParameterType),
+                    Required = paramAttr?.Required ?? !param.HasDefaultValue,
+                    DefaultValue = param.HasDefaultValue ? param.DefaultValue : null
+                });
+            }
+            
+            return parameters;
         }
 
         /// <summary>
@@ -224,6 +423,9 @@ namespace MicroDock.Services
                     
                     // 调用 Initialize 方法注入上下文（Initialize 内部会调用 OnInit）
                     dockPlugin.Initialize(context);
+                    
+                    // 自动发现并注册工具
+                    DiscoverAndRegisterTools(dockPlugin, manifest.Name);
                     
                     // 通过 Tabs 属性获取所有标签页
                     IMicroTab[]? tabs = dockPlugin.Tabs;
