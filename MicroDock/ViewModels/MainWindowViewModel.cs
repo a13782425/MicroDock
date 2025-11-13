@@ -17,16 +17,12 @@ namespace MicroDock.ViewModels
     {
         private NavigationItemModel? _selectedNavItem;
         private object? _currentView;
-        private readonly PluginLoader _pluginLoader;
         private bool _disposed = false;
 
         public MainWindowViewModel()
         {
             // 初始化导航项集合
             NavigationItems = new ObservableCollection<NavigationItemModel>();
-
-            // 初始化插件加载器
-            _pluginLoader = new PluginLoader();
 
             // 订阅事件消息
             EventAggregator.Instance.Subscribe<NavigateToTabMessage>(OnNavigateToTab);
@@ -65,6 +61,7 @@ namespace MicroDock.ViewModels
                     Icon = "Document",
                     Content = new LogViewerTabView(),
                     NavType = NavigationType.Settings,
+                    UseParentScrollViewer = false // 日志查看器自己管理滚动
                 };
                 NavigationItems.Add(logNavItem);
             }
@@ -135,7 +132,8 @@ namespace MicroDock.ViewModels
                         Title = "日志",
                         Icon = "Document",
                         Content = new LogViewerTabView(),
-                        NavType = NavigationType.Settings
+                        NavType = NavigationType.Settings,
+                        UseParentScrollViewer = false // 日志查看器自己管理滚动
                     };
                     // 在设置项之前插入（即最后一个位置）
                     NavigationItems.Add(logNavItem);
@@ -213,8 +211,8 @@ namespace MicroDock.ViewModels
             string appDirectory = System.AppContext.BaseDirectory;
             string pluginDirectory = Path.Combine(appDirectory, "Plugins");
 
-            // 加载所有插件
-            List<PluginInfo> plugins = _pluginLoader.LoadPlugins(pluginDirectory);
+            // 加载所有插件（使用单例实例）
+            List<PluginInfo> plugins = PluginLoader.Instance.LoadPlugins(pluginDirectory);
 
             // 为每个插件的每个标签页创建导航项
             foreach (PluginInfo pluginInfo in plugins)
@@ -259,7 +257,7 @@ namespace MicroDock.ViewModels
             if (_disposed)
                 return;
 
-            _pluginLoader?.Dispose();
+            PluginLoader.Instance?.Dispose();
             _disposed = true;
         }
     }

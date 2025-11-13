@@ -11,6 +11,7 @@ namespace MicroDock.Models
         private string _icon = string.Empty;
         private object? _content;
         private NavigationType _navType;
+        private bool _useParentScrollViewer = true;
 
         /// <summary>
         /// 导航项标题
@@ -46,6 +47,16 @@ namespace MicroDock.Models
         {
             get => _navType;
             set => this.RaiseAndSetIfChanged(ref _navType, value);
+        }
+
+        /// <summary>
+        /// 是否使用父级的 ScrollViewer（默认 true）
+        /// 设置为 false 时，标签页需要自己管理内部滚动
+        /// </summary>
+        public bool UseParentScrollViewer
+        {
+            get => _useParentScrollViewer;
+            set => this.RaiseAndSetIfChanged(ref _useParentScrollViewer, value);
         }
     }
 

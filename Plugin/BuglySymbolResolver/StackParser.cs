@@ -78,22 +78,15 @@ public class StackParser
     /// </summary>
     public static ArchitectureType DetectArchitecture(string address)
     {
-        // 去除前导0后，如果长度 <= 8 位，可能是32位，否则是64位
-        string trimmedAddress = address.TrimStart('0');
-        if (string.IsNullOrEmpty(trimmedAddress))
+        // 32位地址是8位十六进制（4字节），64位是16位十六进制（8字节）
+        // 根据原始地址长度判断
+        if (address.Length > 8)
         {
-            trimmedAddress = "0";
-        }
-        
-        // 32位地址通常是8位十六进制（4字节），64位是16位十六进制（8字节）
-        // 但实际可能包含前导0，所以根据实际长度判断
-        if (trimmedAddress.Length <= 8)
-        {
-            return ArchitectureType.Bit32;
+            return ArchitectureType.Bit64;
         }
         else
         {
-            return ArchitectureType.Bit64;
+            return ArchitectureType.Bit32;
         }
     }
     
@@ -182,20 +175,20 @@ public class StackParser
             if (process.ExitCode == 0 && !string.IsNullOrEmpty(output))
             {
                 result.Success = true;
-                result.SymbolizedLine = $"{stackInfo.FullLine} : {output}";
+                result.SymbolizedLine = $"{stackInfo.Address} -- {output}";
             }
             else
             {
                 result.Success = false;
                 result.ErrorMessage = string.IsNullOrEmpty(error) ? "解析失败" : error;
-                result.SymbolizedLine = $"{stackInfo.FullLine} : [解析失败: {result.ErrorMessage}]";
+                result.SymbolizedLine = $"{stackInfo.Address} -- [解析失败: {result.ErrorMessage}]";
             }
         }
         catch (Exception ex)
         {
             result.Success = false;
             result.ErrorMessage = ex.Message;
-            result.SymbolizedLine = $"{stackInfo.FullLine} : [错误: {ex.Message}]";
+            result.SymbolizedLine = $"{stackInfo.Address} -- [错误: {ex.Message}]";
         }
         
         return result;

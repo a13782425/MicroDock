@@ -18,7 +18,7 @@ x:DataType="vm:MainWindowViewModel"
 ExtendClientAreaToDecorationsHint="True"
 ExtendClientAreaChromeHints="NoChrome"
 CanResize="True"
-Icon="/Assets/avalonia-logo.ico">
+Icon="/Assets/logo.ico">
 
 	<Window.Styles>
 		<!-- 关闭按钮样式 -->

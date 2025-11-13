@@ -11,7 +11,12 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reactive;
+using System.Threading.Tasks;
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Controls.Notifications;
+using Serilog;
 
 namespace MicroDock.ViewModels;
 
@@ -36,8 +41,6 @@ public class SettingsTabViewModel : ViewModelBase
     private bool _miniAutoDynamicArc = true;
     private bool _miniAutoCollapseAfterTrigger = true;
 
-    private readonly PluginLoader _pluginLoader;
-
     public SettingsTabViewModel()
     {
         Applications = new ObservableCollection<ApplicationDB>(DBContext.GetApplications());
@@ -46,10 +49,7 @@ public class SettingsTabViewModel : ViewModelBase
         PluginSettings = new ObservableCollection<PluginSettingItem>();
         LoadSettings();
 
-        // 初始化插件加载器
-        _pluginLoader = new PluginLoader();
-
-        // 加载插件设置
+        // 加载插件设置（使用单例实例）
         LoadPluginSettings();
 
         // 订阅服务状态变更通知
@@ -275,8 +275,8 @@ public class SettingsTabViewModel : ViewModelBase
         string appDirectory = System.AppContext.BaseDirectory;
         string pluginDirectory = Path.Combine(appDirectory, "Plugins");
 
-        // 加载所有插件
-        List<PluginInfo> plugins = _pluginLoader.LoadPlugins(pluginDirectory);
+        // 加载所有插件（使用单例实例）
+        IReadOnlyList<PluginInfo> plugins = PluginLoader.Instance.LoadedPlugins;
 
         // 为每个插件创建设置项
         foreach (PluginInfo pluginInfo in plugins)
@@ -417,6 +417,69 @@ public class SettingsTabViewModel : ViewModelBase
                     break;
             }
         });
+    }
+    
+    /// <summary>
+    /// 复制文本到剪切板并显示通知
+    /// </summary>
+    /// <param name="text">要复制的文本</param>
+    /// <param name="typeName">类型名称（用于通知显示）</param>
+    public static async Task CopyToClipboardAsync(string text, string typeName)
+    {
+        try
+        {
+            // 获取主窗口
+            if (Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop 
+                && desktop.MainWindow != null)
+            {
+                var clipboard = desktop.MainWindow.Clipboard;
+                if (clipboard != null)
+                {
+                    await clipboard.SetTextAsync(text);
+                    
+                    // 显示应用内通知
+                    ShowNotification($"已复制{typeName}", text);
+                    
+                    Log.Information("已复制{TypeName}到剪切板: {Text}", typeName, text);
+                }
+                else
+                {
+                    Log.Warning("剪切板服务不可用");
+                }
+            }
+            else
+            {
+                Log.Warning("无法获取主窗口，剪切板操作失败");
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "复制到剪切板失败");
+            ShowNotification("复制失败", ex.Message, NotificationType.Error);
+        }
+    }
+    
+    /// <summary>
+    /// 显示应用内通知
+    /// </summary>
+    /// <param name="title">通知标题</param>
+    /// <param name="message">通知内容</param>
+    /// <param name="type">通知类型</param>
+    private static void ShowNotification(string title, string message, NotificationType type = NotificationType.Success)
+    {
+        if (Program.WindowNotificationManager != null)
+        {
+            Program.WindowNotificationManager.Show(new Avalonia.Controls.Notifications.Notification(
+                title, 
+                message, 
+                type,
+                TimeSpan.FromSeconds(2)
+            ));
+        }
+        else
+        {
+            Log.Warning("WindowNotificationManager 未初始化，无法显示通知");
+        }
     }
 }
 

@@ -1,21 +1,23 @@
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Controls.Notifications;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform;
 using DesktopNotifications;
 using FluentAvalonia.UI.Controls;
 using MicroDock.Database;
+using MicroDock.Infrastructure;
 using MicroDock.Models;
+using MicroDock.Plugin;
 using MicroDock.Services;
 using MicroDock.ViewModels;
-using MicroDock.Infrastructure;
 using Serilog;
 using System;
-using System.Collections.Specialized;
-using System.ComponentModel;
-using System.Linq;
 using System.Collections.Generic;
+using System.Collections.Specialized;
+using System.Linq;
 
 namespace MicroDock.Views
 {
@@ -57,11 +59,28 @@ namespace MicroDock.Views
         /// </summary>
         private void OnWindowOpened(object? sender, EventArgs e)
         {
+            // 初始化应用内通知管理器
+            InitializeWindowNotificationManager();
+            
             // 从数据库加载设置并应用服务状态
             InitializeServicesFromSettings();
 
             // 初始化NavigationView菜单项
             InitializeNavigationItems();
+        }
+        
+        /// <summary>
+        /// 初始化窗口通知管理器
+        /// </summary>
+        private void InitializeWindowNotificationManager()
+        {
+            Program.WindowNotificationManager = new WindowNotificationManager(this)
+            {
+                Position = NotificationPosition.TopRight,
+                MaxItems = 3
+            };
+            
+            Log.Debug("WindowNotificationManager 已初始化");
         }
 
         /// <summary>
@@ -79,7 +98,7 @@ namespace MicroDock.Views
 
             // 清空现有菜单项
             navView.MenuItems.Clear();
-
+            navView.FooterMenuItems.Clear();
             // 添加导航项
             foreach (var navItem in viewModel.NavigationItems)
             {
@@ -97,6 +116,18 @@ namespace MicroDock.Views
 
             // 监听 NavigationItems 集合的变化
             viewModel.NavigationItems.CollectionChanged += OnNavigationItemsCollectionChanged;
+
+            // 监听 ViewModel 的属性变化，动态调整滚动行为
+            viewModel.PropertyChanged += (s, e) =>
+            {
+                if (e.PropertyName == nameof(viewModel.CurrentView))
+                {
+                    UpdateNavigationContentScrollViewer(viewModel.CurrentView);
+                }
+            };
+
+            // 初始化内容区域的滚动行为
+            UpdateNavigationContentScrollViewer(viewModel.CurrentView);
         }
 
         /// <summary>
@@ -208,6 +239,51 @@ namespace MicroDock.Views
             {
                 // 选中了设置项
                 viewModel.SelectedNavItem = viewModel.SettingsNavItem;
+            }
+        }
+
+        /// <summary>
+        /// 根据导航项的 UseParentScrollViewer 属性更新 NavigationView 的内容区域
+        /// </summary>
+        private void UpdateNavigationContentScrollViewer(object? currentView)
+        {
+            if (DataContext is not MainWindowViewModel viewModel)
+                return;
+
+            var navView = this.FindControl<NavigationView>("MainNav");
+            if (navView == null)
+                return;
+
+            // 从 NavigationItemModel 读取 UseParentScrollViewer 属性
+            bool useParentScrollViewer = true;
+
+            // 优先从当前选中的导航项获取设置
+            if (viewModel.SelectedNavItem != null)
+            {
+                useParentScrollViewer = viewModel.SelectedNavItem.UseParentScrollViewer;
+            }
+            // 兼容插件标签页：如果当前视图实现了 IMicroTab 接口，使用接口属性
+            else if (currentView is IMicroTab tab)
+            {
+                useParentScrollViewer = tab.UseParentScrollViewer;
+            }
+
+            // 获取外层的 ScrollViewer（AXAML 中定义的）
+            if (navView.Content is ScrollViewer scrollViewer)
+            {
+                // 根据属性值控制 ScrollViewer 的滚动行为
+                if (useParentScrollViewer)
+                {
+                    // 启用滚动
+                    scrollViewer.VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
+                    scrollViewer.HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled;
+                }
+                else
+                {
+                    // 禁用滚动（标签页自己管理滚动）
+                    scrollViewer.VerticalScrollBarVisibility = ScrollBarVisibility.Disabled;
+                    scrollViewer.HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled;
+                }
             }
         }
 
@@ -354,7 +430,7 @@ namespace MicroDock.Views
             _trayIcon = new TrayIcon();
 
             // 设置托盘图标（使用应用程序图标）
-            _trayIcon.Icon = new WindowIcon(AssetLoader.Open(new System.Uri("avares://MicroDock/Assets/avalonia-logo.ico")));
+            _trayIcon.Icon = new WindowIcon(AssetLoader.Open(new System.Uri("avares://MicroDock/Assets/logo.ico")));
 
             // 设置工具提示
             _trayIcon.ToolTipText = "MicroDock - 双击显示/隐藏";

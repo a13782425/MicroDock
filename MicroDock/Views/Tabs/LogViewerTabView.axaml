@@ -69,32 +69,32 @@
                                         BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}">
                                     <Grid ColumnDefinitions="Auto,Auto,*">
                                         <!-- 时间戳 -->
-                                        <TextBlock Grid.Column="0" 
-                                                   Text="{Binding FormattedTimestamp}"
-                                                   FontFamily="Consolas"
-                                                   FontSize="12"
-                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                                   VerticalAlignment="Top"
-                                                   Margin="0,0,12,0"/>
+                                        <SelectableTextBlock Grid.Column="0" 
+                                                             Text="{Binding FormattedTimestamp}"
+                                                             FontFamily="Consolas"
+                                                             FontSize="12"
+                                                             Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                             VerticalAlignment="Top"
+                                                             Margin="0,0,12,0"/>
 
                                         <!-- 日志级别 -->
-                                        <TextBlock Grid.Column="1" 
-                                                   Text="{Binding LevelString}"
-                                                   FontFamily="Consolas"
-                                                   FontSize="12"
-                                                   FontWeight="SemiBold"
-                                                   Foreground="{Binding LevelColor}"
-                                                   VerticalAlignment="Top"
-                                                   MinWidth="80"
-                                                   Margin="0,0,12,0"/>
+                                        <SelectableTextBlock Grid.Column="1" 
+                                                             Text="{Binding LevelString}"
+                                                             FontFamily="Consolas"
+                                                             FontSize="12"
+                                                             FontWeight="SemiBold"
+                                                             Foreground="{Binding LevelColor}"
+                                                             VerticalAlignment="Top"
+                                                             MinWidth="80"
+                                                             Margin="0,0,12,0"/>
 
                                         <!-- 日志消息 -->
-                                        <TextBlock Grid.Column="2" 
-                                                   Text="{Binding Message}"
-                                                   FontFamily="Consolas"
-                                                   FontSize="12"
-                                                   TextWrapping="Wrap"
-                                                   VerticalAlignment="Top"/>
+                                        <SelectableTextBlock Grid.Column="2" 
+                                                             Text="{Binding Message}"
+                                                             FontFamily="Consolas"
+                                                             FontSize="12"
+                                                             TextWrapping="Wrap"
+                                                             VerticalAlignment="Top"/>
                                     </Grid>
                                 </Border>
                             </DataTemplate>

@@ -30,13 +30,13 @@ public class LogEntry
     public string? Exception { get; set; }
 
     /// <summary>
-    /// 根据日志级别返回对应的颜色，供 UI 绑定
+    /// 根据日志级别返回对应的颜色画刷，供 UI 绑定
     /// </summary>
-    public Color LevelColor
+    public IBrush LevelColor
     {
         get
         {
-            return Level switch
+            var color = Level switch
             {
                 LogEventLevel.Verbose => Color.FromRgb(128, 128, 128), // Gray
                 LogEventLevel.Debug => Color.FromRgb(128, 128, 128), // Gray
@@ -46,6 +46,7 @@ public class LogEntry
                 LogEventLevel.Fatal => Color.FromRgb(168, 0, 0), // DarkRed
                 _ => Color.FromRgb(128, 128, 128) // Default Gray
             };
+            return new SolidColorBrush(color);
         }
     }
 

@@ -6,12 +6,21 @@ using Serilog;
 using Serilog.Events;
 using System;
 using System.IO;
+using Avalonia.Controls.Notifications;
 
 namespace MicroDock
 {
     internal sealed class Program
     {
-        public static INotificationManager NotificationManager = null!;
+        /// <summary>
+        /// 系统托盘通知管理器
+        /// </summary>
+        public static DesktopNotifications.INotificationManager NotificationManager = null!;
+        
+        /// <summary>
+        /// 应用内窗口通知管理器（Toast通知）
+        /// </summary>
+        public static WindowNotificationManager? WindowNotificationManager { get; set; }
         
         // Initialization code. Don't use any Avalonia, third-party APIs or any
         // SynchronizationContext-reliant code before AppMain is called: things aren't initialized

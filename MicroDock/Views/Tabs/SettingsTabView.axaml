@@ -176,7 +176,7 @@
                             Command="{Binding AddApplicationCommand}"
                             HorizontalAlignment="Left"/>
                     
-                        <ListBox x:Name="AppsList" ItemsSource="{Binding Applications}" Margin="0,10,0,0">
+                       <!-- <ListBox x:Name="AppsList" ItemsSource="{Binding Applications}" Margin="0,10,0,0">
                             <ListBox.ItemTemplate>
                                 <DataTemplate x:DataType="db:ApplicationDB">
                                     <Grid ColumnDefinitions="*,Auto">
@@ -188,7 +188,7 @@
                                     </Grid>
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
-                        </ListBox>
+                        </ListBox>-->
                     </StackPanel>
                 </StackPanel>
             </fa:SettingsExpander>
@@ -220,9 +220,21 @@
                 <ItemsControl ItemsSource="{Binding PluginSettings}" Margin="0,0,0,0">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="vm:PluginSettingItem">
-                            <fa:SettingsExpander Header="{Binding PluginName}" 
-                                                 Description="{Binding ToolCountText}"
-                                                 Margin="0,4">
+                            <fa:SettingsExpander Margin="0,4"
+                                                 Description="{Binding ToolCountText}">
+                                <fa:SettingsExpander.Header>
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <TextBlock Text="{Binding PluginName}" 
+                                                   FontWeight="SemiBold"
+                                                   VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding UniqueName}"
+                                                   FontSize="11"
+                                                   Foreground="Gray"
+                                                   Cursor="Hand"
+                                                   VerticalAlignment="Bottom"
+                                                   PointerPressed="PluginUniqueName_PointerPressed"/>
+                                    </StackPanel>
+                                </fa:SettingsExpander.Header>
                                 
                                 <StackPanel Margin="10,5" Spacing="8">
                                     <!-- 插件设置控件 -->
@@ -250,7 +262,9 @@
                                                                        FontFamily="Consolas"
                                                                        FontSize="12"
                                                                        FontWeight="SemiBold"
-                                                                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                                                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                                                       Cursor="Hand"
+                                                                       PointerPressed="ToolName_PointerPressed"/>
                                                             
                                                             <!-- 工具提示显示详细信息 -->
                                                             <ToolTip.Tip>

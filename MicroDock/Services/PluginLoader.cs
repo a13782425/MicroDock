@@ -15,9 +15,34 @@ namespace MicroDock.Services
     /// <summary>
     /// 插件加载器，支持隔离加载和生命周期管理
     /// 注意：所有插件必须提供 plugin.json 配置文件
+    /// 单例模式：全局共享一个实例，避免重复加载插件
     /// </summary>
     public class PluginLoader : IDisposable
     {
+        private static readonly object _lock = new object();
+        private static PluginLoader? _instance;
+        
+        /// <summary>
+        /// 获取 PluginLoader 的单例实例
+        /// </summary>
+        public static PluginLoader Instance
+        {
+            get
+            {
+                if (_instance == null)
+                {
+                    lock (_lock)
+                    {
+                        if (_instance == null)
+                        {
+                            _instance = new PluginLoader();
+                        }
+                    }
+                }
+                return _instance;
+            }
+        }
+        
         private readonly List<PluginInfo> _loadedPlugins = new List<PluginInfo>();
         private bool _disposed = false;
 
