@@ -231,7 +231,7 @@ namespace MicroDock.ViewModels
                         {
                             iconSymbol = tab.IconSymbol;
                         }
-                        finally
+                        catch(Exception _)
                         {
                             iconSymbol = IconSymbolEnum.Library;
                         }

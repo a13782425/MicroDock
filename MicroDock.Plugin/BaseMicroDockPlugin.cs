@@ -9,7 +9,7 @@ public abstract class BaseMicroDockPlugin : IMicroDockPlugin
     /// <summary>
     /// 插件上下文（由框架通过 Initialize 方法注入）
     /// </summary>
-    protected IPluginContext? Context { get; private set; }
+    public IPluginContext? Context { get; private set; }
 
     /// <summary>
     /// 初始化插件上下文（由框架调用）
