@@ -38,4 +38,24 @@ internal class SettingDB
     /// 是否显示日志查看器标签页
     /// </summary>
     public bool ShowLogViewer { get; set; } = false;
+
+    /// <summary>
+    /// 窗口X坐标
+    /// </summary>
+    public int WindowX { get; set; } = 0;
+
+    /// <summary>
+    /// 窗口Y坐标
+    /// </summary>
+    public int WindowY { get; set; } = 0;
+
+    /// <summary>
+    /// 窗口宽度
+    /// </summary>
+    public int WindowWidth { get; set; } = 480;
+
+    /// <summary>
+    /// 窗口高度
+    /// </summary>
+    public int WindowHeight { get; set; } = 360;
 }

@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Threading;
 using MicroDock.ViewModels;
 using System;
 
@@ -22,6 +23,22 @@ public partial class LogViewerTabView : UserControl
     /// 滚动到最新日志
     /// </summary>
     private void OnScrollToLatestRequested(object? sender, EventArgs e)
+    {
+        // 确保在 UI 线程上执行滚动操作
+        if (Dispatcher.UIThread.CheckAccess())
+        {
+            DoScrollToEnd();
+        }
+        else
+        {
+            Dispatcher.UIThread.Post(() => DoScrollToEnd(), DispatcherPriority.Background);
+        }
+    }
+
+    /// <summary>
+    /// 执行滚动到底部（在 UI 线程上执行）
+    /// </summary>
+    private void DoScrollToEnd()
     {
         // 获取 ScrollViewer 控件
         var scrollViewer = this.FindControl<ScrollViewer>("LogScrollViewer");

@@ -1,3 +1,4 @@
+using Avalonia.Threading;
 using MicroDock.Models;
 using MicroDock.Services;
 using ReactiveUI;
@@ -85,6 +86,22 @@ public class LogViewerTabViewModel : ViewModelBase, IDisposable
     /// </summary>
     private void OnLogsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        // 确保在 UI 线程上执行所有操作
+        if (Dispatcher.UIThread.CheckAccess())
+        {
+            ProcessLogsCollectionChanged(e);
+        }
+        else
+        {
+            Dispatcher.UIThread.Post(() => ProcessLogsCollectionChanged(e), DispatcherPriority.Background);
+        }
+    }
+
+    /// <summary>
+    /// 处理日志集合变化（在 UI 线程上执行）
+    /// </summary>
+    private void ProcessLogsCollectionChanged(NotifyCollectionChangedEventArgs e)
+    {
         if (e.Action == NotifyCollectionChangedAction.Add && e.NewItems != null)
         {
             // 新增日志，检查是否符合筛选条件
@@ -119,6 +136,22 @@ public class LogViewerTabViewModel : ViewModelBase, IDisposable
     /// 刷新筛选后的日志列表
     /// </summary>
     private void RefreshFilteredLogs()
+    {
+        // 确保在 UI 线程上执行
+        if (Dispatcher.UIThread.CheckAccess())
+        {
+            DoRefreshFilteredLogs();
+        }
+        else
+        {
+            Dispatcher.UIThread.Post(() => DoRefreshFilteredLogs(), DispatcherPriority.Background);
+        }
+    }
+
+    /// <summary>
+    /// 执行刷新筛选后的日志列表（在 UI 线程上执行）
+    /// </summary>
+    private void DoRefreshFilteredLogs()
     {
         FilteredLogs.Clear();
 
