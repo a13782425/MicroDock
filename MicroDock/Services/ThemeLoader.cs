@@ -21,17 +21,17 @@ public class ThemeLoader
     public ThemeLoader()
     {
         _themesDirectory = Path.Combine(AppConfig.CONFIG_FOLDER, "Themes");
-        
+
         // 确保主题目录存在
         if (!Directory.Exists(_themesDirectory))
         {
             Directory.CreateDirectory(_themesDirectory);
         }
-        
+
         // 复制内置主题文件到配置目录（如果不存在）
         CopyBuiltInThemes();
     }
-    
+
     /// <summary>
     /// 复制内置主题文件到配置目录
     /// </summary>
@@ -42,7 +42,7 @@ public class ThemeLoader
             // 获取内置主题目录（相对于应用程序目录）
             string appDirectory = System.AppContext.BaseDirectory;
             string builtInThemesDirectory = Path.Combine(appDirectory, "Assets", "Themes");
-            
+
             // 如果内置主题目录不存在，尝试从项目目录复制
             if (!Directory.Exists(builtInThemesDirectory))
             {
@@ -59,7 +59,7 @@ public class ThemeLoader
                     return;
                 }
             }
-            
+
             // 复制所有 XML 主题文件
             if (Directory.Exists(builtInThemesDirectory))
             {
@@ -68,7 +68,7 @@ public class ThemeLoader
                 {
                     string fileName = Path.GetFileName(themeFile);
                     string targetPath = Path.Combine(_themesDirectory, fileName);
-                    
+
                     // 如果目标文件不存在或源文件更新，则复制
                     if (!File.Exists(targetPath) || File.GetLastWriteTime(themeFile) > File.GetLastWriteTime(targetPath))
                     {
@@ -108,7 +108,7 @@ public class ThemeLoader
             }
 
             var xmlFiles = Directory.GetFiles(_themesDirectory, "*.xml", SearchOption.TopDirectoryOnly);
-            
+
             foreach (var xmlFile in xmlFiles)
             {
                 try
@@ -192,9 +192,9 @@ public class ThemeLoader
                 {
                     theme.Variant = variantElement.Value switch
                     {
-                        "Dark" => ThemeVariant.Dark,
-                        "Light" => ThemeVariant.Light,
-                        "System" => ThemeVariant.Default,
+                        "Dark" => new ThemeVariant(theme.DisplayName, ThemeVariant.Dark),
+                        "Light" => new ThemeVariant(theme.DisplayName, ThemeVariant.Light),
+                        "System" => new ThemeVariant(theme.DisplayName, ThemeVariant.Default),
                         _ => ThemeVariant.Default
                     };
                 }
@@ -239,11 +239,11 @@ public class ThemeLoader
     private void LoadColorResources(XElement colorResources, Dictionary<string, Color> targetDictionary)
     {
         var ns = "http://schemas.microdock.app/themes/v1";
-        
+
         // 加载各个颜色分类
         var colorSections = new[]
         {
-            "AccentColors", "BackgroundColors", "StrokeColors", 
+            "AccentColors", "BackgroundColors", "StrokeColors",
             "TextColors", "ButtonColors", "OtherColors"
         };
 

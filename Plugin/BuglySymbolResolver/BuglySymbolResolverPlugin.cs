@@ -160,27 +160,40 @@ public class BuglySymbolResolverPlugin : BaseMicroDockPlugin
     {
         if (textBox == null) return;
 
-        var dialog = new OpenFileDialog
+        // 使用新的 StorageProvider API
+        if (Avalonia.Application.Current?.ApplicationLifetime is not Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop || desktop.MainWindow == null)
+            return;
+        
+        Avalonia.Platform.Storage.IStorageProvider? storageProvider = desktop.MainWindow.StorageProvider;
+        if (storageProvider == null)
+            return;
+        
+        // 定义文件类型过滤器
+        var filePickerFileTypes = new Avalonia.Platform.Storage.FilePickerFileType[]
+        {
+            new("Executable files")
+            {
+                Patterns = new[] { "*.exe", "*.bat", "*.cmd" }
+            },
+            Avalonia.Platform.Storage.FilePickerFileTypes.All
+        };
+        
+        var filePickerOptions = new Avalonia.Platform.Storage.FilePickerOpenOptions
         {
             Title = dialogTitle,
             AllowMultiple = false,
-            Filters = new System.Collections.Generic.List<FileDialogFilter>
-            {
-                new() { Name = "Executable files", Extensions = { "exe", "bat", "cmd" } },
-                new() { Name = "All files", Extensions = { "*" } }
-            }
+            FileTypeFilter = filePickerFileTypes
         };
-
-        if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
+        
+        System.Collections.Generic.IReadOnlyList<Avalonia.Platform.Storage.IStorageFile> result = 
+            await storageProvider.OpenFilePickerAsync(filePickerOptions);
+        
+        if (result.Count > 0)
         {
-            string[]? result = await dialog.ShowAsync(desktop.MainWindow);
-            if (result != null && result.Length > 0)
-            {
-                string path = result[0];
-                textBox.Text = path;
-                SaveStringSetting(settingKey, path);
-                LogInfo($"设置已更新: {settingKey} = {path}");
-            }
+            string path = result[0].Path.LocalPath;
+            textBox.Text = path;
+            SaveStringSetting(settingKey, path);
+            LogInfo($"设置已更新: {settingKey} = {path}");
         }
     }
 
@@ -231,58 +244,5 @@ public class BuglySymbolResolverPlugin : BaseMicroDockPlugin
     {
         base.OnDestroy();
         LogInfo("Bugly符号解析插件正在销毁");
-    }
-
-    /// <summary>
-    /// 示例工具：字符串反转
-    /// </summary>
-    [MicroTool("test.reverse",
-        Description = "反转字符串",
-        ReturnDescription = "反转后的字符串")]
-    public async Task<string> ReverseString(
-        [ToolParameter("input", Description = "要反转的字符串")] string input)
-    {
-        await Task.CompletedTask;
-        var reversed = new string(input.Reverse().ToArray());
-        LogInfo($"字符串反转: '{input}' -> '{reversed}'");
-        return reversed;
-    }
-
-    /// <summary>
-    /// 示例工具：计算两个数的和
-    /// </summary>
-    [MicroTool("test.add",
-        Description = "计算两个整数的和",
-        ReturnDescription = "计算结果（JSON 字符串）")]
-    public async Task<string> Add(
-        [ToolParameter("a", Description = "第一个整数")] int a,
-        [ToolParameter("b", Description = "第二个整数")] int b)
-    {
-        await Task.CompletedTask;
-        var result = a + b;
-        LogInfo($"计算: {a} + {b} = {result}");
-        return result.ToString();
-    }
-}
-
-/// <summary>
-/// 辅助类工具示例（演示实例复用和状态管理）
-/// </summary>
-internal class TestHelper
-{
-    private int _callCount = 0;
-    private readonly List<string> _history = new();
-
-    /// <summary>
-    /// 工具：获取调用次数（演示实例复用）
-    /// </summary>
-    [MicroTool("test.helper_count",
-        Description = "辅助类方法：返回此工具实例的调用次数（演示实例复用）",
-        ReturnDescription = "调用次数")]
-    public async Task<string> GetCallCount()
-    {
-        await Task.CompletedTask;
-        _callCount++;
-        return $"此实例已被调用 {_callCount} 次";
     }
 }
