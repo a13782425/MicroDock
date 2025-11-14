@@ -29,7 +29,7 @@ public class SettingsTabViewModel : ViewModelBase
     private bool _autoHide;
     private bool _alwaysOnTop;
     private bool _showLogViewer;
-    private Color _customAccentColor = Color.FromRgb(255, 0, 0);
+    private string _selectedTheme = string.Empty;
 
     public SettingsTabViewModel()
     {
@@ -37,7 +37,12 @@ public class SettingsTabViewModel : ViewModelBase
         AddApplicationCommand = ReactiveCommand.CreateFromTask(AddApplication);
         RemoveApplicationCommand = ReactiveCommand.Create<ApplicationDB>(RemoveApplication);
         PluginSettings = new ObservableCollection<PluginSettingItem>();
+        AvailableThemes = new ObservableCollection<MicroDock.Models.ThemeModel>();
+        FlattenedThemeList = new ObservableCollection<object>();
+        _groupedThemes = new List<IGrouping<string, MicroDock.Models.ThemeModel>>();
+        
         LoadSettings();
+        LoadThemes();
 
         // 加载插件设置（使用单例实例）
         LoadPluginSettings();
@@ -141,16 +146,137 @@ public class SettingsTabViewModel : ViewModelBase
         }
     }
 
-    public List<Color> PredefinedColors => AppConfig.PredefAccentColors;
-    public Color CustomAccentColor
+    /// <summary>
+    /// 可用主题列表（用于内部管理）
+    /// </summary>
+    public ObservableCollection<MicroDock.Models.ThemeModel> AvailableThemes { get; }
+
+    /// <summary>
+    /// 扁平化主题列表（包含分组标题和主题项）
+    /// </summary>
+    public ObservableCollection<object> FlattenedThemeList { get; }
+
+    private IEnumerable<IGrouping<string, MicroDock.Models.ThemeModel>>? _groupedThemes;
+
+    /// <summary>
+    /// 分组后的主题列表（用于 GroupedComboBox 控件）
+    /// </summary>
+    public IEnumerable<IGrouping<string, MicroDock.Models.ThemeModel>>? GroupedThemes
     {
-        get => _customAccentColor;
+        get => _groupedThemes;
+        private set => this.RaiseAndSetIfChanged(ref _groupedThemes, value);
+    }
+
+    /// <summary>
+    /// 选中的主题（用于数据库存储）
+    /// </summary>
+    public string SelectedTheme
+    {
+        get => _selectedTheme;
         set
         {
-            this.RaiseAndSetIfChanged(ref _customAccentColor, value);
-            //// 无论值是否改变，都要保存并触发事件，确保 Service 状态同步
-            //SaveSetting(nameof(AlwaysOnTop), value);
-            //SettingChanged?.Invoke(nameof(AlwaysOnTop), value);
+            if (_selectedTheme != value)
+            {
+                _selectedTheme = value;
+                this.RaisePropertyChanged();
+                
+                // 保存到数据库
+                DBContext.UpdateSetting(s => s.SelectedTheme = value);
+                
+                // 应用主题
+                var themeService = Infrastructure.ServiceLocator.Get<Services.ThemeService>();
+                themeService.LoadAndApplyTheme(value);
+                
+                // 同步更新 SelectedThemeModel
+                UpdateSelectedThemeModel();
+            }
+        }
+    }
+
+    private MicroDock.Models.ThemeModel? _selectedThemeModel;
+
+    private bool _isUpdatingThemeModel = false;
+
+    /// <summary>
+    /// 选中的主题模型（用于UI绑定）
+    /// </summary>
+    public MicroDock.Models.ThemeModel? SelectedThemeModel
+    {
+        get => _selectedThemeModel;
+        set
+        {
+            // 如果正在从 SelectedTheme 更新，跳过以避免循环
+            if (_isUpdatingThemeModel)
+            {
+                return;
+            }
+
+            // 如果选择的是分组标题项，阻止选择并恢复当前选择
+            if (value is MicroDock.Models.ThemeGroupHeader)
+            {
+                // 通知UI恢复之前的选择
+                this.RaisePropertyChanged();
+                return;
+            }
+
+            if (_selectedThemeModel != value)
+            {
+                _selectedThemeModel = value;
+                this.RaisePropertyChanged();
+                
+                // 当UI选择改变时，更新 SelectedTheme（string）
+                if (value != null && !string.IsNullOrEmpty(value.Name))
+                {
+                    // 直接设置私有字段，避免触发 SelectedTheme 的 setter 中的 UpdateSelectedThemeModel
+                    if (_selectedTheme != value.Name)
+                    {
+                        _selectedTheme = value.Name;
+                        // 保存到数据库
+                        DBContext.UpdateSetting(s => s.SelectedTheme = value.Name);
+                        
+                        // 应用主题
+                        var themeService = Infrastructure.ServiceLocator.Get<Services.ThemeService>();
+                        themeService.LoadAndApplyTheme(value.Name);
+                        
+                        // 通知 SelectedTheme 属性已更改
+                        this.RaisePropertyChanged(nameof(SelectedTheme));
+                    }
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// 根据 SelectedTheme（string）更新 SelectedThemeModel
+    /// </summary>
+    private void UpdateSelectedThemeModel()
+    {
+        _isUpdatingThemeModel = true;
+        try
+        {
+            if (string.IsNullOrEmpty(_selectedTheme))
+            {
+                if (_selectedThemeModel != null)
+                {
+                    _selectedThemeModel = null;
+                    this.RaisePropertyChanged(nameof(SelectedThemeModel));
+                }
+                return;
+            }
+
+            // 从扁平化列表中查找主题（跳过分组标题项）
+            var theme = FlattenedThemeList.OfType<MicroDock.Models.ThemeModel>()
+                .FirstOrDefault(t => t.Name.Equals(_selectedTheme, StringComparison.OrdinalIgnoreCase));
+            
+            if (theme != _selectedThemeModel)
+            {
+                _selectedThemeModel = theme;
+                this.RaisePropertyChanged(nameof(SelectedThemeModel));
+            }
+        }
+        finally
+        {
+            _isUpdatingThemeModel = false;
         }
     }
 
@@ -263,12 +389,87 @@ public class SettingsTabViewModel : ViewModelBase
         _autoHide = settings.AutoHide;
         _alwaysOnTop = settings.AlwaysOnTop;
         _showLogViewer = settings.ShowLogViewer;
+        _selectedTheme = settings.SelectedTheme;
 
         // 通知UI更新（仅UI，不触发setter中的事件发布）
         this.RaisePropertyChanged(nameof(AutoStartup));
         this.RaisePropertyChanged(nameof(AutoHide));
         this.RaisePropertyChanged(nameof(AlwaysOnTop));
         this.RaisePropertyChanged(nameof(ShowLogViewer));
+        this.RaisePropertyChanged(nameof(SelectedTheme));
+    }
+
+    /// <summary>
+    /// 加载可用主题列表
+    /// </summary>
+    private void LoadThemes()
+    {
+        try
+        {
+            AvailableThemes.Clear();
+            FlattenedThemeList.Clear();
+            
+            Services.ThemeService themeService = Infrastructure.ServiceLocator.Get<Services.ThemeService>();
+            List<MicroDock.Models.ThemeModel> themes = themeService.GetAvailableThemes();
+            
+            // 添加到内部列表
+            foreach (MicroDock.Models.ThemeModel theme in themes)
+            {
+                AvailableThemes.Add(theme);
+            }
+            
+            // 按 Category 分组
+            List<IGrouping<string, MicroDock.Models.ThemeModel>> groupedThemes = themes
+                .GroupBy(t => string.IsNullOrEmpty(t.Category) ? "其他" : t.Category)
+                .OrderBy(g => GetCategorySortOrder(g.Key))
+                .ToList();
+            
+            // 为每个分组内的主题按 DisplayName 排序
+            GroupedThemes = groupedThemes
+                .Select(g => g.OrderBy(t => t.DisplayName).ToList().GroupBy(t => g.Key).First())
+                .ToList();
+            
+            Serilog.Log.Information("加载主题分组完成，共 {GroupCount} 个分组，总计 {ThemeCount} 个主题", 
+                GroupedThemes?.Count() ?? 0, 
+                themes.Count);
+            
+            // 创建扁平化列表：每组前插入分组标题项，然后添加该组的主题
+            foreach (IGrouping<string, MicroDock.Models.ThemeModel> group in groupedThemes)
+            {
+                // 添加分组标题
+                FlattenedThemeList.Add(new MicroDock.Models.ThemeGroupHeader
+                {
+                    GroupName = group.Key
+                });
+                
+                // 添加该组的主题（按 DisplayName 排序）
+                foreach (MicroDock.Models.ThemeModel theme in group.OrderBy(t => t.DisplayName))
+                {
+                    FlattenedThemeList.Add(theme);
+                }
+            }
+            
+            // 主题列表加载完成后，同步更新 SelectedThemeModel
+            UpdateSelectedThemeModel();
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Error(ex, "加载主题列表失败");
+        }
+    }
+
+    /// <summary>
+    /// 获取分类排序顺序（默认、Fluent、Tailwind等）
+    /// </summary>
+    private int GetCategorySortOrder(string category)
+    {
+        return category switch
+        {
+            "默认" => 0,
+            "Fluent" => 1,
+            "Tailwind" => 2,
+            _ => 999 // 其他分类排在最后
+        };
     }
 
     /// <summary>

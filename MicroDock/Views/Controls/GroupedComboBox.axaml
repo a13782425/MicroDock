@@ -1,0 +1,169 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:controls="using:MicroDock.Views.Controls"
+             mc:Ignorable="d" d:DesignWidth="200" d:DesignHeight="32"
+             x:Class="MicroDock.Views.Controls.GroupedComboBox"
+             x:Name="Root">
+    
+    <Panel>
+        <!-- 主按钮区域 -->
+        <Border x:Name="PART_Border"
+                Background="{DynamicResource ComboBoxBackground}"
+                BorderBrush="{DynamicResource ComboBoxBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="4"
+                MinHeight="32"
+                MinWidth="100">
+            
+            <Button x:Name="PART_DropDownButton"
+                    HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Stretch"
+                    VerticalAlignment="Stretch"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Padding="11,5,8,5"
+                    Click="OnDropDownButtonClick">
+                
+                <Button.Styles>
+                    <Style Selector="Button:pointerover /template/ ContentPresenter">
+                        <Setter Property="Background" Value="Transparent"/>
+                    </Style>
+                    <Style Selector="Button:pressed /template/ ContentPresenter">
+                        <Setter Property="Background" Value="Transparent"/>
+                    </Style>
+                </Button.Styles>
+                
+                <Grid ColumnDefinitions="*,Auto">
+                    <!-- 显示文本 -->
+                    <TextBlock Text="{Binding #Root.DisplayText}"
+                               VerticalAlignment="Center"
+                               TextTrimming="CharacterEllipsis"
+                               Grid.Column="0"
+                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                    
+                    <!-- 下拉箭头 -->
+                    <PathIcon Data="M 0,0 L 5,5 L 10,0"
+                              Width="10"
+                              Height="5"
+                              VerticalAlignment="Center"
+                              Grid.Column="1"
+                              Margin="8,0,0,0"
+                              Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                </Grid>
+            </Button>
+        </Border>
+
+        <!-- 弹出框 -->
+        <Popup x:Name="PART_Popup"
+               PlacementTarget="{Binding #PART_Border}"
+               IsLightDismissEnabled="True"
+               MinWidth="{Binding #PART_Border.Bounds.Width}">
+            
+            <Border Background="{DynamicResource FlyoutPresenterBackground}"
+                    BorderBrush="{DynamicResource FlyoutBorderThemeBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Padding="4"
+                    MaxHeight="{Binding #Root.MaxDropDownHeight}"
+                    BoxShadow="0 4 16 2 #40000000">
+                
+                <ScrollViewer x:Name="PART_ScrollViewer"
+                              VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled">
+                    
+                    <!-- 分组列表 -->
+                    <ItemsControl ItemsSource="{Binding #Root.GroupedItemsSource}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:CompileBindings="False">
+                                <StackPanel Margin="0,0,0,8">
+                                    <!-- 分组标题区域 -->
+                                    <Border Background="{DynamicResource SubtleFillColorSecondaryBrush}"
+                                            Padding="8,4"
+                                            Margin="0,0,0,2"
+                                            CornerRadius="4">
+                                        <Grid ColumnDefinitions="Auto,*,Auto">
+                                            <!-- 折叠按钮（根据 IsGroupCollapsible 显示） -->
+                                            <ToggleButton x:Name="GroupExpandToggle"
+                                                          Grid.Column="0"
+                                                          Width="16"
+                                                          Height="16"
+                                                          Padding="0"
+                                                          Background="Transparent"
+                                                          BorderThickness="0"
+                                                          VerticalAlignment="Center"
+                                                          IsChecked="{Binding #Root.DefaultGroupExpanded}"
+                                                          IsVisible="{Binding #Root.IsGroupCollapsible}">
+                                                <PathIcon Width="8"
+                                                          Height="8"
+                                                          Data="M 0,0 L 4,4 L 0,8"
+                                                          Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                            </ToggleButton>
+                                            
+                                            <!-- 分组名称 -->
+                                            <TextBlock Text="{Binding Key, Mode=OneWay}"
+                                                       FontWeight="SemiBold"
+                                                       FontSize="11"
+                                                       VerticalAlignment="Center"
+                                                       Grid.Column="1"
+                                                       Margin="4,0,0,0"
+                                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                        </Grid>
+                                    </Border>
+                                    
+                                    <!-- 该组的项目列表 -->
+                                    <ItemsControl ItemsSource="{Binding}"
+                                                  Margin="4,0,0,0">
+                                        <!-- 根据 IsGroupCollapsible 和展开状态控制可见性 -->
+                                        <ItemsControl.IsVisible>
+                                            <MultiBinding Converter="{x:Static BoolConverters.Or}">
+                                                <Binding Path="!#Root.IsGroupCollapsible"/>
+                                                <Binding Path="#GroupExpandToggle.IsChecked"/>
+                                            </MultiBinding>
+                                        </ItemsControl.IsVisible>
+                                        
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Button Background="Transparent"
+                                                        BorderThickness="0"
+                                                        HorizontalAlignment="Stretch"
+                                                        HorizontalContentAlignment="Stretch"
+                                                        Padding="12,6"
+                                                        Margin="0,1"
+                                                        CornerRadius="4"
+                                                        Command="{Binding #Root.ItemClickCommand}"
+                                                        CommandParameter="{Binding}">
+                                                    <Button.Styles>
+                                                        <Style Selector="Button:pointerover">
+                                                            <Setter Property="Background" Value="{DynamicResource SubtleFillColorTertiaryBrush}"/>
+                                                        </Style>
+                                                        <Style Selector="Button:pressed">
+                                                            <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}"/>
+                                                        </Style>
+                                                    </Button.Styles>
+                                                    
+                                                    <!-- 使用 ItemTemplate 显示内容 -->
+                                                    <ContentPresenter Content="{Binding}"
+                                                                      ContentTemplate="{Binding #Root.ItemTemplate}"/>
+                                                </Button>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Border>
+        </Popup>
+    </Panel>
+
+    <!-- PointerOver 状态 -->
+    <UserControl.Styles>
+        <Style Selector="Border#PART_Border:pointerover">
+            <Setter Property="Background" Value="{DynamicResource ComboBoxBackgroundPointerOver}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource ComboBoxBorderBrushPointerOver}"/>
+        </Style>
+    </UserControl.Styles>
+</UserControl>

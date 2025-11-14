@@ -30,6 +30,7 @@ public static class ServiceLocator
         // 注意：LogService 在 Program.InitializeLogger() 中已提前注册
         Register(new PluginLoader());
         Register(new ToolRegistry());
+        Register(new ThemeService());
     }
     
     /// <summary>

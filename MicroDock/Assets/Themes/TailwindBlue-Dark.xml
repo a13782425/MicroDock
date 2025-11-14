@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Theme xmlns="http://schemas.microdock.app/themes/v1">
+  <Metadata>
+    <DisplayName>Blue (深色)</DisplayName>
+    <Category>Tailwind</Category>
+    <Description>基于 Tailwind CSS 蓝色调色板的深色主题，提供现代、专业的视觉体验</Description>
+    <Author>MicroDock</Author>
+    <Version>1.0.0</Version>
+  </Metadata>
+  <Appearance>
+    <Variant>Dark</Variant>
+    <AccentColor>#3B82F6</AccentColor>
+    <ColorResources>
+      <AccentColors>
+        <Color Key="SystemAccentColor" Value="#3B82F6"/>
+        <Color Key="SystemAccentColorLight1" Value="#60A5FA"/>
+        <Color Key="SystemAccentColorLight2" Value="#93C5FD"/>
+        <Color Key="SystemAccentColorLight3" Value="#DBEAFE"/>
+        <Color Key="SystemAccentColorDark1" Value="#2563EB"/>
+        <Color Key="SystemAccentColorDark2" Value="#1D4ED8"/>
+        <Color Key="SystemAccentColorDark3" Value="#1E40AF"/>
+      </AccentColors>
+      <BackgroundColors>
+        <Color Key="SystemFillColorAttentionBrush" Value="#3B82F6"/>
+        <Color Key="SystemFillColorSuccessBrush" Value="#10B981"/>
+        <Color Key="SystemFillColorCautionBrush" Value="#F59E0B"/>
+        <Color Key="SystemFillColorCriticalBrush" Value="#EF4444"/>
+      </BackgroundColors>
+      <StrokeColors>
+        <Color Key="ControlStrokeColorDefault" Value="#334155"/>
+        <Color Key="ControlStrokeColorSecondary" Value="#475569"/>
+        <Color Key="ControlStrokeColorTertiary" Value="#64748B"/>
+      </StrokeColors>
+      <TextColors>
+        <Color Key="TextFillColorPrimary" Value="#F1F5F9"/>
+        <Color Key="TextFillColorSecondary" Value="#CBD5E1"/>
+        <Color Key="TextFillColorTertiary" Value="#94A3B8"/>
+      </TextColors>
+    </ColorResources>
+  </Appearance>
+</Theme>
+

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Theme xmlns="http://schemas.microdock.app/themes/v1">
+  <Metadata>
+    <DisplayName>Slate (浅色)</DisplayName>
+    <Category>Tailwind</Category>
+    <Description>基于 Tailwind CSS 石板色调色板的浅色主题，简洁专业，适合商务场景</Description>
+    <Author>MicroDock</Author>
+    <Version>1.0.0</Version>
+  </Metadata>
+  <Appearance>
+    <Variant>Light</Variant>
+    <AccentColor>#475569</AccentColor>
+    <ColorResources>
+      <AccentColors>
+        <Color Key="SystemAccentColor" Value="#475569"/>
+        <Color Key="SystemAccentColorLight1" Value="#64748B"/>
+        <Color Key="SystemAccentColorLight2" Value="#94A3B8"/>
+        <Color Key="SystemAccentColorLight3" Value="#CBD5E1"/>
+        <Color Key="SystemAccentColorDark1" Value="#334155"/>
+        <Color Key="SystemAccentColorDark2" Value="#1E293B"/>
+        <Color Key="SystemAccentColorDark3" Value="#0F172A"/>
+      </AccentColors>
+      <BackgroundColors>
+        <Color Key="SystemFillColorAttentionBrush" Value="#475569"/>
+        <Color Key="SystemFillColorSuccessBrush" Value="#059669"/>
+        <Color Key="SystemFillColorCautionBrush" Value="#D97706"/>
+        <Color Key="SystemFillColorCriticalBrush" Value="#DC2626"/>
+      </BackgroundColors>
+      <StrokeColors>
+        <Color Key="ControlStrokeColorDefault" Value="#CBD5E1"/>
+        <Color Key="ControlStrokeColorSecondary" Value="#94A3B8"/>
+        <Color Key="ControlStrokeColorTertiary" Value="#64748B"/>
+      </StrokeColors>
+      <TextColors>
+        <Color Key="TextFillColorPrimary" Value="#0F172A"/>
+        <Color Key="TextFillColorSecondary" Value="#334155"/>
+        <Color Key="TextFillColorTertiary" Value="#475569"/>
+      </TextColors>
+    </ColorResources>
+  </Appearance>
+</Theme>
+
