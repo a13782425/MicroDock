@@ -1,13 +1,12 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Platform.Storage;
 using MicroDock.Plugin;
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using UnityProjectPlugin.Models;
 using UnityProjectPlugin.ViewModels;
 
@@ -24,14 +23,7 @@ namespace UnityProjectPlugin.Views
         // UI 控件引用
         private TextBox? _searchTextBox;
         private Button? _addProjectButton;
-        private ListBox? _projectsListBox;
-        private TextBlock? _projectNameText;
-        private TextBlock? _projectPathText;
-        private TextBlock? _projectVersionText;
-        private TextBlock? _lastOpenedText;
-        private Button? _openProjectButton;
-        private Button? _deleteProjectButton;
-        private TextBlock? _emptyStateText;
+        private DataGrid? _projectsDataGrid;
 
         public UnityProjectTabView(UnityProjectPlugin plugin)
         {
@@ -41,8 +33,6 @@ namespace UnityProjectPlugin.Views
             InitializeComponent();
             InitializeControls();
             AttachEventHandlers();
-
-            _viewModel.AddProjectRequested += OnAddProjectRequested;
         }
 
         public string TabName => "Unity项目";
@@ -58,19 +48,10 @@ namespace UnityProjectPlugin.Views
         {
             _searchTextBox = this.FindControl<TextBox>("SearchTextBox");
             _addProjectButton = this.FindControl<Button>("AddProjectButton");
-            _projectsListBox = this.FindControl<ListBox>("ProjectsListBox");
-            _projectNameText = this.FindControl<TextBlock>("ProjectNameText");
-            _projectPathText = this.FindControl<TextBlock>("ProjectPathText");
-            _projectVersionText = this.FindControl<TextBlock>("ProjectVersionText");
-            _lastOpenedText = this.FindControl<TextBlock>("LastOpenedText");
-            _openProjectButton = this.FindControl<Button>("OpenProjectButton");
-            _deleteProjectButton = this.FindControl<Button>("DeleteProjectButton");
-            _emptyStateText = this.FindControl<TextBlock>("EmptyStateText");
+            _projectsDataGrid = this.FindControl<DataGrid>("ProjectsDataGrid");
 
-            if (_projectsListBox != null)
-            {
-                _projectsListBox.ItemsSource = _viewModel.Projects;
-            }
+            // 设置 DataContext
+            DataContext = _viewModel;
         }
 
         private void AttachEventHandlers()
@@ -87,56 +68,6 @@ namespace UnityProjectPlugin.Views
             {
                 _addProjectButton.Click += OnAddProjectClick;
             }
-
-            if (_projectsListBox != null)
-            {
-                _projectsListBox.SelectionChanged += OnProjectSelectionChanged;
-                _projectsListBox.DoubleTapped += OnProjectDoubleClick;
-            }
-
-            if (_openProjectButton != null)
-            {
-                _openProjectButton.Click += OnOpenProjectClick;
-            }
-
-            if (_deleteProjectButton != null)
-            {
-                _deleteProjectButton.Click += OnDeleteProjectClick;
-            }
-        }
-
-        private void OnProjectSelectionChanged(object? sender, SelectionChangedEventArgs e)
-        {
-            var selected = _projectsListBox?.SelectedItem as UnityProject;
-            _viewModel.SelectedProject = selected;
-
-            UpdateDetailPanel(selected);
-        }
-
-        private void UpdateDetailPanel(UnityProject? project)
-        {
-            bool hasProject = project != null;
-
-            if (_projectNameText != null)
-                _projectNameText.Text = project?.Name ?? string.Empty;
-
-            if (_projectPathText != null)
-                _projectPathText.Text = project?.Path ?? string.Empty;
-
-            if (_projectVersionText != null)
-                _projectVersionText.Text = project?.UnityVersion ?? "未知";
-
-            if (_lastOpenedText != null)
-                _lastOpenedText.Text = project?.LastOpened.ToString("yyyy-MM-dd HH:mm:ss") ?? string.Empty;
-
-            if (_openProjectButton != null)
-                _openProjectButton.IsEnabled = hasProject;
-
-            if (_deleteProjectButton != null)
-                _deleteProjectButton.IsEnabled = hasProject;
-
-            if (_emptyStateText != null)
-                _emptyStateText.IsVisible = !hasProject;
         }
 
         private async void OnAddProjectClick(object? sender, RoutedEventArgs e)
@@ -144,71 +75,110 @@ namespace UnityProjectPlugin.Views
             await AddProjectAsync();
         }
 
-        private void OnAddProjectRequested(object? sender, EventArgs e)
-        {
-            _ = AddProjectAsync();
-        }
-
         private async System.Threading.Tasks.Task AddProjectAsync()
         {
             try
             {
-                var topLevel = TopLevel.GetTopLevel(this);
+                TopLevel? topLevel = TopLevel.GetTopLevel(this);
                 if (topLevel == null) return;
 
-                var folders = await topLevel.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
-                {
-                    Title = "选择 Unity 项目文件夹",
-                    AllowMultiple = false
-                });
+                System.Collections.Generic.IReadOnlyList<IStorageFolder> folders = 
+                    await topLevel.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+                    {
+                        Title = "选择 Unity 项目文件夹",
+                        AllowMultiple = false
+                    });
 
                 if (folders.Count > 0)
                 {
-                    var folderPath = folders[0].Path.LocalPath;
+                    string folderPath = folders[0].Path.LocalPath;
 
                     // 验证是否是 Unity 项目
-                    var assetsPath = Path.Combine(folderPath, "Assets");
-                    var projectSettingsPath = Path.Combine(folderPath, "ProjectSettings");
+                    string assetsPath = Path.Combine(folderPath, "Assets");
+                    string projectSettingsPath = Path.Combine(folderPath, "ProjectSettings");
 
                     if (!Directory.Exists(assetsPath) || !Directory.Exists(projectSettingsPath))
                     {
-                        _plugin.Context?.LogWarning($"所选文件夹不是有效的 Unity 项目: {folderPath}");
+                        // TODO: 显示错误消息对话框
                         return;
                     }
 
-                    _plugin.AddProject(folderPath);
-                    _viewModel.Refresh();
-
-                    _plugin.Context?.LogInfo($"已添加项目: {folderPath}");
+                    _viewModel.AddProject(folderPath);
                 }
             }
             catch (Exception ex)
             {
-                _plugin.Context?.LogError($"添加项目失败: {ex.Message}");
+                // TODO: 显示错误消息对话框
             }
         }
 
-        private void OnOpenProjectClick(object? sender, RoutedEventArgs e)
+        /// <summary>
+        /// 打开按钮点击事件（DataGrid 单元格中的按钮）
+        /// </summary>
+        public void OpenButton_Click(object? sender, RoutedEventArgs e)
         {
-            if (_viewModel.OpenProjectCommand.CanExecute(null))
+            if (sender is Button button && button.DataContext is UnityProject project)
             {
-                _viewModel.OpenProjectCommand.Execute(null);
+                try
+                {
+                    _viewModel.OpenProject(project);
+                }
+                catch (Exception ex)
+                {
+                    // TODO: 显示错误消息对话框
+                }
             }
         }
 
-        private void OnProjectDoubleClick(object? sender, RoutedEventArgs e)
+        /// <summary>
+        /// 编辑按钮点击事件（菜单项）
+        /// </summary>
+        public void EditButton_Click(object? sender, RoutedEventArgs e)
         {
-            if (_viewModel.SelectedProject != null)
+            if (sender is MenuItem menuItem && menuItem.DataContext is UnityProject project)
             {
-                _viewModel.OpenProjectCommand.Execute(null);
+                try
+                {
+                    // 创建编辑 Flyout 内容
+                    ProjectEditFlyout editFlyout = new ProjectEditFlyout(_plugin, project, () =>
+                    {
+                        // 保存后刷新列表
+                        _viewModel.LoadProjects();
+                    });
+
+                    // 创建并显示 Flyout
+                    Flyout flyout = new Flyout
+                    {
+                        Content = editFlyout,
+                        Placement = PlacementMode.Pointer
+                    };
+
+                    flyout.ShowAt(menuItem);
+                }
+                catch (Exception ex)
+                {
+                    // TODO: 显示错误消息对话框
+                }
             }
         }
 
-        private void OnDeleteProjectClick(object? sender, RoutedEventArgs e)
+        /// <summary>
+        /// 删除按钮点击事件（菜单项）
+        /// </summary>
+        public async void DeleteButton_Click(object? sender, RoutedEventArgs e)
         {
-            if (_viewModel.DeleteProjectCommand.CanExecute(null))
+            if (sender is MenuItem menuItem && menuItem.DataContext is UnityProject project)
             {
-                _viewModel.DeleteProjectCommand.Execute(null);
+                try
+                {
+                    // TODO: 显示确认对话框
+                    // 暂时直接删除
+                    _viewModel.DeleteProject(project);
+                }
+                catch (Exception ex)
+                {
+                    // TODO: 显示错误消息对话框
+                }
             }
         }
     }

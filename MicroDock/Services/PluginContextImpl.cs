@@ -16,6 +16,8 @@ internal class PluginContextImpl : IPluginContext
     private readonly string _pluginName;
     private readonly string[] _dependencies;
     private readonly string _pluginDirectory;
+    private readonly string _configDirectory;
+    private readonly string _dataDirectory;
 
     public PluginContextImpl(string pluginName, string[] dependencies, string pluginFolder)
     {
@@ -23,11 +25,21 @@ internal class PluginContextImpl : IPluginContext
         _dependencies = dependencies ?? Array.Empty<string>();
         // 使用传入的插件文件夹路径作为数据目录
         _pluginDirectory = pluginFolder;
-        
+
         // 确保插件目录存在
         if (!Directory.Exists(_pluginDirectory))
         {
             Directory.CreateDirectory(_pluginDirectory);
+        }
+        _configDirectory = Path.Combine(_pluginDirectory, "Config");
+        _dataDirectory = Path.Combine(_pluginDirectory, "Data");
+        if (!Directory.Exists(_configDirectory))
+        {
+            Directory.CreateDirectory(_configDirectory);
+        }
+        if (!Directory.Exists(_dataDirectory))
+        {
+            Directory.CreateDirectory(_dataDirectory);
         }
     }
 
@@ -309,9 +321,9 @@ internal class PluginContextImpl : IPluginContext
 
     #region 路径 API
 
-    public string ConfigPath => _pluginDirectory;
+    public string ConfigPath => _configDirectory;
 
-    public string DataPath => _pluginDirectory;
+    public string DataPath => _dataDirectory;
 
     #endregion
 
@@ -374,7 +386,7 @@ internal class PluginContextImpl : IPluginContext
     }
 
     #endregion
-    
+
     #region 托盘 API
 
     public void AddTrayMenuItem(string id, string text, Action onClick)
@@ -423,7 +435,7 @@ internal class PluginContextImpl : IPluginContext
     }
 
     #endregion
-    
+
     #region 通知 API
 
     public void ShowInAppNotification(string title, string message, Plugin.NotificationType type = Plugin.NotificationType.Information)
@@ -500,7 +512,7 @@ internal class PluginContextImpl : IPluginContext
     }
 
     #endregion
-    
+
     #region Loading API
 
     public void ShowLoading(string? message = null)

@@ -18,6 +18,11 @@ namespace UnityProjectPlugin.Models
         public string Path { get; set; } = string.Empty;
 
         /// <summary>
+        /// 分组名称（可选）
+        /// </summary>
+        public string? GroupName { get; set; }
+
+        /// <summary>
         /// 使用的 Unity 版本（可选）
         /// </summary>
         public string? UnityVersion { get; set; }

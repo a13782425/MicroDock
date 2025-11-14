@@ -1,3 +1,5 @@
+using Avalonia.Controls;
+using Avalonia.Media;
 using MicroDock.Plugin;
 using System;
 using System.Collections.Generic;
@@ -19,8 +21,10 @@ namespace UnityProjectPlugin
         private const string PROJECTS_KEY = "projects";
         private const string VERSIONS_KEY = "unity_versions";
 
+        private string _dataFolder = string.Empty;
         private List<UnityProject> _projects = new();
         private List<UnityVersion> _versions = new();
+        private List<ProjectGroup> _groups = new();
         private UnityProjectTabView? _projectTabView;
         private UnityVersionSettingsView? _versionSettingsView;
 
@@ -38,11 +42,35 @@ namespace UnityProjectPlugin
 
         public override object? GetSettingsControl()
         {
+            // 创建包含多个设置区域的容器
+            StackPanel container = new StackPanel
+            {
+                Spacing = 24,
+                Margin = new Avalonia.Thickness(0, 0, 0, 12)
+            };
+
+            // Unity 版本管理
             if (_versionSettingsView == null)
             {
                 _versionSettingsView = new UnityVersionSettingsView(this);
             }
-            return _versionSettingsView;
+            container.Children.Add(_versionSettingsView);
+
+            // 添加分隔线
+            Border separator = new Border
+            {
+                Height = 1,
+                Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.FromRgb(200, 200, 200)),
+                Opacity = 0.3,
+                Margin = new Avalonia.Thickness(0, 12, 0, 12)
+            };
+            container.Children.Add(separator);
+
+            // 分组管理
+            GroupManagementView groupManagementView = new GroupManagementView(this);
+            container.Children.Add(groupManagementView);
+
+            return container;
         }
 
         public override void OnInit()
@@ -51,93 +79,241 @@ namespace UnityProjectPlugin
 
             LogInfo("Unity 项目管理插件初始化中...");
 
-            // 加载数据
-            LoadProjects();
-            LoadVersions();
+            // 初始化数据文件夹路径
+            _dataFolder = Context?.DataPath ?? string.Empty;
+            if (string.IsNullOrEmpty(_dataFolder))
+            {
+                LogError("无法获取插件数据文件夹路径");
+                return;
+            }
 
-            LogInfo($"已加载 {_projects.Count} 个项目和 {_versions.Count} 个 Unity 版本");
+            // 确保数据文件夹存在
+            if (!Directory.Exists(_dataFolder))
+            {
+                Directory.CreateDirectory(_dataFolder);
+                LogInfo($"创建数据文件夹: {_dataFolder}");
+            }
+
+            // 数据迁移：从旧的数据库存储迁移到文件
+            MigrateDataFromDatabase();
+
+            // 加载数据
+            LoadProjectsFromFile();
+            LoadVersionsFromFile();
+            LoadGroupsFromFile();
+
+            LogInfo($"已加载 {_projects.Count} 个项目、{_versions.Count} 个 Unity 版本和 {_groups.Count} 个分组");
         }
 
         #region 数据管理
 
         /// <summary>
-        /// 加载项目列表
+        /// JSON 序列化选项
         /// </summary>
-        private void LoadProjects()
+        private readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions
+        {
+            WriteIndented = true,
+            PropertyNameCaseInsensitive = true,
+            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+        };
+
+        /// <summary>
+        /// 数据迁移：从数据库迁移到文件
+        /// </summary>
+        private void MigrateDataFromDatabase()
         {
             try
             {
-                var json = GetSettings(PROJECTS_KEY);
-                if (!string.IsNullOrEmpty(json))
+                // 检查是否已经迁移过（文件是否已存在）
+                string projectsFilePath = Path.Combine(_dataFolder, "projects.json");
+                string versionsFilePath = Path.Combine(_dataFolder, "versions.json");
+
+                bool needsMigration = false;
+
+                // 迁移项目数据
+                if (!File.Exists(projectsFilePath))
                 {
-                    _projects = JsonSerializer.Deserialize<List<UnityProject>>(json) ?? new List<UnityProject>();
+                    string? oldProjectsData = GetSettings(PROJECTS_KEY);
+                    if (!string.IsNullOrEmpty(oldProjectsData))
+                    {
+                        List<UnityProject>? projects = JsonSerializer.Deserialize<List<UnityProject>>(oldProjectsData);
+                        if (projects != null && projects.Count > 0)
+                        {
+                            _projects = projects;
+                            SaveProjectsToFile();
+                            needsMigration = true;
+                            LogInfo($"已迁移 {projects.Count} 个项目数据");
+                        }
+                    }
+                }
+
+                // 迁移版本数据
+                if (!File.Exists(versionsFilePath))
+                {
+                    string? oldVersionsData = GetSettings(VERSIONS_KEY);
+                    if (!string.IsNullOrEmpty(oldVersionsData))
+                    {
+                        List<UnityVersion>? versions = JsonSerializer.Deserialize<List<UnityVersion>>(oldVersionsData);
+                        if (versions != null && versions.Count > 0)
+                        {
+                            _versions = versions;
+                            SaveVersionsToFile();
+                            needsMigration = true;
+                            LogInfo($"已迁移 {versions.Count} 个 Unity 版本数据");
+                        }
+                    }
+                }
+
+                if (needsMigration)
+                {
+                    LogInfo("数据迁移完成");
                 }
             }
             catch (Exception ex)
             {
-                LogError("加载项目列表失败", ex);
+                LogError("数据迁移失败", ex);
+            }
+        }
+
+        /// <summary>
+        /// 从文件加载项目列表
+        /// </summary>
+        private void LoadProjectsFromFile()
+        {
+            try
+            {
+                string filePath = Path.Combine(_dataFolder, "projects.json");
+                if (File.Exists(filePath))
+                {
+                    string json = File.ReadAllText(filePath);
+                    _projects = JsonSerializer.Deserialize<List<UnityProject>>(json, _jsonOptions) ?? new List<UnityProject>();
+                    LogInfo($"从文件加载了 {_projects.Count} 个项目");
+                }
+                else
+                {
+                    _projects = new List<UnityProject>();
+                    LogInfo("项目文件不存在，使用空列表");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogError("从文件加载项目列表失败", ex);
                 _projects = new List<UnityProject>();
             }
         }
 
         /// <summary>
-        /// 保存项目列表
+        /// 保存项目列表到文件
         /// </summary>
-        private void SaveProjects()
+        private void SaveProjectsToFile()
         {
             try
             {
-                var json = JsonSerializer.Serialize(_projects);
-                SetSettings(PROJECTS_KEY, json, "Unity 项目列表");
-                LogInfo("项目列表已保存");
+                string filePath = Path.Combine(_dataFolder, "projects.json");
+                string json = JsonSerializer.Serialize(_projects, _jsonOptions);
+                File.WriteAllText(filePath, json);
+                LogInfo("项目列表已保存到文件");
             }
             catch (Exception ex)
             {
-                LogError("保存项目列表失败", ex);
+                LogError("保存项目列表到文件失败", ex);
             }
         }
 
         /// <summary>
-        /// 加载 Unity 版本列表
+        /// 从文件加载 Unity 版本列表
         /// </summary>
-        private void LoadVersions()
+        private void LoadVersionsFromFile()
         {
             try
             {
-                var json = GetSettings(VERSIONS_KEY);
-                if (!string.IsNullOrEmpty(json))
+                string filePath = Path.Combine(_dataFolder, "versions.json");
+                if (File.Exists(filePath))
                 {
-                    _versions = JsonSerializer.Deserialize<List<UnityVersion>>(json) ?? new List<UnityVersion>();
+                    string json = File.ReadAllText(filePath);
+                    _versions = JsonSerializer.Deserialize<List<UnityVersion>>(json, _jsonOptions) ?? new List<UnityVersion>();
+                    LogInfo($"从文件加载了 {_versions.Count} 个 Unity 版本");
+                }
+                else
+                {
+                    _versions = new List<UnityVersion>();
+                    LogInfo("版本文件不存在，使用空列表");
                 }
             }
             catch (Exception ex)
             {
-                LogError("加载 Unity 版本列表失败", ex);
+                LogError("从文件加载 Unity 版本列表失败", ex);
                 _versions = new List<UnityVersion>();
             }
         }
 
         /// <summary>
-        /// 保存 Unity 版本列表
+        /// 保存 Unity 版本列表到文件
         /// </summary>
-        private void SaveVersions()
+        private void SaveVersionsToFile()
         {
             try
             {
-                var json = JsonSerializer.Serialize(_versions);
-                SetSettings(VERSIONS_KEY, json, "Unity 版本列表");
-                LogInfo("Unity 版本列表已保存");
+                string filePath = Path.Combine(_dataFolder, "versions.json");
+                string json = JsonSerializer.Serialize(_versions, _jsonOptions);
+                File.WriteAllText(filePath, json);
+                LogInfo("Unity 版本列表已保存到文件");
             }
             catch (Exception ex)
             {
-                LogError("保存 Unity 版本列表失败", ex);
+                LogError("保存 Unity 版本列表到文件失败", ex);
+            }
+        }
+
+        /// <summary>
+        /// 从文件加载分组列表
+        /// </summary>
+        private void LoadGroupsFromFile()
+        {
+            try
+            {
+                string filePath = Path.Combine(_dataFolder, "groups.json");
+                if (File.Exists(filePath))
+                {
+                    string json = File.ReadAllText(filePath);
+                    _groups = JsonSerializer.Deserialize<List<ProjectGroup>>(json, _jsonOptions) ?? new List<ProjectGroup>();
+                    LogInfo($"从文件加载了 {_groups.Count} 个分组");
+                }
+                else
+                {
+                    _groups = new List<ProjectGroup>();
+                    LogInfo("分组文件不存在，使用空列表");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogError("从文件加载分组列表失败", ex);
+                _groups = new List<ProjectGroup>();
+            }
+        }
+
+        /// <summary>
+        /// 保存分组列表到文件
+        /// </summary>
+        private void SaveGroupsToFile()
+        {
+            try
+            {
+                string filePath = Path.Combine(_dataFolder, "groups.json");
+                string json = JsonSerializer.Serialize(_groups, _jsonOptions);
+                File.WriteAllText(filePath, json);
+                LogInfo("分组列表已保存到文件");
+            }
+            catch (Exception ex)
+            {
+                LogError("保存分组列表到文件失败", ex);
             }
         }
 
         /// <summary>
         /// 添加项目
         /// </summary>
-        public void AddProject(string path, string? name = null)
+        public void AddProject(string path, string? name = null, string? groupName = null)
         {
             if (string.IsNullOrWhiteSpace(path))
             {
@@ -150,7 +326,7 @@ namespace UnityProjectPlugin
             }
 
             // 规范化路径并去除末尾的反斜杠
-            var fullPath = Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            string fullPath = Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
             
             // 检查是否已存在
             if (_projects.Any(p => p.Id == fullPath.ToLowerInvariant()))
@@ -158,21 +334,22 @@ namespace UnityProjectPlugin
                 throw new InvalidOperationException("该项目已存在");
             }
 
-            var project = new UnityProject
+            UnityProject project = new UnityProject
             {
                 Name = name ?? Path.GetFileName(fullPath),
                 Path = fullPath,
+                GroupName = groupName,
                 LastOpened = DateTime.Now
             };
 
             // 尝试读取项目的 Unity 版本
             try
             {
-                var versionFile = Path.Combine(fullPath, "ProjectSettings", "ProjectVersion.txt");
+                string versionFile = Path.Combine(fullPath, "ProjectSettings", "ProjectVersion.txt");
                 if (File.Exists(versionFile))
                 {
-                    var lines = File.ReadAllLines(versionFile);
-                    var versionLine = lines.FirstOrDefault(l => l.StartsWith("m_EditorVersion:"));
+                    string[] lines = File.ReadAllLines(versionFile);
+                    string? versionLine = lines.FirstOrDefault(l => l.StartsWith("m_EditorVersion:"));
                     if (versionLine != null)
                     {
                         project.UnityVersion = versionLine.Split(':')[1].Trim();
@@ -185,7 +362,7 @@ namespace UnityProjectPlugin
             }
 
             _projects.Add(project);
-            SaveProjects();
+            SaveProjectsToFile();
 
             LogInfo($"已添加项目: {project.Name} ({project.Path})");
         }
@@ -195,14 +372,29 @@ namespace UnityProjectPlugin
         /// </summary>
         public void RemoveProject(string path)
         {
-            var fullPath = Path.GetFullPath(path).ToLowerInvariant();
-            var project = _projects.FirstOrDefault(p => p.Id == fullPath);
+            string fullPath = Path.GetFullPath(path).ToLowerInvariant();
+            UnityProject? project = _projects.FirstOrDefault(p => p.Id == fullPath);
 
             if (project != null)
             {
                 _projects.Remove(project);
-                SaveProjects();
+                SaveProjectsToFile();
                 LogInfo($"已删除项目: {project.Name}");
+            }
+        }
+
+        /// <summary>
+        /// 更新项目信息
+        /// </summary>
+        public void UpdateProject(string projectPath, string newName, string? groupName)
+        {
+            UnityProject? project = _projects.FirstOrDefault(p => p.Path == projectPath);
+            if (project != null)
+            {
+                project.Name = newName;
+                project.GroupName = groupName;
+                SaveProjectsToFile();
+                LogInfo($"已更新项目: {project.Name}");
             }
         }
 
@@ -232,14 +424,14 @@ namespace UnityProjectPlugin
                 throw new InvalidOperationException($"版本 {version} 已存在");
             }
 
-            var unityVersion = new UnityVersion
+            UnityVersion unityVersion = new UnityVersion
             {
                 Version = version,
                 EditorPath = editorPath
             };
 
             _versions.Add(unityVersion);
-            SaveVersions();
+            SaveVersionsToFile();
 
             LogInfo($"已添加 Unity 版本: {version} ({editorPath})");
         }
@@ -249,14 +441,115 @@ namespace UnityProjectPlugin
         /// </summary>
         public void RemoveVersion(string version)
         {
-            var unityVersion = _versions.FirstOrDefault(v => v.Version == version);
+            UnityVersion? unityVersion = _versions.FirstOrDefault(v => v.Version == version);
 
             if (unityVersion != null)
             {
                 _versions.Remove(unityVersion);
-                SaveVersions();
+                SaveVersionsToFile();
                 LogInfo($"已删除 Unity 版本: {version}");
             }
+        }
+
+        /// <summary>
+        /// 添加分组
+        /// </summary>
+        public void AddGroup(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                throw new ArgumentException("分组名称不能为空", nameof(name));
+            }
+
+            // 检查是否已存在同名分组
+            if (_groups.Any(g => g.Name == name))
+            {
+                throw new InvalidOperationException($"分组 '{name}' 已存在");
+            }
+
+            ProjectGroup group = new ProjectGroup
+            {
+                Name = name
+            };
+
+            _groups.Add(group);
+            SaveGroupsToFile();
+
+            LogInfo($"已添加分组: {name}");
+        }
+
+        /// <summary>
+        /// 更新分组
+        /// </summary>
+        public void UpdateGroup(string id, string newName)
+        {
+            if (string.IsNullOrWhiteSpace(newName))
+            {
+                throw new ArgumentException("分组名称不能为空", nameof(newName));
+            }
+
+            ProjectGroup? group = _groups.FirstOrDefault(g => g.Id == id);
+            if (group == null)
+            {
+                throw new InvalidOperationException($"分组不存在");
+            }
+
+            // 检查新名称是否与其他分组重复
+            if (_groups.Any(g => g.Id != id && g.Name == newName))
+            {
+                throw new InvalidOperationException($"分组 '{newName}' 已存在");
+            }
+
+            string oldName = group.Name;
+            group.Name = newName;
+
+            // 更新使用该分组的所有项目
+            foreach (UnityProject project in _projects.Where(p => p.GroupName == oldName))
+            {
+                project.GroupName = newName;
+            }
+
+            SaveGroupsToFile();
+            SaveProjectsToFile();
+
+            LogInfo($"已更新分组: {oldName} -> {newName}");
+        }
+
+        /// <summary>
+        /// 删除分组
+        /// </summary>
+        public void DeleteGroup(string id)
+        {
+            ProjectGroup? group = _groups.FirstOrDefault(g => g.Id == id);
+            if (group == null)
+            {
+                throw new InvalidOperationException($"分组不存在");
+            }
+
+            // 检查是否有项目使用该分组
+            int usageCount = GetGroupUsageCount(group.Name);
+            if (usageCount > 0)
+            {
+                throw new InvalidOperationException($"无法删除分组 '{group.Name}'，还有 {usageCount} 个项目使用该分组");
+            }
+
+            _groups.Remove(group);
+            SaveGroupsToFile();
+
+            LogInfo($"已删除分组: {group.Name}");
+        }
+
+        /// <summary>
+        /// 获取所有分组
+        /// </summary>
+        public List<ProjectGroup> GetGroups() => new List<ProjectGroup>(_groups);
+
+        /// <summary>
+        /// 获取分组使用数量
+        /// </summary>
+        public int GetGroupUsageCount(string groupName)
+        {
+            return _projects.Count(p => p.GroupName == groupName);
         }
 
         /// <summary>
@@ -400,11 +693,11 @@ namespace UnityProjectPlugin
                 Process.Start(startInfo);
 
                 // 更新最后打开时间
-                var project = _projects.FirstOrDefault(p => p.Id == Path.GetFullPath(projectPath).ToLowerInvariant());
+                UnityProject? project = _projects.FirstOrDefault(p => p.Id == Path.GetFullPath(projectPath).ToLowerInvariant());
                 if (project != null)
                 {
                     project.LastOpened = DateTime.Now;
-                    SaveProjects();
+                    SaveProjectsToFile();
                 }
 
                 LogInfo($"已打开 Unity 项目: {projectPath}");

@@ -1,50 +1,61 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Linq;
-using System.Windows.Input;
+using System.Runtime.CompilerServices;
 using UnityProjectPlugin.Models;
 
 namespace UnityProjectPlugin.ViewModels
 {
     /// <summary>
-    /// Unity 项目列表标签页 ViewModel
+    /// Unity 项目标签页 ViewModel
     /// </summary>
-    public class UnityProjectTabViewModel
+    public class UnityProjectTabViewModel : INotifyPropertyChanged
     {
         private readonly UnityProjectPlugin _plugin;
+        private ObservableCollection<UnityProject> _projects = new();
+        private ObservableCollection<UnityProject> _filteredProjects = new();
         private string _searchText = string.Empty;
-        private UnityProject? _selectedProject;
+
+        public event PropertyChangedEventHandler? PropertyChanged;
 
         public UnityProjectTabViewModel(UnityProjectPlugin plugin)
         {
             _plugin = plugin;
-            Projects = new ObservableCollection<UnityProject>();
-            
-            // 初始化命令
-            AddProjectCommand = new RelayCommand(AddProject);
-            OpenProjectCommand = new RelayCommand(OpenProject, CanOpenProject);
-            DeleteProjectCommand = new RelayCommand(DeleteProject, CanDeleteProject);
-            RefreshCommand = new RelayCommand(Refresh);
-
-            // 加载项目
-            Refresh();
+            LoadProjects();
         }
 
         /// <summary>
-        /// 项目列表
+        /// 所有项目列表
         /// </summary>
-        public ObservableCollection<UnityProject> Projects { get; }
-
-        /// <summary>
-        /// 选中的项目
-        /// </summary>
-        public UnityProject? SelectedProject
+        public ObservableCollection<UnityProject> Projects
         {
-            get => _selectedProject;
+            get => _projects;
             set
             {
-                _selectedProject = value;
-                OnPropertyChanged(nameof(SelectedProject));
+                if (_projects != value)
+                {
+                    _projects = value;
+                    OnPropertyChanged();
+                    FilterProjects();
+                }
+            }
+        }
+
+        /// <summary>
+        /// 过滤后的项目列表
+        /// </summary>
+        public ObservableCollection<UnityProject> FilteredProjects
+        {
+            get => _filteredProjects;
+            set
+            {
+                if (_filteredProjects != value)
+                {
+                    _filteredProjects = value;
+                    OnPropertyChanged();
+                }
             }
         }
 
@@ -56,160 +67,114 @@ namespace UnityProjectPlugin.ViewModels
             get => _searchText;
             set
             {
-                _searchText = value;
-                OnPropertyChanged(nameof(SearchText));
-                FilterProjects();
+                if (_searchText != value)
+                {
+                    _searchText = value;
+                    OnPropertyChanged();
+                    FilterProjects();
+                }
             }
         }
 
         /// <summary>
-        /// 添加项目命令
+        /// 加载项目列表
         /// </summary>
-        public ICommand AddProjectCommand { get; }
-
-        /// <summary>
-        /// 打开项目命令
-        /// </summary>
-        public ICommand OpenProjectCommand { get; }
-
-        /// <summary>
-        /// 删除项目命令
-        /// </summary>
-        public ICommand DeleteProjectCommand { get; }
-
-        /// <summary>
-        /// 刷新命令
-        /// </summary>
-        public ICommand RefreshCommand { get; }
-
-        /// <summary>
-        /// 刷新项目列表
-        /// </summary>
-        public void Refresh()
+        public void LoadProjects()
         {
-            Projects.Clear();
-            var projects = _plugin.GetProjects();
-            
-            foreach (var project in projects.OrderByDescending(p => p.LastOpened))
+            List<UnityProject> projects = _plugin.GetProjects();
+            _projects.Clear();
+            foreach (UnityProject project in projects)
             {
-                Projects.Add(project);
+                _projects.Add(project);
             }
+            FilterProjects();
         }
 
         /// <summary>
-        /// 过滤项目
+        /// 过滤项目列表
         /// </summary>
         private void FilterProjects()
         {
-            var allProjects = _plugin.GetProjects();
-            Projects.Clear();
+            _filteredProjects.Clear();
 
-            var filtered = string.IsNullOrWhiteSpace(SearchText)
-                ? allProjects
-                : allProjects.Where(p => 
-                    p.Name.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
-                    p.Path.Contains(SearchText, StringComparison.OrdinalIgnoreCase));
-
-            foreach (var project in filtered.OrderByDescending(p => p.LastOpened))
+            if (string.IsNullOrWhiteSpace(_searchText))
             {
-                Projects.Add(project);
+                // 没有搜索文本，显示所有项目
+                foreach (UnityProject project in _projects)
+                {
+                    _filteredProjects.Add(project);
+                }
+            }
+            else
+            {
+                // 按项目名或分组名搜索（大小写不敏感）
+                string searchLower = _searchText.ToLowerInvariant();
+                foreach (UnityProject project in _projects)
+                {
+                    bool matchesName = project.Name.ToLowerInvariant().Contains(searchLower);
+                    bool matchesGroup = !string.IsNullOrEmpty(project.GroupName) && 
+                                       project.GroupName.ToLowerInvariant().Contains(searchLower);
+                    
+                    if (matchesName || matchesGroup)
+                    {
+                        _filteredProjects.Add(project);
+                    }
+                }
             }
         }
 
         /// <summary>
         /// 添加项目
         /// </summary>
-        private void AddProject()
+        public void AddProject(string path, string? name = null)
         {
-            // 这个方法需要在 View 层处理文件夹选择对话框
-            // 通过事件或委托通知 View 层
-            AddProjectRequested?.Invoke(this, EventArgs.Empty);
-        }
-
-        /// <summary>
-        /// 打开项目
-        /// </summary>
-        private async void OpenProject()
-        {
-            if (SelectedProject == null) return;
-
             try
             {
-                var result = await _plugin.OpenUnityProject(SelectedProject.Path);
-                System.Diagnostics.Debug.WriteLine($"打开项目结果: {result}");
-                Refresh(); // 刷新以更新最后打开时间
+                _plugin.AddProject(path, name);
+                LoadProjects();
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"打开项目失败: {SelectedProject.Name} - {ex.Message}");
+                throw new Exception($"添加项目失败: {ex.Message}", ex);
             }
         }
 
         /// <summary>
         /// 删除项目
         /// </summary>
-        private void DeleteProject()
+        public void DeleteProject(UnityProject project)
         {
-            if (SelectedProject == null) return;
-
             try
             {
-                _plugin.RemoveProject(SelectedProject.Path);
-                Refresh();
+                _plugin.RemoveProject(project.Path);
+                LoadProjects();
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"删除项目失败: {SelectedProject.Name} - {ex.Message}");
+                throw new Exception($"删除项目失败: {ex.Message}", ex);
             }
         }
 
         /// <summary>
-        /// 是否可以打开项目
+        /// 打开项目
         /// </summary>
-        private bool CanOpenProject() => SelectedProject != null;
-
-        /// <summary>
-        /// 是否可以删除项目
-        /// </summary>
-        private bool CanDeleteProject() => SelectedProject != null;
-
-        /// <summary>
-        /// 添加项目请求事件
-        /// </summary>
-        public event EventHandler? AddProjectRequested;
-
-        /// <summary>
-        /// 属性变更事件
-        /// </summary>
-        public event EventHandler<string>? PropertyChanged;
-
-        protected virtual void OnPropertyChanged(string propertyName)
+        public async void OpenProject(UnityProject project)
         {
-            PropertyChanged?.Invoke(this, propertyName);
-        }
-
-        /// <summary>
-        /// 简单的命令实现
-        /// </summary>
-        private class RelayCommand : ICommand
-        {
-            private readonly Action _execute;
-            private readonly Func<bool>? _canExecute;
-
-            public RelayCommand(Action execute, Func<bool>? canExecute = null)
+            try
             {
-                _execute = execute ?? throw new ArgumentNullException(nameof(execute));
-                _canExecute = canExecute;
+                string result = await _plugin.OpenUnityProject(project.Path);
+                // 刷新列表以更新最后打开时间
+                LoadProjects();
             }
+            catch (Exception ex)
+            {
+                throw new Exception($"打开项目失败: {ex.Message}", ex);
+            }
+        }
 
-            public event EventHandler? CanExecuteChanged;
-
-            public bool CanExecute(object? parameter) => _canExecute?.Invoke() ?? true;
-
-            public void Execute(object? parameter) => _execute();
-
-            public void RaiseCanExecuteChanged() => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
+        protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
     }
 }
-
