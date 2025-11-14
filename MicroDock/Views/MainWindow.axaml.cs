@@ -23,19 +23,18 @@ namespace MicroDock.Views
 {
     public partial class MainWindow : Window
     {
-        private TrayIcon? _trayIcon;
-
         public MainWindow()
         {
             InitializeComponent();
-
-            InitializeTrayIcon();
 
             // 订阅事件消息
             SubscribeToMessages();
 
             // 在窗口打开后初始化设置
             this.Opened += OnWindowOpened;
+            
+            // 监听窗口大小变化
+            this.SizeChanged += OnWindowSizeChanged;
         }
 
         /// <summary>
@@ -45,6 +44,10 @@ namespace MicroDock.Views
         {
             // 初始化应用内通知管理器
             InitializeWindowNotificationManager();
+            
+            // 注册通知事件
+            Program.NotificationManager.NotificationActivated += OnNotificationActivated;
+            Program.NotificationManager.NotificationDismissed += OnNotificationDismissed;
             
             // 从数据库加载设置并应用服务状态
             InitializeServicesFromSettings();
@@ -65,6 +68,21 @@ namespace MicroDock.Views
             };
             
             Log.Debug("WindowNotificationManager 已初始化");
+        }
+
+        /// <summary>
+        /// 窗口大小变化事件处理
+        /// </summary>
+        private void OnWindowSizeChanged(object? sender, SizeChangedEventArgs e)
+        {
+            // 获取NavigationView控件
+            var navView = this.FindControl<NavigationView>("MainNav");
+            if (navView == null)
+                return;
+
+            // 计算NavigationView宽度：窗口宽度的20%，但限制在128-256之间
+            double targetWidth = Math.Clamp(e.NewSize.Width * 0.2, 128, 256);
+            navView.OpenPaneLength = targetWidth;
         }
 
         /// <summary>
@@ -100,6 +118,10 @@ namespace MicroDock.Views
 
             // 监听 NavigationItems 集合的变化
             viewModel.NavigationItems.CollectionChanged += OnNavigationItemsCollectionChanged;
+            
+            // 初始化NavigationView宽度
+            double targetWidth = Math.Clamp(this.Width * 0.2, 128, 256);
+            navView.OpenPaneLength = targetWidth;
         }
 
         /// <summary>
@@ -128,6 +150,10 @@ namespace MicroDock.Views
                     // 图标设置失败，忽略
                 }
             }
+
+            // 设置ToolTip显示完整标题
+            ToolTip.SetTip(menuItem, navItem.Title);
+            ToolTip.SetShowDelay(menuItem, 500); // 悬停500ms后显示
 
             if (navItem.NavType == NavigationType.Settings)
             {
@@ -220,7 +246,6 @@ namespace MicroDock.Views
         {
             EventAggregator.Instance.Subscribe<WindowShowRequestMessage>(OnWindowShowRequest);
             EventAggregator.Instance.Subscribe<WindowHideRequestMessage>(OnWindowHideRequest);
-            EventAggregator.Instance.Subscribe<MiniModeChangeRequestMessage>(OnMiniModeChangeRequest);
             EventAggregator.Instance.Subscribe<AutoHideChangeRequestMessage>(OnAutoHideChangeRequest);
             EventAggregator.Instance.Subscribe<AutoStartupChangeRequestMessage>(OnAutoStartupChangeRequest);
             EventAggregator.Instance.Subscribe<WindowTopmostChangeRequestMessage>(OnTopmostChangeRequest);
@@ -246,22 +271,6 @@ namespace MicroDock.Views
             if (message.WindowName == "MainWindow")
             {
                 this.Hide();
-            }
-        }
-
-        /// <summary>
-        /// 处理迷你模式变更请求
-        /// </summary>
-        private void OnMiniModeChangeRequest(MiniModeChangeRequestMessage message)
-        {
-            var miniModeService = ServiceLocator.Get<MiniModeService>();
-            if (message.Enable)
-            {
-                miniModeService.Enable();
-            }
-            else
-            {
-                miniModeService.Disable();
             }
         }
 
@@ -343,89 +352,8 @@ namespace MicroDock.Views
             {
                 ServiceLocator.Get<TopMostService>().Enable();
             }
-
-            if (settings.IsMiniModeEnabled)
-            {
-                ServiceLocator.Get<MiniModeService>().Enable();
-            }
         }
 
-        /// <summary>
-        /// 初始化系统托盘图标
-        /// </summary>
-        private void InitializeTrayIcon()
-        {
-            Program.NotificationManager.NotificationActivated += OnNotificationActivated;
-            Program.NotificationManager.NotificationDismissed += OnNotificationDismissed;
-            _trayIcon = new TrayIcon();
-
-            // 设置托盘图标（使用应用程序图标）
-            _trayIcon.Icon = new WindowIcon(AssetLoader.Open(new System.Uri("avares://MicroDock/Assets/logo.ico")));
-
-            // 设置工具提示
-            _trayIcon.ToolTipText = "MicroDock - 双击显示/隐藏";
-
-            // 双击托盘图标显示/隐藏窗口
-            _trayIcon.Clicked += (sender, args) =>
-            {
-                if (this.IsVisible)
-                {
-                    this.Hide();
-                }
-                else
-                {
-                    this.Show();
-                    this.Activate();
-                }
-            };
-
-            // 创建右键菜单
-            NativeMenu trayMenu = new NativeMenu();
-
-            NativeMenuItem showMenuItem = new NativeMenuItem("显示");
-            showMenuItem.Click += (sender, args) =>
-            {
-                //this.Show();
-                //this.Activate();
-                var nf = new DesktopNotifications.Notification
-                {
-                    Title = "通知标题",
-                    Body = "这是一条系统托盘通知消息！",
-                    // Icon = ... // 可选：设置通知图标
-                    Buttons =
-                    {
-                        ("This is awesome!", "awesome")
-                    }
-                };
-                Program.NotificationManager.ShowNotification(nf, DateTimeOffset.Now + TimeSpan.FromSeconds(5));
-            };
-
-            NativeMenuItem hideMenuItem = new NativeMenuItem("隐藏");
-            hideMenuItem.Click += (sender, args) =>
-            {
-                this.Hide();
-            };
-
-            NativeMenuItem exitMenuItem = new NativeMenuItem("退出");
-            exitMenuItem.Click += (sender, args) =>
-            {
-                this.Close();
-                if (Avalonia.Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
-                {
-                    desktop.Shutdown();
-                }
-            };
-
-            trayMenu.Items.Add(showMenuItem);
-            trayMenu.Items.Add(hideMenuItem);
-            trayMenu.Items.Add(new NativeMenuItemSeparator());
-            trayMenu.Items.Add(exitMenuItem);
-
-            _trayIcon.Menu = trayMenu;
-
-            // 显示托盘图标
-            _trayIcon.IsVisible = true;
-        }
         private void OnNotificationDismissed(object? sender, NotificationDismissedEventArgs e)
         {
             Log.Debug("通知已关闭: {Reason}", e.Reason);
@@ -473,7 +401,6 @@ namespace MicroDock.Views
                 Log.Information("MainWindow 正在释放服务资源...");
                 ServiceLocator.GetService<AutoHideService>()?.Dispose();
                 ServiceLocator.GetService<TopMostService>()?.Dispose();
-                ServiceLocator.GetService<MiniModeService>()?.Dispose();
                 // AutoStartupService不需要Dispose，因为它只操作注册表
 
                 // 释放ViewModel（包括插件加载器）

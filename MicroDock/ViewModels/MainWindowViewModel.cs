@@ -18,6 +18,8 @@ namespace MicroDock.ViewModels
         private NavigationItemModel? _selectedNavItem;
         private object? _currentView;
         private bool _disposed = false;
+        private bool _isLoading = false;
+        private string? _loadingMessage = null;
 
         public MainWindowViewModel()
         {
@@ -28,6 +30,8 @@ namespace MicroDock.ViewModels
             EventAggregator.Instance.Subscribe<NavigateToTabMessage>(OnNavigateToTab);
             EventAggregator.Instance.Subscribe<AddCustomTabRequestMessage>(OnAddCustomTabRequest);
             EventAggregator.Instance.Subscribe<LogViewerVisibilityChangedMessage>(OnLogViewerVisibilityChanged);
+            EventAggregator.Instance.Subscribe<ShowLoadingMessage>(OnShowLoading);
+            EventAggregator.Instance.Subscribe<HideLoadingMessage>(OnHideLoading);
 
             // 初始化NavigationView相关
             InitializeNavigationItems();
@@ -155,6 +159,32 @@ namespace MicroDock.ViewModels
             }
         }
 
+        /// <summary>
+        /// 处理显示Loading消息
+        /// </summary>
+        private void OnShowLoading(ShowLoadingMessage message)
+        {
+            // 需要在UI线程上更新
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                LoadingMessage = message.Message;
+                IsLoading = true;
+            });
+        }
+
+        /// <summary>
+        /// 处理隐藏Loading消息
+        /// </summary>
+        private void OnHideLoading(HideLoadingMessage message)
+        {
+            // 需要在UI线程上更新
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                IsLoading = false;
+                LoadingMessage = null;
+            });
+        }
+
         #region NavigationView相关属性
 
         /// <summary>
@@ -187,6 +217,24 @@ namespace MicroDock.ViewModels
         {
             get => _currentView;
             set => this.RaiseAndSetIfChanged(ref _currentView, value);
+        }
+
+        /// <summary>
+        /// 是否正在加载
+        /// </summary>
+        public bool IsLoading
+        {
+            get => _isLoading;
+            set => this.RaiseAndSetIfChanged(ref _isLoading, value);
+        }
+
+        /// <summary>
+        /// 加载消息
+        /// </summary>
+        public string? LoadingMessage
+        {
+            get => _loadingMessage;
+            set => this.RaiseAndSetIfChanged(ref _loadingMessage, value);
         }
 
         /// <summary>

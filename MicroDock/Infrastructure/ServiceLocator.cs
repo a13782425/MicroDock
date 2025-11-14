@@ -19,7 +19,7 @@ public static class ServiceLocator
     {
         // 1. 注册不依赖窗口的服务
         Register(new AutoStartupService());
-        Register(new MiniModeService());
+        Register(new TrayService());
         
         // 2. 注册需要窗口但延迟初始化的服务
         Register(new AutoHideService());

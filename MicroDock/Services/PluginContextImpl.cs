@@ -374,5 +374,161 @@ internal class PluginContextImpl : IPluginContext
     }
 
     #endregion
+    
+    #region 托盘 API
+
+    public void AddTrayMenuItem(string id, string text, Action onClick)
+    {
+        try
+        {
+            // 添加插件名前缀以避免冲突
+            string fullId = $"{_pluginName}_{id}";
+            Infrastructure.ServiceLocator.Get<TrayService>().AddMenuItem(fullId, text, onClick);
+            LogDebug($"添加托盘菜单项: {text}");
+        }
+        catch (Exception ex)
+        {
+            LogError($"添加托盘菜单项失败: {text}", ex);
+        }
+    }
+
+    public void RemoveTrayMenuItem(string id)
+    {
+        try
+        {
+            // 添加插件名前缀以避免冲突
+            string fullId = $"{_pluginName}_{id}";
+            Infrastructure.ServiceLocator.Get<TrayService>().RemoveMenuItem(fullId);
+            LogDebug($"移除托盘菜单项: {id}");
+        }
+        catch (Exception ex)
+        {
+            LogError($"移除托盘菜单项失败: {id}", ex);
+        }
+    }
+
+    public void AddTrayMenuSeparator(string id)
+    {
+        try
+        {
+            // 添加插件名前缀以避免冲突
+            string fullId = $"{_pluginName}_{id}";
+            Infrastructure.ServiceLocator.Get<TrayService>().AddSeparator(fullId);
+            LogDebug($"添加托盘菜单分隔符: {id}");
+        }
+        catch (Exception ex)
+        {
+            LogError($"添加托盘菜单分隔符失败: {id}", ex);
+        }
+    }
+
+    #endregion
+    
+    #region 通知 API
+
+    public void ShowInAppNotification(string title, string message, Plugin.NotificationType type = Plugin.NotificationType.Information)
+    {
+        try
+        {
+            if (Program.WindowNotificationManager != null)
+            {
+                // 将插件的NotificationType转换为Avalonia的NotificationType
+                Avalonia.Controls.Notifications.NotificationType avaloniaType = type switch
+                {
+                    Plugin.NotificationType.Information => Avalonia.Controls.Notifications.NotificationType.Information,
+                    Plugin.NotificationType.Success => Avalonia.Controls.Notifications.NotificationType.Success,
+                    Plugin.NotificationType.Warning => Avalonia.Controls.Notifications.NotificationType.Warning,
+                    Plugin.NotificationType.Error => Avalonia.Controls.Notifications.NotificationType.Error,
+                    _ => Avalonia.Controls.Notifications.NotificationType.Information
+                };
+
+                // 需要在UI线程上显示通知
+                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                {
+                    Program.WindowNotificationManager.Show(new Avalonia.Controls.Notifications.Notification(
+                        title,
+                        message,
+                        avaloniaType,
+                        TimeSpan.FromSeconds(3)
+                    ));
+                });
+
+                LogDebug($"显示应用内通知: {title}");
+            }
+            else
+            {
+                LogWarning("WindowNotificationManager 未初始化，无法显示应用内通知");
+            }
+        }
+        catch (Exception ex)
+        {
+            LogError($"显示应用内通知失败: {title}", ex);
+        }
+    }
+
+    public void ShowSystemNotification(string title, string message, Dictionary<string, string>? buttons = null)
+    {
+        try
+        {
+            var notification = new DesktopNotifications.Notification
+            {
+                Title = title,
+                Body = message
+            };
+
+            // 添加按钮
+            if (buttons != null && buttons.Count > 0)
+            {
+                foreach (var button in buttons)
+                {
+                    notification.Buttons.Add((button.Key, button.Value));
+                }
+            }
+
+            // 需要在UI线程上显示通知
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                Program.NotificationManager.ShowNotification(notification, DateTimeOffset.Now + TimeSpan.FromSeconds(5));
+            });
+
+            LogDebug($"显示系统托盘通知: {title}");
+        }
+        catch (Exception ex)
+        {
+            LogError($"显示系统托盘通知失败: {title}", ex);
+        }
+    }
+
+    #endregion
+    
+    #region Loading API
+
+    public void ShowLoading(string? message = null)
+    {
+        try
+        {
+            Infrastructure.EventAggregator.Instance.Publish(new Infrastructure.ShowLoadingMessage(message));
+            LogDebug($"显示Loading: {message ?? "(无消息)"}");
+        }
+        catch (Exception ex)
+        {
+            LogError("显示Loading失败", ex);
+        }
+    }
+
+    public void HideLoading()
+    {
+        try
+        {
+            Infrastructure.EventAggregator.Instance.Publish(new Infrastructure.HideLoadingMessage());
+            LogDebug("隐藏Loading");
+        }
+        catch (Exception ex)
+        {
+            LogError("隐藏Loading失败", ex);
+        }
+    }
+
+    #endregion
 }
 

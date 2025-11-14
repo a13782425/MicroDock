@@ -30,6 +30,7 @@ namespace MicroDock
             // 3. 初始化需要窗口的服务
             Infrastructure.ServiceLocator.Get<Services.AutoHideService>().Initialize(mainWindow);
             Infrastructure.ServiceLocator.Get<Services.TopMostService>().Initialize(mainWindow);
+            Infrastructure.ServiceLocator.Get<Services.TrayService>().Initialize();
             
             desktop.MainWindow = mainWindow;
             

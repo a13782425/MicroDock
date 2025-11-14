@@ -28,18 +28,8 @@ public class SettingsTabViewModel : ViewModelBase
     private bool _autoStartup;
     private bool _autoHide;
     private bool _alwaysOnTop;
-    private bool _isMiniModeEnabled;
     private bool _showLogViewer;
     private Color _customAccentColor = Color.FromRgb(255, 0, 0);
-
-    // P1: 迷你模式配置
-    private int _longPressMs = 500;
-    private double _miniRadius = 60;
-    private double _miniItemSize = 40;
-    private double _miniStartAngle = -90;
-    private double _miniSweepAngle = 360;
-    private bool _miniAutoDynamicArc = true;
-    private bool _miniAutoCollapseAfterTrigger = true;
 
     public SettingsTabViewModel()
     {
@@ -86,14 +76,6 @@ public class SettingsTabViewModel : ViewModelBase
                     _alwaysOnTop = message.IsEnabled;
                     this.RaisePropertyChanged(nameof(AlwaysOnTop));
                     SaveSetting(nameof(AlwaysOnTop), message.IsEnabled);
-                }
-                break;
-            case "MiniMode":
-                if (_isMiniModeEnabled != message.IsEnabled)
-                {
-                    _isMiniModeEnabled = message.IsEnabled;
-                    this.RaisePropertyChanged(nameof(IsMiniModeEnabled));
-                    SaveSetting(nameof(IsMiniModeEnabled), message.IsEnabled);
                 }
                 break;
         }
@@ -144,18 +126,6 @@ public class SettingsTabViewModel : ViewModelBase
         }
     }
 
-    public bool IsMiniModeEnabled
-    {
-        get => _isMiniModeEnabled;
-        set
-        {
-            this.RaiseAndSetIfChanged(ref _isMiniModeEnabled, value);
-            SaveSetting(nameof(IsMiniModeEnabled), value);
-            // 通过事件请求改变服务状态
-            EventAggregator.Instance.Publish(new MiniModeChangeRequestMessage(value));
-        }
-    }
-
     /// <summary>
     /// 是否显示日志查看器标签页
     /// </summary>
@@ -168,77 +138,6 @@ public class SettingsTabViewModel : ViewModelBase
             SaveSetting(nameof(ShowLogViewer), value);
             // 通过事件请求改变日志查看器可见性
             EventAggregator.Instance.Publish(new LogViewerVisibilityChangedMessage(value));
-        }
-    }
-
-    // === 迷你模式配置（P1） ===
-    public int LongPressMs
-    {
-        get => _longPressMs;
-        set
-        {
-            this.RaiseAndSetIfChanged(ref _longPressMs, value);
-            DBContext.UpdateSetting(s => s.LongPressMs = value);
-        }
-    }
-
-    public double MiniRadius
-    {
-        get => _miniRadius;
-        set
-        {
-            this.RaiseAndSetIfChanged(ref _miniRadius, value);
-            DBContext.UpdateSetting(s => s.MiniRadius = value);
-        }
-    }
-
-    public double MiniItemSize
-    {
-        get => _miniItemSize;
-        set
-        {
-            this.RaiseAndSetIfChanged(ref _miniItemSize, value);
-            DBContext.UpdateSetting(s => s.MiniItemSize = value);
-        }
-    }
-
-    public double MiniStartAngle
-    {
-        get => _miniStartAngle;
-        set
-        {
-            this.RaiseAndSetIfChanged(ref _miniStartAngle, value);
-            DBContext.UpdateSetting(s => s.MiniStartAngle = value);
-        }
-    }
-
-    public double MiniSweepAngle
-    {
-        get => _miniSweepAngle;
-        set
-        {
-            this.RaiseAndSetIfChanged(ref _miniSweepAngle, value);
-            DBContext.UpdateSetting(s => s.MiniSweepAngle = value);
-        }
-    }
-
-    public bool MiniAutoDynamicArc
-    {
-        get => _miniAutoDynamicArc;
-        set
-        {
-            this.RaiseAndSetIfChanged(ref _miniAutoDynamicArc, value);
-            DBContext.UpdateSetting(s => s.MiniAutoDynamicArc = value);
-        }
-    }
-
-    public bool MiniAutoCollapseAfterTrigger
-    {
-        get => _miniAutoCollapseAfterTrigger;
-        set
-        {
-            this.RaiseAndSetIfChanged(ref _miniAutoCollapseAfterTrigger, value);
-            DBContext.UpdateSetting(s => s.MiniAutoCollapseAfterTrigger = value);
         }
     }
 
@@ -363,32 +262,13 @@ public class SettingsTabViewModel : ViewModelBase
         _autoStartup = settings.AutoStartup;
         _autoHide = settings.AutoHide;
         _alwaysOnTop = settings.AlwaysOnTop;
-        _isMiniModeEnabled = settings.IsMiniModeEnabled;
         _showLogViewer = settings.ShowLogViewer;
-
-        // 迷你模式配置
-        _longPressMs = settings.LongPressMs;
-        _miniRadius = settings.MiniRadius;
-        _miniItemSize = settings.MiniItemSize;
-        _miniStartAngle = settings.MiniStartAngle;
-        _miniSweepAngle = settings.MiniSweepAngle;
-        _miniAutoDynamicArc = settings.MiniAutoDynamicArc;
-        _miniAutoCollapseAfterTrigger = settings.MiniAutoCollapseAfterTrigger;
 
         // 通知UI更新（仅UI，不触发setter中的事件发布）
         this.RaisePropertyChanged(nameof(AutoStartup));
         this.RaisePropertyChanged(nameof(AutoHide));
         this.RaisePropertyChanged(nameof(AlwaysOnTop));
-        this.RaisePropertyChanged(nameof(IsMiniModeEnabled));
         this.RaisePropertyChanged(nameof(ShowLogViewer));
-
-        this.RaisePropertyChanged(nameof(LongPressMs));
-        this.RaisePropertyChanged(nameof(MiniRadius));
-        this.RaisePropertyChanged(nameof(MiniItemSize));
-        this.RaisePropertyChanged(nameof(MiniStartAngle));
-        this.RaisePropertyChanged(nameof(MiniSweepAngle));
-        this.RaisePropertyChanged(nameof(MiniAutoDynamicArc));
-        this.RaisePropertyChanged(nameof(MiniAutoCollapseAfterTrigger));
     }
 
     /// <summary>
@@ -408,9 +288,6 @@ public class SettingsTabViewModel : ViewModelBase
                     break;
                 case nameof(AlwaysOnTop):
                     settings.AlwaysOnTop = value;
-                    break;
-                case nameof(IsMiniModeEnabled):
-                    settings.IsMiniModeEnabled = value;
                     break;
                 case nameof(ShowLogViewer):
                     settings.ShowLogViewer = value;
@@ -455,7 +332,7 @@ public class SettingsTabViewModel : ViewModelBase
         catch (Exception ex)
         {
             Log.Error(ex, "复制到剪切板失败");
-            ShowNotification("复制失败", ex.Message, NotificationType.Error);
+            ShowNotification("复制失败", ex.Message, Avalonia.Controls.Notifications.NotificationType.Error);
         }
     }
     
@@ -465,7 +342,7 @@ public class SettingsTabViewModel : ViewModelBase
     /// <param name="title">通知标题</param>
     /// <param name="message">通知内容</param>
     /// <param name="type">通知类型</param>
-    private static void ShowNotification(string title, string message, NotificationType type = NotificationType.Success)
+    private static void ShowNotification(string title, string message, Avalonia.Controls.Notifications.NotificationType type = Avalonia.Controls.Notifications.NotificationType.Success)
     {
         if (Program.WindowNotificationManager != null)
         {

@@ -30,19 +30,6 @@ public class WindowHideRequestMessage : IEventMessage
 }
 
 /// <summary>
-/// 迷你模式变更请求消息
-/// </summary>
-public class MiniModeChangeRequestMessage : IEventMessage
-{
-    public bool Enable { get; }
-
-    public MiniModeChangeRequestMessage(bool enable)
-    {
-        Enable = enable;
-    }
-}
-
-/// <summary>
 /// 窗口置顶状态变更请求消息
 /// </summary>
 public class WindowTopmostChangeRequestMessage : IEventMessage
@@ -135,5 +122,25 @@ public class LogViewerVisibilityChangedMessage : IEventMessage
     {
         IsVisible = isVisible;
     }
+}
+
+/// <summary>
+/// 显示Loading消息
+/// </summary>
+public class ShowLoadingMessage : IEventMessage
+{
+    public string? Message { get; }
+
+    public ShowLoadingMessage(string? message = null)
+    {
+        Message = message;
+    }
+}
+
+/// <summary>
+/// 隐藏Loading消息
+/// </summary>
+public class HideLoadingMessage : IEventMessage
+{
 }
 

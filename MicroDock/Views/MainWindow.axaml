@@ -109,5 +109,25 @@ Icon="/Assets/logo.ico">
 		</fa:NavigationView.Content>
 		</fa:NavigationView>
 
+		<!-- 全屏Loading覆盖层 -->
+		<Border Grid.Row="0" Grid.RowSpan="2"
+				Background="#80000000"
+				IsVisible="{Binding IsLoading}"
+				ZIndex="1000">
+			<StackPanel VerticalAlignment="Center" 
+						HorizontalAlignment="Center"
+						Spacing="16">
+				<fa:ProgressRing IsIndeterminate="True" 
+								 Width="60" 
+								 Height="60"
+								 Foreground="White"/>
+				<TextBlock Text="{Binding LoadingMessage}"
+						   FontSize="16"
+						   Foreground="White"
+						   HorizontalAlignment="Center"
+						   IsVisible="{Binding LoadingMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+			</StackPanel>
+		</Border>
+
 	</Grid>
 </Window>

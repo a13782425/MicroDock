@@ -64,20 +64,6 @@
                                       OffContent=""/>
                     </Grid>
                     
-                    <Grid Margin="0,4" IsVisible="False">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="迷你模式" 
-                                   VerticalAlignment="Center"
-                                   Grid.Column="0"/>
-                        <ToggleSwitch IsChecked="{Binding IsMiniModeEnabled, Mode=TwoWay}"
-                                      Grid.Column="1"
-                                      OnContent=""
-                                      OffContent=""/>
-                    </Grid>
-                    
                     <!-- 主题设置 -->
                     <Grid Margin="0,4">
                         <Grid.ColumnDefinitions>
@@ -101,95 +87,6 @@
                             </ColorPicker.Styles>
                         </ColorPicker>
                     </Grid>
-                </StackPanel>
-            </fa:SettingsExpander>
-
-            <!-- 迷你模式设置 -->
-            <fa:SettingsExpander Header="迷你模式设置"
-                                 IconSource="Emoji"
-                                 IsVisible="False">
-                <StackPanel Margin="10,10,0,10" Spacing="8">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="220"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="长按触发(ms)" VerticalAlignment="Center"/>
-                        <Slider Grid.Column="1" Minimum="200" Maximum="1500" TickFrequency="50" IsSnapToTickEnabled="True" Value="{Binding LongPressMs, Mode=TwoWay}"/>
-                    </Grid>
-
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="220"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="半径" VerticalAlignment="Center"/>
-                        <Slider Grid.Column="1" Minimum="40" Maximum="140" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding MiniRadius, Mode=TwoWay}"/>
-                    </Grid>
-
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="220"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="项大小" VerticalAlignment="Center"/>
-                        <Slider Grid.Column="1" Minimum="24" Maximum="80" TickFrequency="2" IsSnapToTickEnabled="True" Value="{Binding MiniItemSize, Mode=TwoWay}"/>
-                    </Grid>
-
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="220"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="起始角度" VerticalAlignment="Center"/>
-                        <Slider Grid.Column="1" Minimum="-180" Maximum="180" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding MiniStartAngle, Mode=TwoWay}"/>
-                    </Grid>
-
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="220"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="扫过角度" VerticalAlignment="Center"/>
-                        <Slider Grid.Column="1" Minimum="60" Maximum="360" TickFrequency="10" IsSnapToTickEnabled="True" Value="{Binding MiniSweepAngle, Mode=TwoWay}"/>
-                    </Grid>
-
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="自动半环（靠边）" VerticalAlignment="Center"/>
-                        <ToggleSwitch Grid.Column="1" IsChecked="{Binding MiniAutoDynamicArc, Mode=TwoWay}"/>
-                    </Grid>
-
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="触发后自动收起" VerticalAlignment="Center"/>
-                        <ToggleSwitch Grid.Column="1" IsChecked="{Binding MiniAutoCollapseAfterTrigger, Mode=TwoWay}"/>
-                    </Grid>
-                    <StackPanel Margin="10,10,0,10">
-                        <Button Content="+ 添加应用"
-                            Command="{Binding AddApplicationCommand}"
-                            HorizontalAlignment="Left"/>
-                    
-                       <!-- <ListBox x:Name="AppsList" ItemsSource="{Binding Applications}" Margin="0,10,0,0">
-                            <ListBox.ItemTemplate>
-                                <DataTemplate x:DataType="db:ApplicationDB">
-                                    <Grid ColumnDefinitions="*,Auto">
-                                        <TextBlock Text="{Binding Name}" VerticalAlignment="Center"/>
-                                        <Button Grid.Column="1" 
-                                                Content="删除" 
-                                                Command="{Binding #AppsList.DataContext.RemoveApplicationCommand}"
-                                                CommandParameter="{Binding}"/>
-                                    </Grid>
-                                </DataTemplate>
-                            </ListBox.ItemTemplate>
-                        </ListBox>-->
-                    </StackPanel>
                 </StackPanel>
             </fa:SettingsExpander>
 

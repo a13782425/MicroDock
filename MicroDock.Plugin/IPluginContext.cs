@@ -164,4 +164,63 @@ public interface IPluginContext
     ToolInfo? GetToolInfo(string toolName, string? pluginName = null);
     
     #endregion
+    
+    #region 托盘 API
+    
+    /// <summary>
+    /// 添加托盘菜单项
+    /// </summary>
+    /// <param name="id">唯一标识符（建议使用插件名前缀）</param>
+    /// <param name="text">显示文本</param>
+    /// <param name="onClick">点击事件处理</param>
+    void AddTrayMenuItem(string id, string text, System.Action onClick);
+    
+    /// <summary>
+    /// 移除托盘菜单项
+    /// </summary>
+    /// <param name="id">唯一标识符</param>
+    void RemoveTrayMenuItem(string id);
+    
+    /// <summary>
+    /// 添加托盘菜单分隔符
+    /// </summary>
+    /// <param name="id">唯一标识符</param>
+    void AddTrayMenuSeparator(string id);
+    
+    #endregion
+    
+    #region 通知 API
+    
+    /// <summary>
+    /// 显示应用内通知（窗口内Toast通知）
+    /// </summary>
+    /// <param name="title">通知标题</param>
+    /// <param name="message">通知内容</param>
+    /// <param name="type">通知类型</param>
+    void ShowInAppNotification(string title, string message, NotificationType type = NotificationType.Information);
+    
+    /// <summary>
+    /// 显示系统托盘通知
+    /// </summary>
+    /// <param name="title">通知标题</param>
+    /// <param name="message">通知内容</param>
+    /// <param name="buttons">按钮字典（键为按钮文本，值为按钮ID）</param>
+    void ShowSystemNotification(string title, string message, System.Collections.Generic.Dictionary<string, string>? buttons = null);
+    
+    #endregion
+    
+    #region Loading API
+    
+    /// <summary>
+    /// 显示全屏Loading
+    /// </summary>
+    /// <param name="message">加载消息（可选）</param>
+    void ShowLoading(string? message = null);
+    
+    /// <summary>
+    /// 隐藏全屏Loading
+    /// </summary>
+    void HideLoading();
+    
+    #endregion
 }
