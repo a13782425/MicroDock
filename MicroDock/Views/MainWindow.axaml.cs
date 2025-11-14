@@ -100,18 +100,6 @@ namespace MicroDock.Views
 
             // 监听 NavigationItems 集合的变化
             viewModel.NavigationItems.CollectionChanged += OnNavigationItemsCollectionChanged;
-
-            // 监听 ViewModel 的属性变化，动态调整滚动行为
-            viewModel.PropertyChanged += (s, e) =>
-            {
-                if (e.PropertyName == nameof(viewModel.CurrentView))
-                {
-                    UpdateNavigationContentScrollViewer(viewModel.CurrentView);
-                }
-            };
-
-            // 初始化内容区域的滚动行为
-            UpdateNavigationContentScrollViewer(viewModel.CurrentView);
         }
 
         /// <summary>
@@ -225,52 +213,6 @@ namespace MicroDock.Views
                 viewModel.SelectedNavItem = viewModel.SettingsNavItem;
             }
         }
-
-        /// <summary>
-        /// 根据导航项的 UseParentScrollViewer 属性更新 NavigationView 的内容区域
-        /// </summary>
-        private void UpdateNavigationContentScrollViewer(object? currentView)
-        {
-            if (DataContext is not MainWindowViewModel viewModel)
-                return;
-
-            var navView = this.FindControl<NavigationView>("MainNav");
-            if (navView == null)
-                return;
-
-            // 从 NavigationItemModel 读取 UseParentScrollViewer 属性
-            bool useParentScrollViewer = true;
-
-            // 优先从当前选中的导航项获取设置
-            if (viewModel.SelectedNavItem != null)
-            {
-                useParentScrollViewer = viewModel.SelectedNavItem.UseParentScrollViewer;
-            }
-            // 兼容插件标签页：如果当前视图实现了 IMicroTab 接口，使用接口属性
-            else if (currentView is IMicroTab tab)
-            {
-                useParentScrollViewer = tab.UseParentScrollViewer;
-            }
-
-            // 获取外层的 ScrollViewer（AXAML 中定义的）
-            if (navView.Content is ScrollViewer scrollViewer)
-            {
-                // 根据属性值控制 ScrollViewer 的滚动行为
-                if (useParentScrollViewer)
-                {
-                    // 启用滚动
-                    scrollViewer.VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
-                    scrollViewer.HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled;
-                }
-                else
-                {
-                    // 禁用滚动（标签页自己管理滚动）
-                    scrollViewer.VerticalScrollBarVisibility = ScrollBarVisibility.Disabled;
-                    scrollViewer.HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled;
-                }
-            }
-        }
-
         /// <summary>
         /// 订阅事件消息
         /// </summary>

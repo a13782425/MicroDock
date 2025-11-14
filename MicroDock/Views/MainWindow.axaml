@@ -103,13 +103,10 @@ Icon="/Assets/logo.ico">
 			</fa:NavigationViewItem>
 			</fa:NavigationView.FooterMenuItems>-->
 
-			<!-- 内容区域 -->
-			<fa:NavigationView.Content>
-				<ScrollViewer VerticalScrollBarVisibility="Auto"
-							  HorizontalScrollBarVisibility="Disabled">
-					<ContentControl Padding="6,6" Content="{Binding CurrentView}"/>
-				</ScrollViewer>
-			</fa:NavigationView.Content>
+		<!-- 内容区域 -->
+		<fa:NavigationView.Content>
+			<ContentControl Padding="6,6" Content="{Binding CurrentView}"/>
+		</fa:NavigationView.Content>
 		</fa:NavigationView>
 
 	</Grid>

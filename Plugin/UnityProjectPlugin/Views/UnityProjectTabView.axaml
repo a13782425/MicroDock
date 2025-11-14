@@ -6,7 +6,9 @@
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
              x:Class="UnityProjectPlugin.Views.UnityProjectTabView">
 
-    <Grid ColumnDefinitions="1*,2*" Margin="0,12,12,12">
+    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollBarVisibility="Disabled">
+        <Grid ColumnDefinitions="1*,2*" Margin="0,12,12,12">
         <!-- 左侧：项目列表区域 -->
         <StackPanel Grid.Column="0" Spacing="8" Margin="0,0,8,0">
             <!-- 工具栏 -->
@@ -127,6 +129,7 @@
                           Margin="0,40,0,0"/>
             </StackPanel>
         </Border>
-    </Grid>
+        </Grid>
+    </ScrollViewer>
 </UserControl>
 

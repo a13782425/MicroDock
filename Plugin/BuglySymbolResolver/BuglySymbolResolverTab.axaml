@@ -8,7 +8,9 @@
     d:DesignHeight="600"
     x:Class="BuglySymbolResolver.BuglySymbolResolverTab">
     
-    <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" MinHeight="600">
+    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollBarVisibility="Disabled">
+        <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" MinHeight="600">
         <!-- 输入区域 -->
         <StackPanel Grid.Row="0" Margin="10" Spacing="8">
             <TextBlock Text="输入崩溃/ANR信息" 
@@ -111,6 +113,7 @@
                        FontSize="12"
                        Foreground="Gray"/>
         </Border>
-    </Grid>
+        </Grid>
+    </ScrollViewer>
 </UserControl>
 
