@@ -25,16 +25,7 @@ public class PluginLoadContext : AssemblyLoadContext
 
     protected override Assembly? Load(AssemblyName assemblyName)
     {
-        // 1. 优先尝试从主程序默认上下文查找已加载的程序集
-        Assembly? defaultContextAssembly = AssemblyLoadContext.Default.Assemblies
-            .FirstOrDefault(a => AssemblyName.ReferenceMatchesDefinition(
-                a.GetName(), assemblyName));
-        
-        if (defaultContextAssembly != null)
-        {
-            Log.Debug("从主程序上下文加载程序集: {AssemblyName}", assemblyName.Name);
-            return null; // 返回 null 使用默认上下文，避免重复加载
-        }
+       
         
         // 2. 如果主程序中未找到，尝试从插件目录解析
         string? assemblyPath = _resolver.ResolveAssemblyToPath(assemblyName);
@@ -43,7 +34,16 @@ public class PluginLoadContext : AssemblyLoadContext
             Log.Debug("从插件目录加载程序集: {AssemblyName} -> {Path}", assemblyName.Name, assemblyPath);
             return LoadFromAssemblyPath(assemblyPath);
         }
-        
+        // 1. 优先尝试从主程序默认上下文查找已加载的程序集
+        Assembly? defaultContextAssembly = AssemblyLoadContext.Default.Assemblies
+            .FirstOrDefault(a => AssemblyName.ReferenceMatchesDefinition(
+                a.GetName(), assemblyName));
+
+        if (defaultContextAssembly != null)
+        {
+            Log.Debug("从主程序上下文加载程序集: {AssemblyName}", assemblyName.Name);
+            return null; // 返回 null 使用默认上下文，避免重复加载
+        }
         // 3. 对于共享程序集，使用默认上下文
         if (IsSharedAssembly(assemblyName))
         {
