@@ -49,7 +49,7 @@ namespace MicroDock
                 
                 BuildAvaloniaApp()
                     .StartWithClassicDesktopLifetime(args);
-                MicroDock.Infrastructure.ServiceLocator.Get<MicroDock.Services.LogService>().IsInit = true;
+                //MicroDock.Infrastructure.ServiceLocator.Get<MicroDock.Services.LogService>().IsInit = true;
             }
             catch (Exception ex)
             {

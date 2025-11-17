@@ -966,18 +966,6 @@ namespace MicroDock.Services
         }
 
         /// <summary>
-        /// 获取插件名称
-        /// </summary>
-        private string GetPluginName(Control plugin)
-        {
-            if (plugin is IMicroTab microTab)
-            {
-                return microTab.TabName;
-            }
-            return plugin.GetType().Name;
-        }
-
-        /// <summary>
         /// 加载插件动作（静态方法，用于独立加载动作）
         /// </summary>
         public static List<MicroAction> LoadActions(string pluginDirectory)

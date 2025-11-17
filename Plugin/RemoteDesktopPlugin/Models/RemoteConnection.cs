@@ -55,12 +55,19 @@ namespace RemoteDesktopPlugin.Models
         /// <summary>
         /// 最后连接时间
         /// </summary>
-        public DateTime LastConnected { get; set; } = DateTime.Now;
+        public DateTime? LastConnected { get; set; }
 
         /// <summary>
         /// 创建时间
         /// </summary>
         public DateTime CreatedAt { get; set; } = DateTime.Now;
+
+        /// <summary>
+        /// 格式化的最后连接时间显示
+        /// </summary>
+        public string LastConnectedDisplay => LastConnected.HasValue 
+            ? LastConnected.Value.ToString("yyyy-MM-dd HH:mm") 
+            : "从未连接";
 
         /// <summary>
         /// 获取连接字符串（用于日志显示）

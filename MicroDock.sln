@@ -15,7 +15,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnityProjectPlugin", "Plugi
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClaudeSwitchPlugin", "Plugin\ClaudeSwitchPlugin\ClaudeSwitchPlugin.csproj", "{81A72833-08DB-49E5-85B1-BB32FDCE1F33}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RemoteDesktopPlugin", "RemoteDesktopPlugin\RemoteDesktopPlugin.csproj", "{3EABBC41-CC2C-4647-84B9-2684BD7F2B58}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RemoteDesktopPlugin", "Plugin\RemoteDesktopPlugin\RemoteDesktopPlugin.csproj", "{3EABBC41-CC2C-4647-84B9-2684BD7F2B58}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -1,0 +1,139 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="120"
+             x:Class="RemoteDesktopPlugin.Views.ConnectionCard">
+
+    <UserControl.Styles>
+        <Style Selector="Border.connection-card">
+            <Setter Property="Background" Value="{DynamicResource CardBackgroundFillColorDefaultBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource CardStrokeColorDefaultBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="16"/>
+            <Setter Property="Margin" Value="0,0,0,8"/>
+        </Style>
+
+        <Style Selector="Border.connection-card:pointerover">
+            <Setter Property="Background" Value="{DynamicResource CardBackgroundFillColorSecondaryBrush}"/>
+        </Style>
+
+        <Style Selector="Border.tag">
+            <Setter Property="Background" Value="{DynamicResource AccentFillColorDefaultBrush}"/>
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="Padding" Value="8,4"/>
+        </Style>
+
+        <Style Selector="Border.tag TextBlock">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+
+        <!-- 主机地址样式 -->
+        <Style Selector="TextBlock.clickable-host:pointerover">
+            <Setter Property="Opacity" Value="0.8"/>
+            <Setter Property="TextDecorations" Value="Underline"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Border Classes="connection-card" Name="CardBorder">
+        <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="Auto,*,Auto">
+
+            <!-- 连接图标 -->
+            <Border Grid.Row="0" Grid.Column="0" Grid.RowSpan="2"
+                    Width="48" Height="48"
+                    VerticalAlignment="Top"
+                    Margin="0,0,16,0"
+                    CornerRadius="4"
+                    ClipToBounds="True"
+                    Background="{DynamicResource SystemFillColorAttentionBrush}">
+                <ui:SymbolIcon Symbol="Remote"
+                               FontSize="24"
+                               Foreground="White"/>
+            </Border>
+
+            <!-- 连接信息 -->
+            <StackPanel Grid.Row="0" Grid.Column="1" Spacing="4" VerticalAlignment="Center">
+                <!-- 连接名称 -->
+                <TextBlock Name="ConnectionNameDisplay"
+                           Text="{Binding Name}"
+                           FontSize="16"
+                           FontWeight="SemiBold"
+                           VerticalAlignment="Center"/>
+
+                <!-- 主机地址、用户名和域名 -->
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="{Binding FullAddress}"
+                               Name="HostTextBlock"
+                               Classes="clickable-host"
+                               FontSize="12"
+                               Opacity="0.6"
+                               Cursor="Hand"
+                               ToolTip.Tip="点击复制主机地址"/>
+                    <TextBlock Text="|"
+                               FontSize="12"
+                               Opacity="0.4"/>
+                    <TextBlock Text="{Binding Username}"
+                               FontSize="12"
+                               Opacity="0.6"/>
+                    <!-- Domain 及其分隔符 -->
+                    <TextBlock Text="|"
+                               FontSize="12"
+                               Opacity="0.4"
+                               IsVisible="{Binding Domain, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                    <TextBlock Text="{Binding Domain}"
+                               FontSize="12"
+                               Opacity="0.6"
+                               IsVisible="{Binding Domain, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                </StackPanel>
+            </StackPanel>
+
+            <!-- 操作按钮 -->
+            <SplitButton Grid.Row="0" Grid.Column="2"
+                         Content="连接"
+                         Name="ConnectSplitButton"
+                         VerticalAlignment="Center"
+                         Padding="16,8"
+                         Margin="16,0,0,0">
+                <SplitButton.Flyout>
+                    <MenuFlyout>
+                        <MenuItem Header="编辑连接" Name="EditMenuItem">
+                            <MenuItem.Icon>
+                                <ui:SymbolIcon Symbol="Edit"/>
+                            </MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="删除连接" Name="DeleteMenuItem">
+                            <MenuItem.Icon>
+                                <ui:SymbolIcon Symbol="Delete"/>
+                            </MenuItem.Icon>
+                        </MenuItem>
+                    </MenuFlyout>
+                </SplitButton.Flyout>
+            </SplitButton>
+
+            <!-- 标签和元数据 -->
+            <StackPanel Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2"
+                        Orientation="Horizontal"
+                        Spacing="8"
+                        Margin="0,8,0,0">
+
+                <!-- 状态标签 -->
+                <Border Classes="tag"
+                        Background="{DynamicResource SystemFillColorSuccessBrush}"
+                        VerticalAlignment="Center">
+                    <TextBlock Text="就绪"/>
+                </Border>
+
+                <!-- 最后连接时间 -->
+                <TextBlock VerticalAlignment="Center"
+                           FontSize="11"
+                           Opacity="0.5">
+                    <Run Text="最后连接: "/>
+                    <Run Text="{Binding LastConnectedDisplay}"/>
+                </TextBlock>
+            </StackPanel>
+        </Grid>
+    </Border>
+</UserControl>

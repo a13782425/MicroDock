@@ -1,0 +1,81 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="500" d:DesignHeight="600"
+             x:Class="RemoteDesktopPlugin.Views.AddConnectionDialog">
+
+  
+        <StackPanel Spacing="16" Margin="0,8,0,8">
+            <!-- 连接名称 -->
+            <StackPanel Spacing="4">
+                <TextBlock Text="连接名称 *" FontSize="12" Opacity="0.7"/>
+                <TextBox Name="ConnectionNameTextBox"
+                         Watermark="例如：办公电脑"/>
+            </StackPanel>
+
+            <!-- 主机地址 -->
+            <StackPanel Spacing="4">
+                <TextBlock Text="主机地址 *" FontSize="12" Opacity="0.7"/>
+                <TextBox Name="HostTextBox"
+                         Watermark="例如：192.168.1.100 或 remote.company.com"/>
+            </StackPanel>
+
+            <!-- 端口和用户名 -->
+            <Grid ColumnDefinitions="*,*">
+                <StackPanel Grid.Column="0" Spacing="4" Margin="0,0,12,0">
+                    <TextBlock Text="端口" FontSize="12" Opacity="0.7"/>
+                    <TextBox Name="PortTextBox"
+                             Text="3389"
+                             Watermark="3389"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Spacing="4">
+                    <TextBlock Text="用户名 *" FontSize="12" Opacity="0.7"/>
+                    <TextBox Name="UsernameTextBox"
+                             Watermark="输入用户名"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- 密码 -->
+            <StackPanel Spacing="4">
+                <TextBlock Text="密码 *" FontSize="12" Opacity="0.7"/>
+                <TextBox Name="PasswordTextBox"
+                         Watermark="输入密码"
+                         PasswordChar="●"/>
+            </StackPanel>
+
+            <!-- 域名 -->
+            <StackPanel Spacing="4">
+                <TextBlock Text="域名（可选）" FontSize="12" Opacity="0.7"/>
+                <TextBox Name="DomainTextBox"
+                         Watermark="例如：COMPANY"/>
+            </StackPanel>
+
+            <!-- 描述 -->
+            <StackPanel Spacing="4">
+                <TextBlock Text="描述（可选）" FontSize="12" Opacity="0.7"/>
+                <TextBox Name="DescriptionTextBox"
+                         Watermark="添加描述信息..."
+                         AcceptsReturn="True"
+                         MinHeight="80"
+                         TextWrapping="Wrap"/>
+            </StackPanel>
+
+            <!-- 提示信息 -->
+            <Border Background="{DynamicResource SystemFillColorCautionBackgroundBrush}"
+                    BorderBrush="{DynamicResource SystemFillColorCautionBrush}"
+                    BorderThickness="1"
+                    CornerRadius="4"
+                    Padding="12"
+                    Margin="0,8,0,0">
+                <StackPanel Spacing="4">
+                    <TextBlock Text="⚠️ 安全提示" FontWeight="SemiBold" FontSize="12"/>
+                    <TextBlock Text="密码将以明文形式存储。建议仅在受信任的设备上使用。"
+                               TextWrapping="Wrap"
+                               FontSize="11"
+                               Opacity="0.8"/>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+
+</UserControl>
