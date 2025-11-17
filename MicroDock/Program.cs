@@ -36,6 +36,17 @@ namespace MicroDock
                 Log.Information("MicroDock 启动中...");
                 Log.Information("应用版本: {Version}", AppConfig.AppVersion);
                 
+                // ============================================
+                // 防止多实例启动 - 使用全局互斥锁
+                // ============================================
+                if (!Services.SingleInstanceService.TryAcquireMutex())
+                {
+                    Log.Information("检测到已有 MicroDock 实例正在运行，通知显示窗口后退出");
+                    Services.SingleInstanceService.NotifyExistingInstance();
+                    Log.Information("程序退出");
+                    return; // 退出程序
+                }
+                
                 BuildAvaloniaApp()
                     .StartWithClassicDesktopLifetime(args);
                 MicroDock.Infrastructure.ServiceLocator.Get<MicroDock.Services.LogService>().IsInit = true;
@@ -47,6 +58,8 @@ namespace MicroDock
             }
             finally
             {
+                // 清理单实例资源
+                Services.SingleInstanceService.ReleaseMutex();
                 Log.CloseAndFlush();
             }
         }

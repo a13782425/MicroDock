@@ -781,6 +781,59 @@ internal static class DBContext
             .ToList();
     }
 
+    /// <summary>
+    /// 标记插件为待更新
+    /// </summary>
+    /// <param name="pluginName">插件唯一名称</param>
+    /// <param name="newVersion">新版本号</param>
+    public static void MarkPluginForUpdate(string pluginName, string newVersion)
+    {
+        if (string.IsNullOrEmpty(pluginName))
+        {
+            return;
+        }
+
+        PluginInfoDB? pluginInfo = GetPluginInfo(pluginName);
+        if (pluginInfo != null)
+        {
+            pluginInfo.PendingUpdate = true;
+            pluginInfo.PendingVersion = newVersion;
+            pluginInfo.UpdatedAt = TimeStampHelper.GetCurrentTimestamp();
+            _database.Update(pluginInfo);
+        }
+    }
+
+    /// <summary>
+    /// 取消插件更新标记
+    /// </summary>
+    /// <param name="pluginName">插件唯一名称</param>
+    public static void CancelPluginUpdate(string pluginName)
+    {
+        if (string.IsNullOrEmpty(pluginName))
+        {
+            return;
+        }
+
+        PluginInfoDB? pluginInfo = GetPluginInfo(pluginName);
+        if (pluginInfo != null)
+        {
+            pluginInfo.PendingUpdate = false;
+            pluginInfo.PendingVersion = null;
+            pluginInfo.UpdatedAt = TimeStampHelper.GetCurrentTimestamp();
+            _database.Update(pluginInfo);
+        }
+    }
+
+    /// <summary>
+    /// 获取所有待更新的插件
+    /// </summary>
+    public static List<PluginInfoDB> GetPendingUpdatePlugins()
+    {
+        return _database.Table<PluginInfoDB>()
+            .Where(p => p.PendingUpdate == true)
+            .ToList();
+    }
+
     #endregion
 
     // 关闭数据库连接

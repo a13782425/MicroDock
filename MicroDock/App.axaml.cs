@@ -38,9 +38,40 @@ namespace MicroDock
             
             desktop.MainWindow = mainWindow;
             
-            // 5. 退出时清理
+            // 5. 启动命名管道服务器，监听其他实例的显示窗口请求
+            Services.SingleInstanceService.StartPipeServer(() =>
+            {
+                // 在 UI 线程上执行窗口显示操作
+                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                {
+                    try
+                    {
+                        if (mainWindow != null)
+                        {
+                            // 如果窗口最小化，先恢复
+                            if (mainWindow.WindowState == Avalonia.Controls.WindowState.Minimized)
+                            {
+                                mainWindow.WindowState = Avalonia.Controls.WindowState.Normal;
+                            }
+                            
+                            // 显示并激活窗口
+                            mainWindow.Show();
+                            mainWindow.Activate();
+                            
+                            Serilog.Log.Information("已显示并激活主窗口（响应其他实例请求）");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Serilog.Log.Error(ex, "显示主窗口失败");
+                    }
+                });
+            });
+            
+            // 6. 退出时清理
             desktop.Exit += (s, e) =>
             {
+                Services.SingleInstanceService.StopPipeServer();
                 DBContext.Close();
                 Infrastructure.ServiceLocator.Clear();
             };

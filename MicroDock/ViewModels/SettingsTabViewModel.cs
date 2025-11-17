@@ -345,6 +345,8 @@ public class SettingsTabViewModel : ViewModelBase
             settingItem.Version = pluginInfo.Manifest?.Version ?? "未知";
             settingItem.InstalledAt = dbInfo != null ? (DateTime?)dbInfo.InstalledAtDateTime : null;
             settingItem.IsPendingDelete = dbInfo?.PendingDelete ?? false;
+            settingItem.IsPendingUpdate = dbInfo?.PendingUpdate ?? false;
+            settingItem.PendingVersion = dbInfo?.PendingVersion;
 
             // 最后设置 IsEnabled，此时其他属性都已就绪
             settingItem._isEnabled = dbInfo?.IsEnabled ?? true;
@@ -828,9 +830,32 @@ public class PluginSettingItem : ViewModelBase
     }
 
     /// <summary>
+    /// 是否有待安装的更新
+    /// </summary>
+    private bool _isPendingUpdate = false;
+    public bool IsPendingUpdate
+    {
+        get => _isPendingUpdate;
+        set => this.RaiseAndSetIfChanged(ref _isPendingUpdate, value);
+    }
+
+    /// <summary>
+    /// 待安装的新版本号
+    /// </summary>
+    private string? _pendingVersion;
+    public string? PendingVersion
+    {
+        get => _pendingVersion;
+        set => this.RaiseAndSetIfChanged(ref _pendingVersion, value);
+    }
+
+    /// <summary>
     /// 状态文本
     /// </summary>
-    public string StatusText => IsPendingDelete ? "待删除" : (IsEnabled ? "已启用" : "已禁用");
+    public string StatusText => 
+        IsPendingDelete ? "待删除" : 
+        IsPendingUpdate ? $"v{Version} → v{PendingVersion}" : 
+        IsEnabled ? "已启用" : "已禁用";
 
     /// <summary>
     /// 是否可以取消删除
@@ -847,6 +872,11 @@ public class PluginSettingItem : ViewModelBase
     /// </summary>
     public ReactiveCommand<Unit, Unit> CancelDeleteCommand { get; private set; } = null!;
 
+    /// <summary>
+    /// 取消更新命令
+    /// </summary>
+    public ReactiveCommand<Unit, Unit> CancelUpdateCommand { get; private set; } = null!;
+
     public PluginSettingItem()
     {
         // 确保所有属性都有默认值，避免 null 引用
@@ -857,6 +887,7 @@ public class PluginSettingItem : ViewModelBase
         
         DeleteCommand = ReactiveCommand.CreateFromTask(DeletePlugin);
         CancelDeleteCommand = ReactiveCommand.CreateFromTask(CancelDelete);
+        CancelUpdateCommand = ReactiveCommand.CreateFromTask(CancelUpdate);
     }
 
     /// <summary>
@@ -968,106 +999,61 @@ public class PluginSettingItem : ViewModelBase
     {
         try
         {
-            // 显示确认对话框
-            if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
+            // 使用 FluentAvalonia 的 ContentDialog 显示确认对话框
+            var dialog = new FluentAvalonia.UI.Controls.ContentDialog
             {
-                var dialog = new Avalonia.Controls.Window
+                Title = "确认删除",
+                Content = new StackPanel
                 {
-                    Title = "确认删除",
-                    Width = 400,
-                    Height = 200,
-                    WindowStartupLocation = Avalonia.Controls.WindowStartupLocation.CenterOwner,
-                    CanResize = false
-                };
+                    Spacing = 10,
+                    Children =
+                    {
+                        new TextBlock
+                        {
+                            Text = $"确定要删除插件 \"{PluginName}\" 吗？",
+                            TextWrapping = Avalonia.Media.TextWrapping.Wrap
+                        },
+                        new TextBlock
+                        {
+                            Text = "插件将在下次重启时删除。此操作将删除插件文件和所有相关数据。",
+                            Foreground = Avalonia.Media.Brushes.OrangeRed,
+                            FontSize = 12,
+                            TextWrapping = Avalonia.Media.TextWrapping.Wrap
+                        }
+                    }
+                },
+                PrimaryButtonText = "删除",
+                CloseButtonText = "取消",
+                DefaultButton = FluentAvalonia.UI.Controls.ContentDialogButton.Close
+            };
 
-                var content = new StackPanel
-                {
-                    Margin = new Avalonia.Thickness(20),
-                    Spacing = 15
-                };
+            var result = await dialog.ShowAsync();
 
-                content.Children.Add(new TextBlock
-                {
-                    Text = $"确定要删除插件 \"{PluginName}\" 吗？",
-                    FontSize = 14,
-                    TextWrapping = Avalonia.Media.TextWrapping.Wrap
-                });
+            if (result != FluentAvalonia.UI.Controls.ContentDialogResult.Primary)
+            {
+                return; // 用户取消
+            }
 
-                content.Children.Add(new TextBlock
-                {
-                    Text = "此操作将删除插件文件和所有相关数据，且无法撤销。",
-                    Foreground = Avalonia.Media.Brushes.OrangeRed,
-                    FontSize = 12,
-                    TextWrapping = Avalonia.Media.TextWrapping.Wrap
-                });
+            // 显示加载提示
+            EventAggregator.Instance.Publish(new ShowLoadingMessage("正在标记插件为待删除..."));
 
-                var buttonPanel = new StackPanel
-                {
-                    Orientation = Avalonia.Layout.Orientation.Horizontal,
-                    HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right,
-                    Spacing = 10
-                };
+            // 调用 PluginLoader 标记插件为待删除
+            PluginLoader pluginLoader = Infrastructure.ServiceLocator.Get<PluginLoader>();
+            var (success, message) = await pluginLoader.MarkPluginForDeletionAsync(UniqueName);
 
-                var confirmButton = new Button
-                {
-                    Content = "确定",
-                    Width = 80
-                };
+            // 隐藏加载提示
+            EventAggregator.Instance.Publish(new HideLoadingMessage());
 
-                var cancelButton = new Button
-                {
-                    Content = "取消",
-                    Width = 80
-                };
-
-                bool? dialogResult = null;
-
-                confirmButton.Click += (s, e) =>
-                {
-                    dialogResult = true;
-                    dialog.Close();
-                };
-
-                cancelButton.Click += (s, e) =>
-                {
-                    dialogResult = false;
-                    dialog.Close();
-                };
-
-                buttonPanel.Children.Add(cancelButton);
-                buttonPanel.Children.Add(confirmButton);
-                content.Children.Add(buttonPanel);
-
-                dialog.Content = content;
-
-                await dialog.ShowDialog(desktop.MainWindow);
-
-                if (dialogResult != true)
-                {
-                    return; // 用户取消
-                }
-
-                // 显示加载提示
-                EventAggregator.Instance.Publish(new ShowLoadingMessage("正在标记插件为待删除..."));
-
-                // 调用 PluginLoader 标记插件为待删除
-                PluginLoader pluginLoader = Infrastructure.ServiceLocator.Get<PluginLoader>();
-                var (success, message) = await pluginLoader.MarkPluginForDeletionAsync(UniqueName);
-
-                // 隐藏加载提示
-                EventAggregator.Instance.Publish(new HideLoadingMessage());
-
-                if (success)
-                {
-                    IsPendingDelete = true;
-                    this.RaisePropertyChanged(nameof(StatusText));
-                    this.RaisePropertyChanged(nameof(CanCancelDelete));
-                    SettingsTabViewModel.ShowNotification("标记成功", message);
-                }
-                else
-                {
-                    SettingsTabViewModel.ShowNotification("标记失败", message, Avalonia.Controls.Notifications.NotificationType.Error);
-                }
+            if (success)
+            {
+                IsPendingDelete = true;
+                this.RaisePropertyChanged(nameof(StatusText));
+                this.RaisePropertyChanged(nameof(CanCancelDelete));
+                SettingsTabViewModel.ShowNotification("标记成功", message);
+            }
+            else
+            {
+                SettingsTabViewModel.ShowNotification("标记失败", message, Avalonia.Controls.Notifications.NotificationType.Error);
             }
         }
         catch (Exception ex)
@@ -1104,6 +1090,36 @@ public class PluginSettingItem : ViewModelBase
         catch (Exception ex)
         {
             Serilog.Log.Error(ex, "取消删除插件 {PluginName} 失败", PluginName);
+            SettingsTabViewModel.ShowNotification("取消失败", ex.Message, Avalonia.Controls.Notifications.NotificationType.Error);
+        }
+    }
+
+    /// <summary>
+    /// 取消更新插件
+    /// </summary>
+    private async Task CancelUpdate()
+    {
+        try
+        {
+            PluginLoader pluginLoader = Infrastructure.ServiceLocator.Get<PluginLoader>();
+            var (success, message) = await pluginLoader.CancelPluginUpdateAsync(UniqueName);
+            
+            if (success)
+            {
+                IsPendingUpdate = false;
+                PendingVersion = null;
+                this.RaisePropertyChanged(nameof(StatusText));
+                
+                SettingsTabViewModel.ShowNotification("取消成功", "插件更新已取消");
+            }
+            else
+            {
+                SettingsTabViewModel.ShowNotification("取消失败", message, Avalonia.Controls.Notifications.NotificationType.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Error(ex, "取消更新插件 {PluginName} 失败", PluginName);
             SettingsTabViewModel.ShowNotification("取消失败", ex.Message, Avalonia.Controls.Notifications.NotificationType.Error);
         }
     }

@@ -47,6 +47,16 @@ public class PluginInfoDB
     public bool PendingDelete { get; set; } = false;
 
     /// <summary>
+    /// 是否有待安装的更新（默认 false）
+    /// </summary>
+    public bool PendingUpdate { get; set; } = false;
+
+    /// <summary>
+    /// 待安装的新版本号（当 PendingUpdate = true 时）
+    /// </summary>
+    public string? PendingVersion { get; set; }
+
+    /// <summary>
     /// 安装时间戳（从2025年1月1日开始的毫秒数）
     /// </summary>
     public long InstalledAt { get; set; }

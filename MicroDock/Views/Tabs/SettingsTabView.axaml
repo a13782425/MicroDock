@@ -129,7 +129,7 @@
 					<ItemsControl.ItemTemplate>
 						<DataTemplate x:DataType="vm:PluginSettingItem">
 							<fa:SettingsExpander Margin="0,4"
-												 Description="{Binding Version}">
+												 Description="{Binding StatusText}">
 								<fa:SettingsExpander.Header>
 									<StackPanel Orientation="Horizontal" Spacing="8">
 										<TextBlock Text="{Binding PluginName}"
@@ -147,16 +147,28 @@
 												IsVisible="{Binding IsPendingDelete}">
 											<TextBlock Text="待删除" FontSize="10" Foreground="White"/>
 										</Border>
+										
+										<!-- 待更新标记 -->
+										<Border Background="DodgerBlue" CornerRadius="3" Padding="4,2" 
+												IsVisible="{Binding IsPendingUpdate}">
+											<TextBlock Text="{Binding PendingVersion, StringFormat='待更新至 v{0}'}" FontSize="10" Foreground="White"/>
+										</Border>
 									</StackPanel>
 								</fa:SettingsExpander.Header>
 
 								<fa:SettingsExpander.Footer>
 									<StackPanel Orientation="Horizontal" Spacing="8">
-										<!-- 启用/禁用开关（待删除时禁用） -->
+										<!-- 启用/禁用开关（待删除或待更新时禁用） -->
 										<ToggleSwitch IsChecked="{Binding IsEnabled, Mode=TwoWay}"
 													  IsEnabled="{Binding !IsPendingDelete}"
 													  OnContent="已启用"
 													  OffContent="已禁用"/>
+										
+										<!-- 取消更新按钮（仅待更新时显示） -->
+										<Button Content="取消更新"
+												Command="{Binding CancelUpdateCommand}"
+												IsVisible="{Binding IsPendingUpdate}"
+												Classes="accent"/>
 										
 										<!-- 取消删除按钮（仅待删除时显示） -->
 										<Button Content="取消删除"
@@ -164,7 +176,7 @@
 												IsVisible="{Binding IsPendingDelete}"
 												Classes="accent"/>
 
-										<!-- 删除按钮（待删除时隐藏） -->
+										<!-- 删除按钮（待删除或待更新时隐藏） -->
 										<Button Content="删除"
 												Command="{Binding DeleteCommand}"
 												IsVisible="{Binding !IsPendingDelete}"
