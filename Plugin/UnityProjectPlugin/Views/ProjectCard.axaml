@@ -47,6 +47,12 @@
 			<Setter Property="BorderBrush" Value="{DynamicResource AccentFillColorDefaultBrush}"/>
 			<Setter Property="Padding" Value="4,2"/>
 		</Style>
+
+		<!-- 项目路径样式 -->
+		<Style Selector="TextBlock.clickable-path:pointerover">
+			<Setter Property="Opacity" Value="0.8"/>
+			<Setter Property="TextDecorations" Value="Underline"/>
+		</Style>
 	</UserControl.Styles>
 
 	<Border Classes="project-card" Name="CardBorder">
@@ -164,11 +170,15 @@
 					</Grid>
 				</StackPanel>
 
-				<!-- 项目路径 -->
-				<TextBlock Text="{Binding Path}"
-						   FontSize="12"
-						   Opacity="0.6"
-						   TextTrimming="CharacterEllipsis"/>
+			<!-- 项目路径 -->
+			<TextBlock Text="{Binding Path}"
+					   Name="ProjectPathText"
+					   Classes="clickable-path"
+					   FontSize="12"
+					   Opacity="0.6"
+					   TextTrimming="CharacterEllipsis"
+					   Cursor="Hand"
+					   ToolTip.Tip="点击打开目录"/>
 			</StackPanel>
 
 			<!-- 操作按钮 -->
@@ -178,15 +188,20 @@
 						 VerticalAlignment="Center"
 						 Padding="16,8"
 						 Margin="16,0,0,0">
-				<SplitButton.Flyout>
-					<MenuFlyout>
-						<MenuItem Header="删除" Name="DeleteMenuItem">
-							<MenuItem.Icon>
-								<ui:SymbolIcon Symbol="Delete"/>
-							</MenuItem.Icon>
-						</MenuItem>
-					</MenuFlyout>
-				</SplitButton.Flyout>
+			<SplitButton.Flyout>
+				<MenuFlyout>
+					<MenuItem Header="打开目录" Name="OpenDirectoryMenuItem">
+						<MenuItem.Icon>
+							<ui:SymbolIcon Symbol="Folder"/>
+						</MenuItem.Icon>
+					</MenuItem>
+					<MenuItem Header="删除" Name="DeleteMenuItem">
+						<MenuItem.Icon>
+							<ui:SymbolIcon Symbol="Delete"/>
+						</MenuItem.Icon>
+					</MenuItem>
+				</MenuFlyout>
+			</SplitButton.Flyout>
 			</SplitButton>
 
 			<!-- 标签和元数据 -->

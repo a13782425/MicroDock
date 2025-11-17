@@ -1,0 +1,57 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DesignWidth="450"
+             d:DesignHeight="450"
+             x:Class="ClaudeSwitchPlugin.Views.EditConfigForm">
+
+    <StackPanel Spacing="16" MaxWidth="450">
+        <!-- 配置名称 -->
+        <StackPanel Spacing="4">
+            <TextBlock Text="配置名称 *" FontWeight="Medium"/>
+            <TextBox Name="NameTextBox"
+                     Watermark="输入配置名称，如：Claude 工作配置"/>
+        </StackPanel>
+
+        <!-- 提供商选择 -->
+        <StackPanel Spacing="4">
+            <TextBlock Text="AI 提供商 *" FontWeight="Medium"/>
+            <ComboBox Name="ProviderComboBox" HorizontalAlignment="Stretch">
+                <ComboBoxItem Content="Claude"/>
+                <ComboBoxItem Content="OpenAI"/>
+            </ComboBox>
+        </StackPanel>
+
+        <!-- API 基础 URL -->
+        <StackPanel Spacing="4">
+            <TextBlock Text="API 基础 URL *" FontWeight="Medium"/>
+            <TextBox Name="BaseURLTextBox"
+                     Watermark="https://api.anthropic.com 或 https://api.openai.com"/>
+        </StackPanel>
+
+        <!-- API 密钥 -->
+        <StackPanel Spacing="4">
+            <TextBlock Text="API 密钥 *" FontWeight="Medium"/>
+            <TextBox Name="ApiKeyTextBox"
+                     Watermark="sk-ant-... 或 sk-..."
+                     PasswordChar="*"/>
+        </StackPanel>
+
+        <!-- 模型名称 -->
+        <StackPanel Spacing="4">
+            <TextBlock Text="模型名称（可选）" FontWeight="Medium"/>
+            <TextBox Name="ModelTextBox"
+                     Watermark="claude-3-sonnet-20241022 或 gpt-4"/>
+        </StackPanel>
+
+        <!-- 提示信息 -->
+        <TextBlock Name="ErrorText"
+                   Foreground="Red"
+                   FontSize="12"
+                   IsVisible="False"
+                   TextWrapping="Wrap"/>
+    </StackPanel>
+</UserControl>
+

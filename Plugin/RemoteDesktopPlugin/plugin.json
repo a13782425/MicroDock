@@ -1,0 +1,13 @@
+{
+  "name": "com.microdock.remotedesktop",
+  "displayName": "远程桌面管理",
+  "version": "1.0.0",
+  "description": "管理和快速连接远程桌面，支持分组管理、配置保存、一键连接",
+  "author": "MicroDock",
+  "license": "MIT",
+  "main": "RemoteDesktopPlugin.dll",
+  "entryClass": "RemoteDesktopPlugin.RemoteDesktopPlugin",
+  "engines": {
+    "microdock": ">=0.0.2.0"
+  }
+}

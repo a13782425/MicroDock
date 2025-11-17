@@ -312,9 +312,36 @@ namespace MicroDock.Services
                             GC.Collect();
                         }
                         
-                        // 3. 删除旧的插件目录（重试机制）
+                        // 3. 智能更新插件目录（保留 Data 目录，删除 Config）
                         if (Directory.Exists(targetPluginDir))
                         {
+                            string dataDir = Path.Combine(targetPluginDir, "Data");
+                            string tempDataBackup = null;
+                            
+                            // 备份 Data 目录（如果存在）
+                            try
+                            {
+                                if (Directory.Exists(dataDir))
+                                {
+                                    tempDataBackup = Path.Combine(pluginTempDirectory, $"{pluginName}_Data_Backup");
+                                    
+                                    // 如果备份目录已存在，先删除
+                                    if (Directory.Exists(tempDataBackup))
+                                    {
+                                        Directory.Delete(tempDataBackup, true);
+                                    }
+                                    
+                                    Directory.Move(dataDir, tempDataBackup);
+                                    Log.Information("已备份插件数据目录: {DataDir} -> {BackupDir}", dataDir, tempDataBackup);
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                Log.Warning(ex, "备份 Data 目录失败，将继续更新（数据可能丢失）: {DataDir}", dataDir);
+                                tempDataBackup = null; // 确保后续不会尝试恢复
+                            }
+                            
+                            // 删除旧的插件目录（包括 Config，重试机制）
                             int maxRetries = 5;
                             bool deleted = false;
                             
@@ -324,7 +351,7 @@ namespace MicroDock.Services
                                 {
                                     Directory.Delete(targetPluginDir, true);
                                     deleted = true;
-                                    Log.Information("成功删除旧插件目录: {Dir}", targetPluginDir);
+                                    Log.Information("成功删除旧插件目录（Config 已删除）: {Dir}", targetPluginDir);
                                 }
                                 catch (UnauthorizedAccessException ex)
                                 {
@@ -341,12 +368,35 @@ namespace MicroDock.Services
                                     }
                                 }
                             }
+                            
+                            // 移动新插件到目标目录
+                            Directory.Move(tempPluginDir, targetPluginDir);
+                            Log.Information("已安装新版本插件: {Dir}", targetPluginDir);
+                            
+                            // 恢复 Data 目录
+                            if (tempDataBackup != null && Directory.Exists(tempDataBackup))
+                            {
+                                try
+                                {
+                                    string restoredDataDir = Path.Combine(targetPluginDir, "Data");
+                                    Directory.Move(tempDataBackup, restoredDataDir);
+                                    Log.Information("已恢复用户数据目录: {BackupDir} -> {DataDir}", tempDataBackup, restoredDataDir);
+                                }
+                                catch (Exception ex)
+                                {
+                                    Log.Error(ex, "恢复插件数据目录失败: {PluginName}，备份位置: {BackupDir}", 
+                                        pluginName, tempDataBackup);
+                                    // 数据还在备份目录中，用户可以手动恢复
+                                }
+                            }
                         }
-                        
-                        // 4. 将临时目录移动到插件目录
-                        Directory.Move(tempPluginDir, targetPluginDir);
-                        Log.Information("成功将插件从临时目录移动到插件目录: {From} -> {To}", 
-                            tempPluginDir, targetPluginDir);
+                        else
+                        {
+                            // 目标目录不存在，直接移动（首次安装不应该走这个分支）
+                            Directory.Move(tempPluginDir, targetPluginDir);
+                            Log.Information("插件目录不存在，直接移动: {From} -> {To}", 
+                                tempPluginDir, targetPluginDir);
+                        }
                         
                         // 5. 更新数据库
                         pluginInfo.Version = pluginInfo.PendingVersion ?? pluginInfo.Version;

@@ -1,0 +1,421 @@
+{% extends "base.html" %}
+
+{% block title %}插件存储器 - MicroDock 插件管理{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2><i class="bi bi-archive"></i> 插件存储器</h2>
+        <p class="text-muted mb-0">管理和存储MicroDock插件包</p>
+    </div>
+    <div>
+        <button class="btn btn-primary" onclick="showUploadModal()">
+            <i class="bi bi-plus-circle"></i> 上传插件包
+        </button>
+        <button class="btn btn-outline-secondary" onclick="scanPlugins()">
+            <i class="bi bi-arrow-clockwise"></i> 刷新列表
+        </button>
+    </div>
+</div>
+
+<!-- 统计信息 -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <h5 class="card-title mb-0">{{ plugins|length }}</h5>
+                        <p class="card-text small">总插件数</p>
+                    </div>
+                    <i class="bi bi-archive-fill display-6 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <h5 class="card-title mb-0">
+                            {{ plugins|selectattr('plugin_type', 'equalto', 'storage')|list|length }}
+                        </h5>
+                        <p class="card-text small">存储器插件</p>
+                    </div>
+                    <i class="bi bi-file-earmark-zip-fill display-6 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <h5 class="card-title mb-0">
+                            {{ plugins|selectattr('plugin_type', 'equalto', 'unknown')|list|length }}
+                        </h5>
+                        <p class="card-text small">传统插件</p>
+                    </div>
+                    <i class="bi bi-gear-fill display-6 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-white">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <h5 class="card-title mb-0">
+                            {% set total_size = 0 %}
+                            {% for plugin in plugins.values() %}
+                                {% set total_size = total_size + plugin.file_size %}
+                            {% endfor %}
+                            {{ "%.1f"|format(total_size / 1024 / 1024) }} MB
+                        </h5>
+                        <p class="card-text small">总存储大小</p>
+                    </div>
+                    <i class="bi bi-hdd-fill display-6 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 搜索和过滤 -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input type="text" class="form-control" id="searchInput" placeholder="搜索插件名称...">
+                </div>
+            </div>
+            <div class="col-md-3">
+                <select class="form-select" id="typeFilter">
+                    <option value="">所有类型</option>
+                    <option value="storage">存储器插件</option>
+                    <option value="unknown">传统插件</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select class="form-select" id="formatFilter">
+                    <option value="">所有格式</option>
+                    <option value="zip">ZIP包</option>
+                    <option value="dll">DLL文件</option>
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 插件列表 -->
+{% if plugins %}
+    <div class="row" id="pluginsContainer">
+        {% for plugin_name, plugin in plugins.items() %}
+        <div class="col-lg-6 mb-4 plugin-item"
+             data-name="{{ plugin.name|lower }}"
+             data-type="{{ plugin.plugin_type }}"
+             data-format="{{ 'zip' if plugin.file_path.endswith('.zip') else 'dll' }}">
+
+            <div class="card plugin-card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-{{ 'file-earmark-zip' if plugin.file_path.endswith('.zip') else 'gear' }} me-2"></i>
+                        <h6 class="card-title mb-0">{{ plugin.name }}</h6>
+                    </div>
+                    <span class="badge status-badge bg-{{ 'success' if plugin.plugin_type == 'storage' else 'secondary' }}">
+                        {{ '存储器' if plugin.plugin_type == 'storage' else '传统' }}
+                    </span>
+                </div>
+
+                <div class="card-body">
+                    <p class="card-text">{{ plugin.description or '暂无描述' }}</p>
+
+                    <div class="row text-muted small mb-3">
+                        <div class="col-6">
+                            <i class="bi bi-tag"></i> 版本: {{ plugin.version }}
+                        </div>
+                        <div class="col-6">
+                            <i class="bi bi-person"></i> 作者: {{ plugin.author or '未知' }}
+                        </div>
+                        <div class="col-6 mt-1">
+                            <i class="bi bi-file-binary"></i> 大小: {{ "%.2f"|format(plugin.file_size / 1024) }} KB
+                        </div>
+                        <div class="col-6 mt-1">
+                            <i class="bi bi-clock"></i> 更新: {{ plugin.modified_time }}
+                        </div>
+                    </div>
+
+                    {% if plugin.dependencies %}
+                    <div class="mb-2">
+                        <small class="text-muted">
+                            <i class="bi bi-link"></i> 依赖: {{ plugin.dependencies|join(', ') }}
+                        </small>
+                    </div>
+                    {% endif %}
+
+                    {% if plugin.zip_contents %}
+                    <div class="mb-2">
+                        <small class="text-success">
+                            <i class="bi bi-file-zip"></i> 包含 {{ plugin.zip_contents|length }} 个文件
+                        </small>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="card-footer">
+                    <div class="btn-group w-100" role="group">
+                        <button type="button" class="btn btn-outline-primary btn-sm"
+                                onclick="downloadPlugin('{{ plugin_name }}')">
+                            <i class="bi bi-download"></i> 下载
+                        </button>
+
+                        <button type="button" class="btn btn-outline-info btn-sm"
+                                onclick="showPluginDetails('{{ plugin_name }}')">
+                            <i class="bi bi-info-circle"></i> 详情
+                        </button>
+
+                        {% if plugin.zip_contents %}
+                        <button type="button" class="btn btn-outline-secondary btn-sm"
+                                onclick="showPluginContents('{{ plugin_name }}')">
+                            <i class="bi bi-list-ul"></i> 内容
+                        </button>
+                        {% endif %}
+
+                        <button type="button" class="btn btn-outline-danger btn-sm"
+                                onclick="deletePlugin('{{ plugin_name }}')">
+                            <i class="bi bi-trash"></i> 删除
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="text-center py-5">
+        <i class="bi bi-archive display-1 text-muted"></i>
+        <h3 class="mt-3 text-muted">暂无插件</h3>
+        <p class="text-muted">
+            还没有存储任何插件包。<br>
+            点击上方的"上传插件包"按钮来添加新的插件包。
+        </p>
+        <button class="btn btn-primary" onclick="showUploadModal()">
+            <i class="bi bi-plus-circle"></i> 上传第一个插件包
+        </button>
+    </div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // 下载插件
+    function downloadPlugin(pluginName) {
+        window.open(`/api/plugins/${encodeURIComponent(pluginName)}/download`, '_blank');
+    }
+
+    // 删除插件
+    function deletePlugin(pluginName) {
+        if (!confirm(`确定要删除插件 "${pluginName}" 吗？\n删除前会自动创建备份。`)) {
+            return;
+        }
+
+        fetch(`/api/plugins/${encodeURIComponent(pluginName)}/delete`, {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showAlert(data.message, 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showAlert(data.message, 'danger');
+            }
+        })
+        .catch(error => {
+            showAlert('删除失败: ' + error.message, 'danger');
+        });
+    }
+
+    // 显示插件详情
+    function showPluginDetails(pluginName) {
+        fetch('/api/plugins')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const plugin = data.data.find(p => p.name === pluginName);
+                if (plugin) {
+                    // 获取版本信息
+                    fetch(`/api/plugins/${encodeURIComponent(pluginName)}/version`)
+                    .then(response => response.json())
+                    .then(versionData => {
+                        let detailsHtml = `
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6>基本信息</h6>
+                                    <p><strong>名称:</strong> ${plugin.name}</p>
+                                    <p><strong>版本:</strong> ${plugin.version}</p>
+                                    <p><strong>作者:</strong> ${plugin.author || '未知'}</p>
+                                    <p><strong>类型:</strong> ${plugin.plugin_type}</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6>文件信息</h6>
+                                    <p><strong>文件路径:</strong> ${plugin.file_path}</p>
+                                    <p><strong>文件大小:</strong> ${formatFileSize(plugin.file_size)}</p>
+                                    <p><strong>创建时间:</strong> ${plugin.created_time}</p>
+                                    <p><strong>修改时间:</strong> ${plugin.modified_time}</p>
+                                </div>
+                            </div>
+                        `;
+
+                        if (plugin.dependencies && plugin.dependencies.length > 0) {
+                            detailsHtml += `<p><strong>依赖项:</strong> ${plugin.dependencies.join(', ')}</p>`;
+                        }
+
+                        if (plugin.description) {
+                            detailsHtml += `<p><strong>描述:</strong> ${plugin.description}</p>`;
+                        }
+
+                        // 创建模态框显示详情
+                        const modalHtml = `
+                            <div class="modal fade" id="detailsModal" tabindex="-1">
+                                <div class="modal-dialog modal-lg">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title">插件详情 - ${plugin.name}</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            ${detailsHtml}
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                                            <button type="button" class="btn btn-primary" onclick="downloadPlugin('${plugin.name}')">
+                                                <i class="bi bi-download"></i> 下载插件
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+
+                        // 移除现有的模态框
+                        const existingModal = document.getElementById('detailsModal');
+                        if (existingModal) {
+                            existingModal.remove();
+                        }
+
+                        // 添加新的模态框
+                        document.body.insertAdjacentHTML('beforeend', modalHtml);
+                        const modal = new bootstrap.Modal(document.getElementById('detailsModal'));
+                        modal.show();
+                    });
+                }
+            }
+        })
+        .catch(error => {
+            showAlert('获取插件详情失败: ' + error.message, 'danger');
+        });
+    }
+
+    // 显示插件内容（仅限zip文件）
+    function showPluginContents(pluginName) {
+        fetch(`/api/plugins/${encodeURIComponent(pluginName)}/contents`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                let contentsHtml = '<div class="list-group" style="max-height: 400px; overflow-y: auto;">';
+
+                data.data.forEach(file => {
+                    const isDir = file.endsWith('/');
+                    const icon = isDir ? 'bi-folder' : 'bi-file-earmark';
+                    const iconColor = isDir ? 'text-primary' : 'text-secondary';
+
+                    contentsHtml += `
+                        <div class="list-group-item">
+                            <i class="bi ${icon} ${iconColor} me-2"></i>
+                            ${file}
+                        </div>
+                    `;
+                });
+
+                contentsHtml += '</div>';
+
+                const modalHtml = `
+                    <div class="modal fade" id="contentsModal" tabindex="-1">
+                        <div class="modal-dialog modal-lg">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">插件内容 - ${pluginName}</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    ${contentsHtml}
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                                    <button type="button" class="btn btn-primary" onclick="downloadPlugin('${pluginName}')">
+                                        <i class="bi bi-download"></i> 下载完整插件
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                // 移除现有的模态框
+                const existingModal = document.getElementById('contentsModal');
+                if (existingModal) {
+                    existingModal.remove();
+                }
+
+                // 添加新的模态框
+                document.body.insertAdjacentHTML('beforeend', modalHtml);
+                const modal = new bootstrap.Modal(document.getElementById('contentsModal'));
+                modal.show();
+            } else {
+                showAlert(data.message || '无法获取插件内容', 'warning');
+            }
+        })
+        .catch(error => {
+            showAlert('获取插件内容失败: ' + error.message, 'danger');
+        });
+    }
+
+    // 搜索和过滤功能
+    function filterPlugins() {
+        const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+        const typeFilter = document.getElementById('typeFilter').value;
+        const formatFilter = document.getElementById('formatFilter').value;
+        const pluginItems = document.querySelectorAll('.plugin-item');
+
+        pluginItems.forEach(item => {
+            const name = item.dataset.name;
+            const type = item.dataset.type;
+            const format = item.dataset.format;
+
+            let matchesSearch = name.includes(searchTerm);
+            let matchesType = !typeFilter || type === typeFilter;
+            let matchesFormat = !formatFilter || format === formatFilter;
+
+            if (matchesSearch && matchesType && matchesFormat) {
+                item.style.display = 'block';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    }
+
+    // 页面加载完成后设置事件监听器
+    document.addEventListener('DOMContentLoaded', function() {
+        // 搜索和过滤事件
+        document.getElementById('searchInput').addEventListener('input', filterPlugins);
+        document.getElementById('typeFilter').addEventListener('change', filterPlugins);
+        document.getElementById('formatFilter').addEventListener('change', filterPlugins);
+    });
+</script>
+{% endblock %}

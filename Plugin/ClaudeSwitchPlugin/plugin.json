@@ -1,13 +1,13 @@
 {
   "name": "com.microdock.claudeswitch",
   "displayName": "Claude 配置切换器",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "管理和切换 Claude 与 OpenAI Codex 的 API 配置，支持卡片式界面和快速应用",
   "author": "MicroDock",
   "license": "MIT",
   "main": "ClaudeSwitchPlugin.dll",
   "entryClass": "ClaudeSwitchPlugin.ClaudeSwitchPlugin",
   "engines": {
-    "microdock": ">=0.0.3.0"
+    "microdock": ">=0.0.2.0"
   }
 }

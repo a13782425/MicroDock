@@ -1,6 +1,7 @@
 using MicroDock.Plugin;
 using System;
 using System.IO;
+using System.Text.Json;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
@@ -8,6 +9,22 @@ using Avalonia;
 using Avalonia.Controls.Primitives;
 
 namespace BuglySymbolResolver;
+
+/// <summary>
+/// 插件配置模型
+/// </summary>
+public class PluginSettings
+{
+    /// <summary>
+    /// 32位解析器路径
+    /// </summary>
+    public string Resolver32Bit { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 64位解析器路径
+    /// </summary>
+    public string Resolver64Bit { get; set; } = string.Empty;
+}
 
 /// <summary>
 /// Bugly符号解析插件
@@ -21,6 +38,12 @@ public class BuglySymbolResolverPlugin : BaseMicroDockPlugin
     // 设置控件引用
     private TextBox? _resolver32BitTextBox;
     private TextBox? _resolver64BitTextBox;
+
+    // 配置实例（缓存在内存中）
+    private PluginSettings? _settings;
+
+    // 配置文件名
+    private const string SettingsFileName = "settings.json";
 
     /// <summary>
     /// 所有标签页
@@ -43,7 +66,17 @@ public class BuglySymbolResolverPlugin : BaseMicroDockPlugin
     /// </summary>
     public string? GetSettingsValue(string key)
     {
-        return GetSettings(key);
+        if (_settings == null)
+        {
+            _settings = LoadSettingsFromFile();
+        }
+
+        return key switch
+        {
+            "resolver_32bit" => _settings.Resolver32Bit,
+            "resolver_64bit" => _settings.Resolver64Bit,
+            _ => null
+        };
     }
 
     /// <summary>
@@ -198,17 +231,82 @@ public class BuglySymbolResolverPlugin : BaseMicroDockPlugin
     }
 
     /// <summary>
+    /// 从文件加载配置
+    /// </summary>
+    private PluginSettings LoadSettingsFromFile()
+    {
+        try
+        {
+            var dataPath = GetPluginDataPath();
+            var settingsPath = Path.Combine(dataPath, SettingsFileName);
+
+            if (File.Exists(settingsPath))
+            {
+                var json = File.ReadAllText(settingsPath);
+                var settings = JsonSerializer.Deserialize<PluginSettings>(json);
+                if (settings != null)
+                {
+                    LogInfo($"配置已从文件加载: {settingsPath}");
+                    return settings;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            LogError($"加载配置文件失败: {ex.Message}", ex);
+        }
+
+        // 返回默认配置
+        return new PluginSettings();
+    }
+
+    /// <summary>
+    /// 保存配置到文件
+    /// </summary>
+    private void SaveSettingsToFile(PluginSettings settings)
+    {
+        try
+        {
+            var dataPath = GetPluginDataPath();
+            
+            // 确保目录存在
+            if (!Directory.Exists(dataPath))
+            {
+                Directory.CreateDirectory(dataPath);
+                LogInfo($"创建数据目录: {dataPath}");
+            }
+
+            var settingsPath = Path.Combine(dataPath, SettingsFileName);
+            var json = JsonSerializer.Serialize(settings, new JsonSerializerOptions 
+            { 
+                WriteIndented = true 
+            });
+            
+            File.WriteAllText(settingsPath, json);
+            LogInfo($"配置已保存到文件: {settingsPath}");
+        }
+        catch (Exception ex)
+        {
+            LogError($"保存配置文件失败: {ex.Message}", ex);
+        }
+    }
+
+    /// <summary>
     /// 加载字符串类型设置
     /// </summary>
     private string LoadStringSetting(string key, string defaultValue)
     {
-        var value = GetSettings(key);
-        if (string.IsNullOrEmpty(value))
+        if (_settings == null)
         {
-            SetSettings(key, defaultValue, $"字符串设置: {key}");
-            return defaultValue;
+            _settings = LoadSettingsFromFile();
         }
-        return value;
+
+        return key switch
+        {
+            "resolver_32bit" => string.IsNullOrEmpty(_settings.Resolver32Bit) ? defaultValue : _settings.Resolver32Bit,
+            "resolver_64bit" => string.IsNullOrEmpty(_settings.Resolver64Bit) ? defaultValue : _settings.Resolver64Bit,
+            _ => defaultValue
+        };
     }
 
     /// <summary>
@@ -216,7 +314,22 @@ public class BuglySymbolResolverPlugin : BaseMicroDockPlugin
     /// </summary>
     private void SaveStringSetting(string key, string value)
     {
-        SetSettings(key, value, $"字符串设置: {key}");
+        if (_settings == null)
+        {
+            _settings = LoadSettingsFromFile();
+        }
+
+        switch (key)
+        {
+            case "resolver_32bit":
+                _settings.Resolver32Bit = value;
+                break;
+            case "resolver_64bit":
+                _settings.Resolver64Bit = value;
+                break;
+        }
+
+        SaveSettingsToFile(_settings);
     }
 
     /// <summary>
@@ -225,7 +338,26 @@ public class BuglySymbolResolverPlugin : BaseMicroDockPlugin
     public override void OnInit()
     {
         base.OnInit();
-        LogInfo("Bugly符号解析插件初始化完成");
+        
+        try
+        {
+            // 确保数据目录存在
+            var dataPath = GetPluginDataPath();
+            if (!Directory.Exists(dataPath))
+            {
+                Directory.CreateDirectory(dataPath);
+                LogInfo($"创建数据目录: {dataPath}");
+            }
+
+            // 加载或创建配置文件
+            _settings = LoadSettingsFromFile();
+            
+            LogInfo("Bugly符号解析插件初始化完成");
+        }
+        catch (Exception ex)
+        {
+            LogError($"插件初始化失败: {ex.Message}", ex);
+        }
     }
 
     public override void OnEnable()

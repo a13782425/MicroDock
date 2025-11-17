@@ -1,7 +1,7 @@
 {
   "name": "com.microdock.unityproject",
   "displayName": "Unity 项目管理",
-  "version": "2.0.0",
+  "version": "1.0.1",
   "description": "管理和打开 Unity 项目，支持分组管理、快速搜索、一键打开",
   "author": "MicroDock",
   "license": "MIT",

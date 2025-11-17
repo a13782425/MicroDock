@@ -8,6 +8,7 @@ using Avalonia.Media.Imaging;
 using Avalonia.VisualTree;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -22,8 +23,10 @@ namespace UnityProjectPlugin.Views
     {
         private SplitButton? _openSplitButton;
         private MenuItem? _deleteMenuItem;
+        private MenuItem? _openDirectoryMenuItem;
         private TextBlock? _projectNameDisplay;
         private TextBox? _projectNameEditor;
+        private TextBlock? _projectPathText;
         private Button? _groupButton;
         private TextBlock? _groupButtonText;
         private ComboBox? _groupComboBox;
@@ -51,8 +54,10 @@ namespace UnityProjectPlugin.Views
         {
             _openSplitButton = this.FindControl<SplitButton>("OpenSplitButton");
             _deleteMenuItem = this.FindControl<MenuItem>("DeleteMenuItem");
+            _openDirectoryMenuItem = this.FindControl<MenuItem>("OpenDirectoryMenuItem");
             _projectNameDisplay = this.FindControl<TextBlock>("ProjectNameDisplay");
             _projectNameEditor = this.FindControl<TextBox>("ProjectNameEditor");
+            _projectPathText = this.FindControl<TextBlock>("ProjectPathText");
             _groupButton = this.FindControl<Button>("GroupButton");
             _groupButtonText = this.FindControl<TextBlock>("GroupButtonText");
             _groupComboBox = this.FindControl<ComboBox>("GroupComboBox");
@@ -72,6 +77,17 @@ namespace UnityProjectPlugin.Views
             if (_deleteMenuItem != null)
             {
                 _deleteMenuItem.Click += OnDeleteClick;
+            }
+
+            if (_openDirectoryMenuItem != null)
+            {
+                _openDirectoryMenuItem.Click += OnOpenDirectoryClick;
+            }
+
+            // 项目路径点击打开目录
+            if (_projectPathText != null)
+            {
+                _projectPathText.PointerPressed += OnPathPointerPressed;
             }
 
             // 项目名双击编辑
@@ -418,6 +434,52 @@ namespace UnityProjectPlugin.Views
                 catch
                 {
                     // TODO: 显示错误消息
+                }
+            }
+        }
+
+        /// <summary>
+        /// 打开目录菜单项点击事件
+        /// </summary>
+        private void OnOpenDirectoryClick(object? sender, RoutedEventArgs e)
+        {
+            OpenProjectDirectory();
+        }
+
+        /// <summary>
+        /// 项目路径点击事件
+        /// </summary>
+        private void OnPathPointerPressed(object? sender, PointerPressedEventArgs e)
+        {
+            OpenProjectDirectory();
+        }
+
+        /// <summary>
+        /// 打开项目目录
+        /// </summary>
+        private void OpenProjectDirectory()
+        {
+            if (DataContext is UnityProject project)
+            {
+                try
+                {
+                    if (Directory.Exists(project.Path))
+                    {
+                        Process.Start(new ProcessStartInfo
+                        {
+                            FileName = "explorer.exe",
+                            Arguments = project.Path,
+                            UseShellExecute = true
+                        });
+                    }
+                    else
+                    {
+                        _plugin?.Context.LogWarning($"项目目录不存在: {project.Path}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _plugin?.Context.LogError($"打开目录失败: {project.Path}", ex);
                 }
             }
         }
