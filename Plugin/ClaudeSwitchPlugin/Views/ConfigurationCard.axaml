@@ -1,0 +1,146 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DesignWidth="320"
+             d:DesignHeight="180"
+             x:Class="ClaudeSwitchPlugin.Views.ConfigurationCard">
+
+  <Border CornerRadius="8"
+          BorderThickness="1"
+          BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+          Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
+          Margin="0,0,0,12">
+    <Grid RowDefinitions="Auto,*,Auto">
+      <!-- 头部信息 -->
+      <StackPanel Grid.Row="0"
+                  Orientation="Horizontal"
+                  Spacing="8"
+                  Margin="16,12,16,8">
+        <Border CornerRadius="12"
+                Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
+                Width="24"
+                Height="24"
+                VerticalAlignment="Center">
+            <TextBlock Text="{Binding ProviderIcon}"
+                       FontSize="14"
+                       FontWeight="Bold"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"/>
+        </Border>
+        <StackPanel Spacing="2">
+          <TextBlock Text="{Binding Name}"
+                     FontWeight="SemiBold"
+                     FontSize="16"/>
+          <TextBlock Text="{Binding Configuration.ProviderDisplayName}"
+                     FontSize="12"
+                     Opacity="0.7"/>
+        </StackPanel>
+
+        <!-- 活跃状态标签 -->
+        <Border CornerRadius="12"
+                Background="#28a745"
+                Padding="8,4"
+                IsVisible="{Binding IsActive}"
+                HorizontalAlignment="Right">
+          <TextBlock Text="当前应用中"
+                     FontSize="10"
+                     Foreground="White"
+                     FontWeight="Medium"/>
+        </Border>
+      </StackPanel>
+
+      <!-- 配置信息 -->
+      <StackPanel Grid.Row="1"
+                  Spacing="8"
+                  Margin="16,0,16,8">
+        <Border CornerRadius="4"
+                Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
+                Padding="8">
+          <Grid ColumnDefinitions="Auto,*">
+            <TextBlock Text="URL:"
+                       FontSize="12"
+                       FontWeight="Medium"
+                       VerticalAlignment="Top"
+                       Margin="0,2,8,0"/>
+            <TextBlock Grid.Column="1"
+                       Text="{Binding BaseURL}"
+                       FontSize="12"
+                       TextWrapping="Wrap"
+                       Opacity="0.8"/>
+          </Grid>
+        </Border>
+
+        <Border CornerRadius="4"
+                Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
+                Padding="8">
+          <Grid ColumnDefinitions="Auto,*">
+            <TextBlock Text="Key:"
+                       FontSize="12"
+                       FontWeight="Medium"
+                       VerticalAlignment="Top"
+                       Margin="0,2,8,0"/>
+            <TextBlock Grid.Column="1"
+                       Text="{Binding MaskedApiKey}"
+                       FontSize="12"
+                       FontFamily="Consolas"
+                       Opacity="0.8"/>
+          </Grid>
+        </Border>
+
+        <Border CornerRadius="4"
+                Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
+                Padding="8"
+                IsVisible="{Binding Model, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+          <Grid ColumnDefinitions="Auto,*">
+            <TextBlock Text="Model:"
+                       FontSize="12"
+                       FontWeight="Medium"
+                       VerticalAlignment="Top"
+                       Margin="0,2,8,0"/>
+            <TextBlock Grid.Column="1"
+                       Text="{Binding Model}"
+                       FontSize="12"
+                       Opacity="0.8"/>
+          </Grid>
+        </Border>
+
+        <TextBlock Text="{Binding LastUsedString}"
+                   FontSize="10"
+                   Opacity="0.6"
+                   HorizontalAlignment="Right"/>
+      </StackPanel>
+
+      <!-- 操作按钮 -->
+      <StackPanel Grid.Row="2"
+                  Orientation="Horizontal"
+                  Spacing="8"
+                  HorizontalAlignment="Right"
+                  Margin="16,8,16,12">
+        <Button Content="应用"
+                Command="{Binding ApplyConfiguration}"
+                IsEnabled="{Binding CanApply}"
+                Width="60"
+                Height="32"
+                CornerRadius="4"
+                Background="#28a745"
+                Foreground="White"/>
+        <Button Content="编辑"
+                Command="{Binding EditConfiguration}"
+                IsEnabled="{Binding CanEdit}"
+                Width="60"
+                Height="32"
+                CornerRadius="4"/>
+        <Button Content="删除"
+                Command="{Binding DeleteConfiguration}"
+                IsEnabled="{Binding CanDelete}"
+                Width="60"
+                Height="32"
+                CornerRadius="4"
+                Background="#dc3545"
+                Foreground="White"/>
+      </StackPanel>
+    </Grid>
+  </Border>
+</UserControl>

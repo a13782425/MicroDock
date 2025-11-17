@@ -144,3 +144,28 @@ public class HideLoadingMessage : IEventMessage
 {
 }
 
+/// <summary>
+/// 插件状态变更消息
+/// </summary>
+public class PluginStateChangedMessage : IEventMessage
+{
+    public string PluginName { get; set; } = string.Empty;
+    public bool IsEnabled { get; set; }
+}
+
+/// <summary>
+/// 插件删除消息
+/// </summary>
+public class PluginDeletedMessage : IEventMessage
+{
+    public string PluginName { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// 插件导入消息
+/// </summary>
+public class PluginImportedMessage : IEventMessage
+{
+    public string PluginName { get; set; } = string.Empty;
+}
+

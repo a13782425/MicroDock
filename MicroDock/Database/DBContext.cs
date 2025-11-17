@@ -28,6 +28,7 @@ internal static class DBContext
             _database.CreateTable<PluginDataDB>();
             _database.CreateTable<PluginSettingsDB>();
             _database.CreateTable<PluginToolStatisticsDB>();
+            _database.CreateTable<PluginInfoDB>();
 
             // 尝试迁移表结构以支持新增字段
             TableMapping mapping = _database.GetMapping<SettingDB>();
@@ -648,6 +649,136 @@ internal static class DBContext
         }
 
         _database.Execute("DELETE FROM PluginToolStatistics WHERE PluginName = ?", pluginName);
+    }
+
+    #endregion
+
+    #region 插件信息管理
+
+    /// <summary>
+    /// 获取插件信息
+    /// </summary>
+    public static PluginInfoDB? GetPluginInfo(string pluginName)
+    {
+        if (string.IsNullOrEmpty(pluginName))
+        {
+            return null;
+        }
+
+        return _database.Table<PluginInfoDB>()
+            .FirstOrDefault(p => p.PluginName == pluginName);
+    }
+
+    /// <summary>
+    /// 设置插件启用状态
+    /// </summary>
+    public static void SetPluginEnabled(string pluginName, bool isEnabled)
+    {
+        if (string.IsNullOrEmpty(pluginName))
+        {
+            return;
+        }
+
+        PluginInfoDB? pluginInfo = GetPluginInfo(pluginName);
+        if (pluginInfo != null)
+        {
+            pluginInfo.IsEnabled = isEnabled;
+            pluginInfo.UpdatedAt = TimeStampHelper.GetCurrentTimestamp();
+            _database.Update(pluginInfo);
+        }
+    }
+
+    /// <summary>
+    /// 添加新插件信息记录
+    /// </summary>
+    public static void AddPluginInfo(PluginInfoDB info)
+    {
+        if (info == null || string.IsNullOrEmpty(info.PluginName))
+        {
+            return;
+        }
+
+        // 检查插件是否已存在
+        PluginInfoDB? existing = GetPluginInfo(info.PluginName);
+        if (existing != null)
+        {
+            // 如果已存在，更新信息
+            UpdatePluginInfo(info);
+        }
+        else
+        {
+            // 如果不存在，插入新记录
+            long now = TimeStampHelper.GetCurrentTimestamp();
+            info.InstalledAt = now;
+            info.UpdatedAt = now;
+            _database.Insert(info);
+        }
+    }
+
+    /// <summary>
+    /// 更新插件信息
+    /// </summary>
+    public static void UpdatePluginInfo(PluginInfoDB info)
+    {
+        if (info == null || string.IsNullOrEmpty(info.PluginName))
+        {
+            return;
+        }
+
+        info.UpdatedAt = TimeStampHelper.GetCurrentTimestamp();
+        _database.Update(info);
+    }
+
+    /// <summary>
+    /// 删除插件信息记录
+    /// </summary>
+    public static void DeletePluginInfo(string pluginName)
+    {
+        if (string.IsNullOrEmpty(pluginName))
+        {
+            return;
+        }
+
+        _database.Delete<PluginInfoDB>(pluginName);
+    }
+
+    /// <summary>
+    /// 获取所有插件信息
+    /// </summary>
+    public static List<PluginInfoDB> GetAllPluginInfos()
+    {
+        return _database.Table<PluginInfoDB>().ToList();
+    }
+
+    /// <summary>
+    /// 标记插件为待删除或取消待删除
+    /// </summary>
+    /// <param name="pluginName">插件唯一名称</param>
+    /// <param name="pending">true 标记为待删除，false 取消待删除</param>
+    public static void MarkPluginForDeletion(string pluginName, bool pending)
+    {
+        if (string.IsNullOrEmpty(pluginName))
+        {
+            return;
+        }
+
+        PluginInfoDB? pluginInfo = GetPluginInfo(pluginName);
+        if (pluginInfo != null)
+        {
+            pluginInfo.PendingDelete = pending;
+            pluginInfo.UpdatedAt = TimeStampHelper.GetCurrentTimestamp();
+            _database.Update(pluginInfo);
+        }
+    }
+
+    /// <summary>
+    /// 获取所有待删除的插件
+    /// </summary>
+    public static List<PluginInfoDB> GetPendingDeletePlugins()
+    {
+        return _database.Table<PluginInfoDB>()
+            .Where(p => p.PendingDelete == true)
+            .ToList();
     }
 
     #endregion

@@ -5,13 +5,17 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 	</PropertyGroup>
+
+	<ItemGroup>
+	  <AvaloniaResource Include="Assets\**" />
+	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\..\MicroDock.Plugin\MicroDock.Plugin.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>
 		<PackageReference Include="Avalonia" Version="11.3.7" />
-		<PackageReference Include="Avalonia.Controls.DataGrid" Version="11.3.7" />
+		<PackageReference Include="FluentAvaloniaUI" Version="2.4.0" />
 	</ItemGroup>
 
 	<!-- 自动复制 plugin.json 到输出目录 -->

@@ -12,6 +12,7 @@ namespace MicroDock.Models
         private object? _content;
         private NavigationType _navType;
         private bool _useParentScrollViewer = true;
+        private string _pluginUniqueName = string.Empty;
 
         /// <summary>
         /// 导航项标题
@@ -57,6 +58,15 @@ namespace MicroDock.Models
         {
             get => _useParentScrollViewer;
             set => this.RaiseAndSetIfChanged(ref _useParentScrollViewer, value);
+        }
+
+        /// <summary>
+        /// 插件唯一名称（仅对插件导航项有效）
+        /// </summary>
+        public string PluginUniqueName
+        {
+            get => _pluginUniqueName;
+            set => this.RaiseAndSetIfChanged(ref _pluginUniqueName, value);
         }
     }
 

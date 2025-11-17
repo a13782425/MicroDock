@@ -4,9 +4,11 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Platform.Storage;
+using Avalonia.VisualTree;
 using MicroDock.Plugin;
 using System;
 using System.IO;
+using System.Linq;
 using UnityProjectPlugin.Models;
 using UnityProjectPlugin.ViewModels;
 
@@ -20,10 +22,19 @@ namespace UnityProjectPlugin.Views
         private readonly UnityProjectPlugin _plugin;
         private readonly UnityProjectTabViewModel _viewModel;
 
+        /// <summary>
+        /// 公开插件实例供子控件使用
+        /// </summary>
+        public UnityProjectPlugin Plugin => _plugin;
+
         // UI 控件引用
         private TextBox? _searchTextBox;
+        private ToggleButton? _groupViewToggle;
         private Button? _addProjectButton;
-        private DataGrid? _projectsDataGrid;
+        private Button? _emptyAddButton;
+        private ItemsControl? _tileView;
+        private ItemsControl? _groupView;
+        private StackPanel? _emptyState;
 
         public UnityProjectTabView(UnityProjectPlugin plugin)
         {
@@ -33,6 +44,7 @@ namespace UnityProjectPlugin.Views
             InitializeComponent();
             InitializeControls();
             AttachEventHandlers();
+            UpdateEmptyState();
         }
 
         public string TabName => "Unity项目";
@@ -47,8 +59,12 @@ namespace UnityProjectPlugin.Views
         private void InitializeControls()
         {
             _searchTextBox = this.FindControl<TextBox>("SearchTextBox");
+            _groupViewToggle = this.FindControl<ToggleButton>("GroupViewToggle");
             _addProjectButton = this.FindControl<Button>("AddProjectButton");
-            _projectsDataGrid = this.FindControl<DataGrid>("ProjectsDataGrid");
+            _emptyAddButton = this.FindControl<Button>("EmptyAddButton");
+            _tileView = this.FindControl<ItemsControl>("TileView");
+            _groupView = this.FindControl<ItemsControl>("GroupView");
+            _emptyState = this.FindControl<StackPanel>("EmptyState");
 
             // 设置 DataContext
             DataContext = _viewModel;
@@ -56,17 +72,39 @@ namespace UnityProjectPlugin.Views
 
         private void AttachEventHandlers()
         {
-            if (_searchTextBox != null)
-            {
-                _searchTextBox.TextChanged += (s, e) =>
-                {
-                    _viewModel.SearchText = _searchTextBox.Text ?? string.Empty;
-                };
-            }
-
             if (_addProjectButton != null)
             {
                 _addProjectButton.Click += OnAddProjectClick;
+            }
+
+            if (_emptyAddButton != null)
+            {
+                _emptyAddButton.Click += OnAddProjectClick;
+            }
+
+            // 监听项目列表变化以更新空状态
+            _viewModel.PropertyChanged += (s, e) =>
+            {
+                if (e.PropertyName == nameof(_viewModel.FilteredProjects))
+                {
+                    UpdateEmptyState();
+                }
+            };
+        }
+
+        /// <summary>
+        /// 刷新项目列表（供卡片调用）
+        /// </summary>
+        public void RefreshProjects()
+        {
+            _viewModel.LoadProjects();
+        }
+
+        private void UpdateEmptyState()
+        {
+            if (_emptyState != null)
+            {
+                _emptyState.IsVisible = _viewModel.FilteredProjects.Count == 0;
             }
         }
 
@@ -111,76 +149,5 @@ namespace UnityProjectPlugin.Views
                 // TODO: 显示错误消息对话框
             }
         }
-
-        /// <summary>
-        /// 打开按钮点击事件（DataGrid 单元格中的按钮）
-        /// </summary>
-        public void OpenButton_Click(object? sender, RoutedEventArgs e)
-        {
-            if (sender is Button button && button.DataContext is UnityProject project)
-            {
-                try
-                {
-                    _viewModel.OpenProject(project);
-                }
-                catch (Exception ex)
-                {
-                    // TODO: 显示错误消息对话框
-                }
-            }
-        }
-
-        /// <summary>
-        /// 编辑按钮点击事件（菜单项）
-        /// </summary>
-        public void EditButton_Click(object? sender, RoutedEventArgs e)
-        {
-            if (sender is MenuItem menuItem && menuItem.DataContext is UnityProject project)
-            {
-                try
-                {
-                    // 创建编辑 Flyout 内容
-                    ProjectEditFlyout editFlyout = new ProjectEditFlyout(_plugin, project, () =>
-                    {
-                        // 保存后刷新列表
-                        _viewModel.LoadProjects();
-                    });
-
-                    // 创建并显示 Flyout
-                    Flyout flyout = new Flyout
-                    {
-                        Content = editFlyout,
-                        Placement = PlacementMode.Pointer
-                    };
-
-                    flyout.ShowAt(menuItem);
-                }
-                catch (Exception ex)
-                {
-                    // TODO: 显示错误消息对话框
-                }
-            }
-        }
-
-        /// <summary>
-        /// 删除按钮点击事件（菜单项）
-        /// </summary>
-        public async void DeleteButton_Click(object? sender, RoutedEventArgs e)
-        {
-            if (sender is MenuItem menuItem && menuItem.DataContext is UnityProject project)
-            {
-                try
-                {
-                    // TODO: 显示确认对话框
-                    // 暂时直接删除
-                    _viewModel.DeleteProject(project);
-                }
-                catch (Exception ex)
-                {
-                    // TODO: 显示错误消息对话框
-                }
-            }
-        }
     }
 }
-

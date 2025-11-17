@@ -13,6 +13,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BuglySymbolResolver", "Plug
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnityProjectPlugin", "Plugin\UnityProjectPlugin\UnityProjectPlugin.csproj", "{CD93AE6D-EA1E-4559-9581-76ED9F3A8C08}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClaudeSwitchPlugin", "Plugin\ClaudeSwitchPlugin\ClaudeSwitchPlugin.csproj", "{81A72833-08DB-49E5-85B1-BB32FDCE1F33}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -71,6 +73,18 @@ Global
 		{CD93AE6D-EA1E-4559-9581-76ED9F3A8C08}.Release|x64.Build.0 = Release|Any CPU
 		{CD93AE6D-EA1E-4559-9581-76ED9F3A8C08}.Release|x86.ActiveCfg = Release|Any CPU
 		{CD93AE6D-EA1E-4559-9581-76ED9F3A8C08}.Release|x86.Build.0 = Release|Any CPU
+		{81A72833-08DB-49E5-85B1-BB32FDCE1F33}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{81A72833-08DB-49E5-85B1-BB32FDCE1F33}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{81A72833-08DB-49E5-85B1-BB32FDCE1F33}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{81A72833-08DB-49E5-85B1-BB32FDCE1F33}.Debug|x64.Build.0 = Debug|Any CPU
+		{81A72833-08DB-49E5-85B1-BB32FDCE1F33}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{81A72833-08DB-49E5-85B1-BB32FDCE1F33}.Debug|x86.Build.0 = Debug|Any CPU
+		{81A72833-08DB-49E5-85B1-BB32FDCE1F33}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{81A72833-08DB-49E5-85B1-BB32FDCE1F33}.Release|Any CPU.Build.0 = Release|Any CPU
+		{81A72833-08DB-49E5-85B1-BB32FDCE1F33}.Release|x64.ActiveCfg = Release|Any CPU
+		{81A72833-08DB-49E5-85B1-BB32FDCE1F33}.Release|x64.Build.0 = Release|Any CPU
+		{81A72833-08DB-49E5-85B1-BB32FDCE1F33}.Release|x86.ActiveCfg = Release|Any CPU
+		{81A72833-08DB-49E5-85B1-BB32FDCE1F33}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -78,6 +92,7 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{DF34D50C-FD63-4547-A077-8B0F7BE67D27} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 		{CD93AE6D-EA1E-4559-9581-76ED9F3A8C08} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{81A72833-08DB-49E5-85B1-BB32FDCE1F33} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {D1C9119F-CAA6-48AE-9549-495364253FA7}

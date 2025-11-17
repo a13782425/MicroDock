@@ -1,0 +1,110 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:ClaudeSwitchPlugin.ViewModels"
+             mc:Ignorable="d"
+             d:DesignWidth="500"
+             d:DesignHeight="400"
+             x:Class="ClaudeSwitchPlugin.Views.EditConfigDialog">
+
+  <Design.DataContext>
+    <vm:EditConfigDialogViewModel/>
+  </Design.DataContext>
+
+  <Border CornerRadius="8"
+          Background="{DynamicResource SystemControlBackgroundChromeHighBrush}"
+          BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+          BorderThickness="1"
+          BoxShadow="0 4 8 0 rgba(0,0,0,0.1)">
+    <Grid RowDefinitions="Auto,*,Auto"
+          Margin="24"
+          Width="450"
+          MaxHeight="600">
+
+    <!-- 标题 -->
+    <StackPanel Grid.Row="0" Spacing="8">
+      <TextBlock Text="编辑 AI 配置"
+                 FontSize="20"
+                 FontWeight="SemiBold"/>
+      <TextBlock Text="{Binding Subtitle}"
+                 FontSize="14"
+                 Opacity="0.7"/>
+    </StackPanel>
+
+    <!-- 表单内容 -->
+    <ScrollViewer Grid.Row="1"
+                  VerticalScrollBarVisibility="Auto"
+                  Margin="0,24,0,0">
+      <StackPanel Spacing="16"
+                  MaxWidth="400">
+
+        <!-- 配置名称 -->
+        <StackPanel Spacing="4">
+          <TextBlock Text="配置名称 *"
+                     FontWeight="Medium"/>
+          <TextBox Text="{Binding Name}"
+                   Watermark="输入配置名称，如：Claude 工作配置"/>
+        </StackPanel>
+
+        <!-- 提供商选择 -->
+        <StackPanel Spacing="4">
+          <TextBlock Text="AI 提供商 *"
+                     FontWeight="Medium"/>
+          <ComboBox SelectedIndex="{Binding SelectedProviderIndex}">
+            <ComboBoxItem Content="Claude"/>
+            <ComboBoxItem Content="OpenAI"/>
+          </ComboBox>
+        </StackPanel>
+
+        <!-- API 基础 URL -->
+        <StackPanel Spacing="4">
+          <TextBlock Text="API 基础 URL *"
+                     FontWeight="Medium"/>
+          <TextBox Text="{Binding BaseURL}"
+                   Watermark="https://api.anthropic.com 或 https://api.openai.com"/>
+        </StackPanel>
+
+        <!-- API 密钥 -->
+        <StackPanel Spacing="4">
+          <TextBlock Text="API 密钥 *"
+                     FontWeight="Medium"/>
+          <TextBox Text="{Binding ApiKey}"
+                   Watermark="sk-ant-... 或 sk-..."
+                   PasswordChar="*"/>
+        </StackPanel>
+
+        <!-- 模型名称 -->
+        <StackPanel Spacing="4">
+          <TextBlock Text="模型名称（可选）"
+                     FontWeight="Medium"/>
+          <TextBox Text="{Binding Model}"
+                   Watermark="claude-3-sonnet-20241022 或 gpt-4"/>
+        </StackPanel>
+
+      </StackPanel>
+    </ScrollViewer>
+
+    <!-- 操作按钮 -->
+    <StackPanel Grid.Row="2"
+                Orientation="Horizontal"
+                Spacing="12"
+                HorizontalAlignment="Right"
+                Margin="0,24,0,0">
+      <Button Content="取消"
+              Command="{Binding CancelCommand}"
+              Width="80"
+              Height="36"
+              CornerRadius="4"/>
+      <Button Content="保存"
+              Command="{Binding SaveCommand}"
+              Width="80"
+              Height="36"
+              CornerRadius="4"
+              Background="#0078d4"
+              Foreground="White"/>
+    </StackPanel>
+
+  </Grid>
+</Border>
+</UserControl>

@@ -3,88 +3,111 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:models="clr-namespace:UnityProjectPlugin.Models"
+             xmlns:views="clr-namespace:UnityProjectPlugin.Views"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
              x:Class="UnityProjectPlugin.Views.UnityProjectTabView">
 
     <Grid RowDefinitions="Auto,*" Margin="0,12,12,12">
         <!-- 工具栏 -->
-        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,12">
+        <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto" Margin="0,0,0,12">
+            <!-- 搜索框 -->
             <TextBox Grid.Column="0" 
-                     Watermark="搜索项目..."
+                     Watermark="搜索项目（项目名或分组名）..."
                      Name="SearchTextBox"
+                     Text="{Binding SearchText}"
                      Margin="0,0,12,0"/>
-            <Button Grid.Column="1" 
+            
+            <!-- 分组视图切换按钮 -->
+            <ToggleButton Grid.Column="1"
+                          Name="GroupViewToggle"
+                          ToolTip.Tip="切换分组视图"
+                          IsChecked="{Binding IsGroupViewEnabled}"
+                          Padding="12,8"
+                          Margin="0,0,12,0">
+                <StackPanel Orientation="Horizontal" Spacing="4">
+                    <PathIcon Width="16" Height="16">
+                        <PathIcon.Data>
+                            <!-- 分组图标 -->
+                            M 4,4 H 20 V 6 H 4 Z M 4,11 H 20 V 13 H 4 Z M 4,18 H 20 V 20 H 4 Z
+                        </PathIcon.Data>
+                    </PathIcon>
+                    <TextBlock Text="分组" VerticalAlignment="Center"/>
+                </StackPanel>
+            </ToggleButton>
+            
+            <!-- 添加项目按钮 -->
+            <Button Grid.Column="2" 
                     Content="添加项目"
                     Name="AddProjectButton"
                     Padding="16,8"/>
         </Grid>
 
-        <!-- 项目表格 -->
-        <DataGrid Grid.Row="1"
-                  Name="ProjectsDataGrid"
-                  ItemsSource="{Binding FilteredProjects}"
-                  AutoGenerateColumns="False"
-                  IsReadOnly="True"
-                  SelectionMode="Single"
-                  GridLinesVisibility="Horizontal"
-                  HeadersVisibility="Column"
-                  CanUserResizeColumns="True"
-                  CanUserReorderColumns="False"
-                  CanUserSortColumns="False">
-            <DataGrid.Columns>
-                <!-- 项目名 -->
-                <DataGridTextColumn Header="项目名" 
-                                    Binding="{Binding Name}"
-                                    Width="2*"
-                                    MinWidth="150"/>
-                
-                <!-- 分组 -->
-                <DataGridTextColumn Header="分组" 
-                                    Binding="{Binding GroupName}"
-                                    Width="*"
-                                    MinWidth="100"/>
-                
-                <!-- Unity版本 -->
-                <DataGridTextColumn Header="Unity版本" 
-                                    Binding="{Binding UnityVersion}"
-                                    Width="*"
-                                    MinWidth="120"/>
-                
-                <!-- 最后打开时间 -->
-                <DataGridTemplateColumn Header="最后打开" 
-                                        Width="1.5*"
-                                        MinWidth="150">
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <TextBlock Text="{Binding LastOpened, StringFormat='{}{0:yyyy-MM-dd HH:mm}'}"
-                                       VerticalAlignment="Center"/>
+        <!-- 主内容区域 -->
+        <ScrollViewer Grid.Row="1" 
+                      VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled">
+            <Grid>
+                <!-- 平铺视图 -->
+                <ItemsControl Name="TileView"
+                              ItemsSource="{Binding FilteredProjects}"
+                              IsVisible="{Binding !IsGroupViewEnabled}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="models:UnityProject">
+                            <views:ProjectCard DataContext="{Binding}"/>
                         </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
-                
-                <!-- 操作 -->
-                <DataGridTemplateColumn Header="操作" 
-                                        Width="120"
-                                        MinWidth="120">
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <SplitButton Content="打开"
-                                         Padding="12,4"
-                                         Click="OpenButton_Click">
-                                <SplitButton.Flyout>
-                                    <MenuFlyout>
-                                        <MenuItem Header="编辑"
-                                                  Click="EditButton_Click"/>
-                                        <MenuItem Header="删除"
-                                                  Click="DeleteButton_Click"/>
-                                    </MenuFlyout>
-                                </SplitButton.Flyout>
-                            </SplitButton>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- 分组视图 -->
+                <ItemsControl Name="GroupView"
+                              ItemsSource="{Binding GroupedProjects}"
+                              IsVisible="{Binding IsGroupViewEnabled}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="models:ProjectGroupView">
+                            <StackPanel Spacing="8" Margin="0,0,0,24">
+                                <!-- 分组标题 -->
+                                <Border BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}"
+                                        BorderThickness="0,0,0,2"
+                                        Padding="0,0,0,8">
+                                    <TextBlock Text="{Binding GroupName}" 
+                                               FontSize="18" 
+                                               FontWeight="SemiBold"/>
+                                </Border>
+                                
+                                <!-- 该分组的项目列表 -->
+                                <ItemsControl ItemsSource="{Binding Projects}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="models:UnityProject">
+                                            <views:ProjectCard DataContext="{Binding}"/>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
                         </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
-            </DataGrid.Columns>
-        </DataGrid>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- 空状态提示 -->
+                <StackPanel Name="EmptyState"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Spacing="16">
+                    <Viewbox Width="96" Height="96" Opacity="0.3">
+                        <Canvas Width="24" Height="24">
+                            <Path Fill="{DynamicResource TextFillColorSecondaryBrush}"
+                                  Data="M 12,2 L 22,8 L 22,16 L 12,22 L 2,16 L 2,8 Z M 12,4.5 L 4.5,9 L 4.5,15 L 12,19.5 L 19.5,15 L 19.5,9 Z"/>
+                        </Canvas>
+                    </Viewbox>
+                    <TextBlock Text="还没有添加 Unity 项目"
+                               FontSize="16"
+                               Opacity="0.6"
+                               HorizontalAlignment="Center"/>
+                    <Button Content="添加第一个项目"
+                            Name="EmptyAddButton"
+                            HorizontalAlignment="Center"
+                            Padding="16,8"/>
+                </StackPanel>
+            </Grid>
+        </ScrollViewer>
     </Grid>
 </UserControl>
-

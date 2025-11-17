@@ -1,0 +1,219 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+			 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+			 xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+			 xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+			 xmlns:ui="using:FluentAvalonia.UI.Controls"
+			 xmlns:models="clr-namespace:UnityProjectPlugin.Models"
+			 mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="120"
+			 x:Class="UnityProjectPlugin.Views.ProjectCard">
+
+	<UserControl.Styles>
+		<Style Selector="Border.project-card">
+			<Setter Property="Background" Value="{DynamicResource CardBackgroundFillColorDefaultBrush}"/>
+			<Setter Property="BorderBrush" Value="{DynamicResource CardStrokeColorDefaultBrush}"/>
+			<Setter Property="BorderThickness" Value="1"/>
+			<Setter Property="CornerRadius" Value="8"/>
+			<Setter Property="Padding" Value="16"/>
+			<Setter Property="Margin" Value="0,0,0,8"/>
+		</Style>
+
+		<Style Selector="Border.project-card:pointerover">
+			<Setter Property="Background" Value="{DynamicResource CardBackgroundFillColorSecondaryBrush}"/>
+		</Style>
+
+		<Style Selector="Border.tag">
+			<Setter Property="Background" Value="{DynamicResource AccentFillColorDefaultBrush}"/>
+			<Setter Property="CornerRadius" Value="12"/>
+			<Setter Property="Padding" Value="8,4"/>
+		</Style>
+
+		<Style Selector="Border.tag TextBlock">
+			<Setter Property="FontSize" Value="11"/>
+			<Setter Property="Foreground" Value="White"/>
+		</Style>
+
+		<!-- 项目名编辑模式样式 -->
+		<Style Selector="TextBox.name-editor">
+			<Setter Property="BorderThickness" Value="0"/>
+			<Setter Property="Padding" Value="0"/>
+			<Setter Property="Background" Value="Transparent"/>
+			<Setter Property="FontSize" Value="16"/>
+			<Setter Property="FontWeight" Value="SemiBold"/>
+		</Style>
+
+		<Style Selector="TextBox.name-editor:focus">
+			<Setter Property="Background" Value="{DynamicResource TextControlBackgroundFocused}"/>
+			<Setter Property="BorderThickness" Value="2"/>
+			<Setter Property="BorderBrush" Value="{DynamicResource AccentFillColorDefaultBrush}"/>
+			<Setter Property="Padding" Value="4,2"/>
+		</Style>
+	</UserControl.Styles>
+
+	<Border Classes="project-card" Name="CardBorder">
+		<Grid RowDefinitions="Auto,Auto" ColumnDefinitions="Auto,*,Auto">
+
+			<!-- 项目图标 -->
+			<Border Grid.Row="0" Grid.Column="0" Grid.RowSpan="2"
+					Width="64" Height="64"
+					VerticalAlignment="Top"
+					Margin="0,0,16,0"
+					CornerRadius="4"
+					ClipToBounds="True">
+				<!-- 项目图标 -->
+				<Image Name="ProjectIcon"
+					   Stretch="UniformToFill"/>
+			</Border>
+
+			<!-- 项目信息 -->
+			<StackPanel Grid.Row="0" Grid.Column="1" Spacing="4" VerticalAlignment="Center">
+				<!-- 项目名称和分组（水平排列） -->
+				<StackPanel Orientation="Horizontal" Spacing="8">
+					<!-- 项目名称（可编辑） -->
+					<Grid>
+						<!-- 显示模式 -->
+						<TextBlock Name="ProjectNameDisplay"
+								   Text="{Binding Name}"
+								   FontSize="16"
+								   FontWeight="SemiBold"
+								   Cursor="Hand"
+								   VerticalAlignment="Center"
+								   ToolTip.Tip="双击编辑项目名"/>
+
+						<!-- 编辑模式 -->
+						<TextBox Name="ProjectNameEditor"
+								 Classes="name-editor"
+								 Text="{Binding Name}"
+								 IsVisible="False"
+								 MinWidth="150"
+								 Watermark="输入项目名称"/>
+					</Grid>
+
+					<!-- 分组选择器 -->
+					<Grid>
+						<!-- 分组显示/编辑按钮 -->
+						<Button Name="GroupButton"
+								Padding="8,4"
+								VerticalAlignment="Center"
+								ToolTip.Tip="点击管理分组">
+							<Button.Flyout>
+								<Flyout Placement="Bottom">
+									<StackPanel Width="250" Spacing="12">
+										<!-- 标题 -->
+										<TextBlock Text="管理分组" FontSize="14" FontWeight="SemiBold"/>
+
+										<!-- 当前分组选择 -->
+										<StackPanel Spacing="4">
+											<TextBlock Text="项目分组" FontSize="12" Opacity="0.7"/>
+											<ComboBox Name="GroupComboBox"
+													  IsEditable="True"
+													  PlaceholderText="选择或输入分组..."
+													  HorizontalAlignment="Stretch"/>
+										</StackPanel>
+
+										<!-- 分组列表 -->
+										<StackPanel Spacing="4">
+											<TextBlock Text="所有分组" FontSize="12" Opacity="0.7"/>
+											<ScrollViewer MaxHeight="200" HorizontalScrollBarVisibility="Disabled">
+												<ItemsControl Name="GroupsListControl">
+													<ItemsControl.ItemTemplate>
+														<DataTemplate>
+															<Grid ColumnDefinitions="*,Auto" Margin="0,4">
+																<TextBlock Grid.Column="0" 
+																		   Text="{Binding Name}"
+																		   VerticalAlignment="Center"/>
+																<Button Grid.Column="1"
+																		Content="&#xE74D;"
+																		FontFamily="{StaticResource SymbolThemeFontFamily}"
+																		Padding="4"
+																		FontSize="12"
+																		ToolTip.Tip="删除分组"
+																		Tag="{Binding}"
+																		Click="DeleteGroupButton_Click"/>
+															</Grid>
+														</DataTemplate>
+													</ItemsControl.ItemTemplate>
+												</ItemsControl>
+											</ScrollViewer>
+										</StackPanel>
+
+										<!-- 新建分组 -->
+										<StackPanel Spacing="4">
+											<TextBlock Text="新建分组" FontSize="12" Opacity="0.7"/>
+											<Grid ColumnDefinitions="*,Auto">
+												<TextBox Grid.Column="0"
+														 Name="NewGroupNameTextBox"
+														 Watermark="输入新分组名称..."
+														 Margin="0,0,8,0"/>
+												<Button Grid.Column="1"
+														Content="添加"
+														Name="AddGroupButton"
+														Padding="12,6"/>
+											</Grid>
+										</StackPanel>
+									</StackPanel>
+								</Flyout>
+							</Button.Flyout>
+							<StackPanel Orientation="Horizontal" Spacing="4">
+								<ui:SymbolIcon Symbol="Tag" FontSize="12"/>
+								<TextBlock Name="GroupButtonText" 
+										   Text="未分组" 
+										   FontSize="11"
+										   VerticalAlignment="Center"/>
+							</StackPanel>
+						</Button>
+					</Grid>
+				</StackPanel>
+
+				<!-- 项目路径 -->
+				<TextBlock Text="{Binding Path}"
+						   FontSize="12"
+						   Opacity="0.6"
+						   TextTrimming="CharacterEllipsis"/>
+			</StackPanel>
+
+			<!-- 操作按钮 -->
+			<SplitButton Grid.Row="0" Grid.Column="2"
+						 Content="打开"
+						 Name="OpenSplitButton"
+						 VerticalAlignment="Center"
+						 Padding="16,8"
+						 Margin="16,0,0,0">
+				<SplitButton.Flyout>
+					<MenuFlyout>
+						<MenuItem Header="删除" Name="DeleteMenuItem">
+							<MenuItem.Icon>
+								<ui:SymbolIcon Symbol="Delete"/>
+							</MenuItem.Icon>
+						</MenuItem>
+					</MenuFlyout>
+				</SplitButton.Flyout>
+			</SplitButton>
+
+			<!-- 标签和元数据 -->
+			<StackPanel Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2"
+						Orientation="Horizontal"
+						Spacing="8"
+						Margin="0,8,0,0">
+
+				<!-- Unity版本标签 -->
+				<Border Classes="tag"
+						Background="{DynamicResource SystemFillColorAttentionBrush}"
+						VerticalAlignment="Center"
+						IsVisible="{Binding UnityVersion, Converter={x:Static ObjectConverters.IsNotNull}}">
+					<TextBlock>
+						<Run Text="Unity "/>
+						<Run Text="{Binding UnityVersion}"/>
+					</TextBlock>
+				</Border>
+
+				<!-- 最后打开时间 -->
+				<TextBlock VerticalAlignment="Center"
+						   FontSize="11"
+						   Opacity="0.5">
+					<Run Text="最后打开: "/>
+					<Run Text="{Binding LastOpened, StringFormat='{}{0:yyyy-MM-dd HH:mm}'}"/>
+				</TextBlock>
+			</StackPanel>
+		</Grid>
+	</Border>
+</UserControl>

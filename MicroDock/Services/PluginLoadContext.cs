@@ -25,30 +25,25 @@ public class PluginLoadContext : AssemblyLoadContext
 
     protected override Assembly? Load(AssemblyName assemblyName)
     {
-       
-        
-        // 2. 如果主程序中未找到，尝试从插件目录解析
-        string? assemblyPath = _resolver.ResolveAssemblyToPath(assemblyName);
-        if (assemblyPath != null)
-        {
-            Log.Debug("从插件目录加载程序集: {AssemblyName} -> {Path}", assemblyName.Name, assemblyPath);
-            return LoadFromAssemblyPath(assemblyPath);
-        }
-        // 1. 优先尝试从主程序默认上下文查找已加载的程序集
+        // 1. 优先尝试从主程序默认上下文查找已加载的程序集（需要匹配版本）
         Assembly? defaultContextAssembly = AssemblyLoadContext.Default.Assemblies
             .FirstOrDefault(a => AssemblyName.ReferenceMatchesDefinition(
                 a.GetName(), assemblyName));
 
         if (defaultContextAssembly != null)
         {
-            Log.Debug("从主程序上下文加载程序集: {AssemblyName}", assemblyName.Name);
+            Log.Debug("从主程序上下文加载程序集: {AssemblyName} (版本: {Version})", 
+                assemblyName.Name, assemblyName.Version);
             return null; // 返回 null 使用默认上下文，避免重复加载
         }
-        // 3. 对于共享程序集，使用默认上下文
-        if (IsSharedAssembly(assemblyName))
+        
+        // 2. 如果主程序中未找到或版本不匹配，尝试从插件目录解析
+        string? assemblyPath = _resolver.ResolveAssemblyToPath(assemblyName);
+        if (assemblyPath != null)
         {
-            Log.Debug("使用默认上下文加载共享程序集: {AssemblyName}", assemblyName.Name);
-            return null; // 返回null将使用默认上下文
+            Log.Debug("从插件目录加载程序集: {AssemblyName} (版本: {Version}) -> {Path}", 
+                assemblyName.Name, assemblyName.Version, assemblyPath);
+            return LoadFromAssemblyPath(assemblyPath);
         }
 
         return null;
@@ -64,24 +59,6 @@ public class PluginLoadContext : AssemblyLoadContext
         }
 
         return IntPtr.Zero;
-    }
-
-    /// <summary>
-    /// 判断是否为共享程序集（应该从默认上下文加载）
-    /// </summary>
-    private bool IsSharedAssembly(AssemblyName assemblyName)
-    {
-        string? name = assemblyName.Name;
-        if (string.IsNullOrEmpty(name))
-            return false;
-
-        // 以下程序集应该与主应用共享
-        return name.StartsWith("MicroDock.Plugin") ||
-               name.StartsWith("Avalonia") ||
-               name.StartsWith("System.") ||
-               name.StartsWith("Microsoft.") ||
-               name.StartsWith("netstandard") ||
-               name == "mscorlib";
     }
 
     /// <summary>

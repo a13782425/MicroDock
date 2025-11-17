@@ -18,9 +18,6 @@ namespace UnityProjectPlugin
     /// </summary>
     public class UnityProjectPlugin : BaseMicroDockPlugin
     {
-        private const string PROJECTS_KEY = "projects";
-        private const string VERSIONS_KEY = "unity_versions";
-
         private string _dataFolder = string.Empty;
         private List<UnityProject> _projects = new();
         private List<UnityVersion> _versions = new();
@@ -42,35 +39,35 @@ namespace UnityProjectPlugin
 
         public override object? GetSettingsControl()
         {
-            // 创建包含多个设置区域的容器
-            StackPanel container = new StackPanel
-            {
-                Spacing = 24,
-                Margin = new Avalonia.Thickness(0, 0, 0, 12)
-            };
+            //// 创建包含多个设置区域的容器
+            //StackPanel container = new StackPanel
+            //{
+            //    Spacing = 24,
+            //    Margin = new Avalonia.Thickness(0, 0, 0, 12)
+            //};
 
             // Unity 版本管理
             if (_versionSettingsView == null)
             {
                 _versionSettingsView = new UnityVersionSettingsView(this);
             }
-            container.Children.Add(_versionSettingsView);
+            //container.Children.Add(_versionSettingsView);
 
-            // 添加分隔线
-            Border separator = new Border
-            {
-                Height = 1,
-                Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.FromRgb(200, 200, 200)),
-                Opacity = 0.3,
-                Margin = new Avalonia.Thickness(0, 12, 0, 12)
-            };
-            container.Children.Add(separator);
+            //// 添加分隔线
+            //Border separator = new Border
+            //{
+            //    Height = 1,
+            //    Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.FromRgb(200, 200, 200)),
+            //    Opacity = 0.3,
+            //    Margin = new Avalonia.Thickness(0, 12, 0, 12)
+            //};
+            //container.Children.Add(separator);
 
-            // 分组管理
-            GroupManagementView groupManagementView = new GroupManagementView(this);
-            container.Children.Add(groupManagementView);
+            //// 分组管理
+            //GroupManagementView groupManagementView = new GroupManagementView(this);
+            //container.Children.Add(groupManagementView);
 
-            return container;
+            return _versionSettingsView;
         }
 
         public override void OnInit()
@@ -94,9 +91,6 @@ namespace UnityProjectPlugin
                 LogInfo($"创建数据文件夹: {_dataFolder}");
             }
 
-            // 数据迁移：从旧的数据库存储迁移到文件
-            MigrateDataFromDatabase();
-
             // 加载数据
             LoadProjectsFromFile();
             LoadVersionsFromFile();
@@ -116,64 +110,6 @@ namespace UnityProjectPlugin
             PropertyNameCaseInsensitive = true,
             DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
         };
-
-        /// <summary>
-        /// 数据迁移：从数据库迁移到文件
-        /// </summary>
-        private void MigrateDataFromDatabase()
-        {
-            try
-            {
-                // 检查是否已经迁移过（文件是否已存在）
-                string projectsFilePath = Path.Combine(_dataFolder, "projects.json");
-                string versionsFilePath = Path.Combine(_dataFolder, "versions.json");
-
-                bool needsMigration = false;
-
-                // 迁移项目数据
-                if (!File.Exists(projectsFilePath))
-                {
-                    string? oldProjectsData = GetSettings(PROJECTS_KEY);
-                    if (!string.IsNullOrEmpty(oldProjectsData))
-                    {
-                        List<UnityProject>? projects = JsonSerializer.Deserialize<List<UnityProject>>(oldProjectsData);
-                        if (projects != null && projects.Count > 0)
-                        {
-                            _projects = projects;
-                            SaveProjectsToFile();
-                            needsMigration = true;
-                            LogInfo($"已迁移 {projects.Count} 个项目数据");
-                        }
-                    }
-                }
-
-                // 迁移版本数据
-                if (!File.Exists(versionsFilePath))
-                {
-                    string? oldVersionsData = GetSettings(VERSIONS_KEY);
-                    if (!string.IsNullOrEmpty(oldVersionsData))
-                    {
-                        List<UnityVersion>? versions = JsonSerializer.Deserialize<List<UnityVersion>>(oldVersionsData);
-                        if (versions != null && versions.Count > 0)
-                        {
-                            _versions = versions;
-                            SaveVersionsToFile();
-                            needsMigration = true;
-                            LogInfo($"已迁移 {versions.Count} 个 Unity 版本数据");
-                        }
-                    }
-                }
-
-                if (needsMigration)
-                {
-                    LogInfo("数据迁移完成");
-                }
-            }
-            catch (Exception ex)
-            {
-                LogError("数据迁移失败", ex);
-            }
-        }
 
         /// <summary>
         /// 从文件加载项目列表

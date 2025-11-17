@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Reflection;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Avalonia.Controls;
+using MicroDock.Database;
 using MicroDock.Models;
 using MicroDock.Plugin;
 using Serilog;
@@ -34,6 +36,174 @@ namespace MicroDock.Services
         public IReadOnlyList<PluginInfo> LoadedPlugins => _loadedPlugins.AsReadOnly();
 
         /// <summary>
+        /// 导入插件（从 ZIP 文件）
+        /// </summary>
+        /// <param name="zipFilePath">ZIP 文件路径</param>
+        /// <param name="pluginDirectory">插件目录路径</param>
+        /// <returns>导入结果（成功/失败，消息）</returns>
+        public async Task<(bool success, string message, string? pluginName)> ImportPluginAsync(string zipFilePath, string pluginDirectory)
+        {
+            string? tempDirectory = null;
+            string? pluginName = null;
+
+            try
+            {
+                // 1. 验证 ZIP 文件存在
+                if (!File.Exists(zipFilePath))
+                {
+                    return (false, "ZIP 文件不存在", null);
+                }
+
+                // 2. 创建临时目录并解压
+                tempDirectory = Path.Combine(Path.GetTempPath(), $"MicroDockPlugin_{Guid.NewGuid()}");
+                Directory.CreateDirectory(tempDirectory);
+
+                Log.Information("正在解压插件到临时目录: {TempDir}", tempDirectory);
+                await Task.Run(() => ZipFile.ExtractToDirectory(zipFilePath, tempDirectory));
+
+                // 3. 验证根目录是否存在 plugin.json
+                string manifestPath = Path.Combine(tempDirectory, "plugin.json");
+                if (!File.Exists(manifestPath))
+                {
+                    return (false, "ZIP 根目录缺少 plugin.json 文件", null);
+                }
+
+                // 4. 解析 plugin.json 获取插件名
+                PluginManifest? manifest = LoadManifest(manifestPath);
+                if (manifest == null)
+                {
+                    return (false, "plugin.json 解析失败", null);
+                }
+
+                pluginName = manifest.Name;
+                Log.Information("正在导入插件: {PluginName} v{Version}", pluginName, manifest.Version);
+
+                // 5. 检查 Plugins 目录是否已存在该插件
+                string targetPluginDir = Path.Combine(pluginDirectory, pluginName);
+                bool pluginExists = Directory.Exists(targetPluginDir);
+
+                if (pluginExists)
+                {
+                    Log.Information("插件 {PluginName} 已存在，将覆盖现有文件", pluginName);
+                    
+                    // 先卸载已加载的插件
+                    PluginInfo? existingPlugin = _loadedPlugins.FirstOrDefault(p => p.UniqueName == pluginName);
+                    if (existingPlugin != null)
+                    {
+                        Log.Information("正在卸载现有插件实例: {PluginName}", pluginName);
+                        UnloadPlugin(existingPlugin.Id);
+                    }
+
+                    // 删除旧的插件目录
+                    try
+                    {
+                        Directory.Delete(targetPluginDir, true);
+                        // 等待文件系统释放锁
+                        await Task.Delay(100);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Warning(ex, "删除旧插件目录时出现警告，将尝试继续: {Dir}", targetPluginDir);
+                    }
+                }
+
+                // 6. 确保插件目录存在
+                if (!Directory.Exists(pluginDirectory))
+                {
+                    Directory.CreateDirectory(pluginDirectory);
+                }
+
+                // 复制文件到 Plugins/{插件名}/ 目录
+                Directory.CreateDirectory(targetPluginDir);
+                await Task.Run(() => CopyDirectory(tempDirectory, targetPluginDir));
+
+                Log.Information("插件文件已复制到: {TargetDir}", targetPluginDir);
+
+                // 7. 验证插件加载
+                PluginInfo? pluginInfo = LoadPlugin(targetPluginDir, manifest);
+                if (pluginInfo == null)
+                {
+                    // 加载失败，清理已复制的文件
+                    try
+                    {
+                        Directory.Delete(targetPluginDir, true);
+                    }
+                    catch { }
+                    return (false, "插件加载验证失败", pluginName);
+                }
+
+                // 8. 添加到内存列表
+                _loadedPlugins.Add(pluginInfo);
+
+                // 9. 添加到数据库
+                PluginInfoDB dbInfo = new PluginInfoDB
+                {
+                    PluginName = manifest.Name,
+                    DisplayName = manifest.EffectiveDisplayName,
+                    Version = manifest.Version,
+                    Description = manifest.Description ?? string.Empty,
+                    Author = manifest.Author ?? string.Empty,
+                    IsEnabled = true,
+                };
+                DBContext.AddPluginInfo(dbInfo);
+
+                Log.Information("插件 {PluginName} 导入成功", pluginName);
+                return (true, pluginExists ? "插件已更新" : "插件已导入", pluginName);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "导入插件失败: {ZipFile}", zipFilePath);
+                return (false, $"导入失败: {ex.Message}", pluginName);
+            }
+            finally
+            {
+                // 10. 清理临时文件
+                if (!string.IsNullOrEmpty(tempDirectory) && Directory.Exists(tempDirectory))
+                {
+                    try
+                    {
+                        Directory.Delete(tempDirectory, true);
+                        Log.Debug("临时目录已清理: {TempDir}", tempDirectory);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Warning(ex, "清理临时目录失败: {TempDir}", tempDirectory);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// 递归复制目录
+        /// </summary>
+        private void CopyDirectory(string sourceDir, string targetDir)
+        {
+            DirectoryInfo dir = new DirectoryInfo(sourceDir);
+
+            if (!dir.Exists)
+            {
+                throw new DirectoryNotFoundException($"源目录不存在: {sourceDir}");
+            }
+
+            // 复制所有文件
+            FileInfo[] files = dir.GetFiles();
+            foreach (FileInfo file in files)
+            {
+                string targetFilePath = Path.Combine(targetDir, file.Name);
+                file.CopyTo(targetFilePath, true);
+            }
+
+            // 递归复制子目录
+            DirectoryInfo[] dirs = dir.GetDirectories();
+            foreach (DirectoryInfo subDir in dirs)
+            {
+                string targetSubDir = Path.Combine(targetDir, subDir.Name);
+                Directory.CreateDirectory(targetSubDir);
+                CopyDirectory(subDir.FullName, targetSubDir);
+            }
+        }
+
+        /// <summary>
         /// 从指定目录加载插件
         /// </summary>
         /// <param name="pluginDirectory">插件目录路径</param>
@@ -49,16 +219,19 @@ namespace MicroDock.Services
                 return loadedPlugins;
             }
 
+            // 首先删除所有标记为待删除的插件
+            DeletePendingPlugins(pluginDirectory);
+
             // 第一阶段：扫描并加载所有 plugin.json
             string[] pluginFolders = Directory.GetDirectories(pluginDirectory);
             Log.Information("发现 {Count} 个插件文件夹", pluginFolders.Length);
 
             var manifestsWithPaths = new List<(string folderPath, PluginManifest manifest)>();
-            
+
             foreach (string pluginFolder in pluginFolders)
             {
                 string manifestPath = Path.Combine(pluginFolder, "plugin.json");
-                
+
                 if (!File.Exists(manifestPath))
                 {
                     Log.Warning("插件文件夹 {Folder} 缺少 plugin.json，跳过加载", pluginFolder);
@@ -103,7 +276,7 @@ namespace MicroDock.Services
             {
                 // 找到对应的插件文件夹
                 var manifestWithPath = manifestsWithPaths.First(x => x.manifest.Name == manifest.Name);
-                
+
                 PluginInfo? pluginInfo = LoadPlugin(manifestWithPath.folderPath, manifest);
                 if (pluginInfo != null)
                 {
@@ -113,7 +286,7 @@ namespace MicroDock.Services
             }
 
             Log.Information("成功加载 {Count} 个插件", loadedPlugins.Count);
-            
+
             // 第四阶段：所有插件加载完成，触发 OnAllPluginsLoaded 回调
             foreach (var plugin in loadedPlugins)
             {
@@ -127,7 +300,7 @@ namespace MicroDock.Services
                     Log.Error(ex, "插件 {Name} 的 OnAllPluginsLoaded 回调失败", plugin.UniqueName);
                 }
             }
-            
+
             return loadedPlugins;
         }
 
@@ -142,7 +315,7 @@ namespace MicroDock.Services
             {
                 return GetFriendlyTypeName(underlyingType) + "?";
             }
-            
+
             // 基本类型
             if (type == typeof(int)) return "int";
             if (type == typeof(string)) return "string";
@@ -154,13 +327,13 @@ namespace MicroDock.Services
             if (type == typeof(byte)) return "byte";
             if (type == typeof(short)) return "short";
             if (type == typeof(char)) return "char";
-            
+
             // 泛型类型
             if (type.IsGenericType)
             {
                 var genericTypeDef = type.GetGenericTypeDefinition();
                 var genericArgs = type.GetGenericArguments();
-                
+
                 if (genericTypeDef == typeof(List<>))
                 {
                     return $"List<{GetFriendlyTypeName(genericArgs[0])}>";
@@ -169,18 +342,18 @@ namespace MicroDock.Services
                 {
                     return $"Dictionary<{GetFriendlyTypeName(genericArgs[0])}, {GetFriendlyTypeName(genericArgs[1])}>";
                 }
-                
+
                 // 其他泛型类型
                 var genericArgNames = string.Join(", ", genericArgs.Select(GetFriendlyTypeName));
                 return $"{type.Name.Split('`')[0]}<{genericArgNames}>";
             }
-            
+
             // 数组类型
             if (type.IsArray)
             {
                 return GetFriendlyTypeName(type.GetElementType()!) + "[]";
             }
-            
+
             // 复杂类型返回类名
             return type.Name;
         }
@@ -193,31 +366,31 @@ namespace MicroDock.Services
             try
             {
                 int toolCount = 0;
-                
+
                 // 获取插件程序集
                 var assembly = plugin.GetType().Assembly;
                 var pluginType = plugin.GetType();
-                
+
                 // 扫描程序集中的所有类型（公共和非公共）
                 var types = assembly.GetTypes();
-                
+
                 foreach (var type in types)
                 {
                     // 跳过抽象类和接口
                     if (type.IsAbstract || type.IsInterface)
                         continue;
-                    
+
                     // 扫描该类型的所有公共和非公共方法（实例 + 静态）
                     var methods = type.GetMethods(
-                        BindingFlags.Public | BindingFlags.NonPublic | 
-                        BindingFlags.Instance | BindingFlags.Static | 
+                        BindingFlags.Public | BindingFlags.NonPublic |
+                        BindingFlags.Instance | BindingFlags.Static |
                         BindingFlags.DeclaredOnly);
-                    
+
                     foreach (var method in methods)
                     {
                         var toolAttr = method.GetCustomAttribute<Plugin.MicroToolAttribute>();
                         if (toolAttr == null) continue;
-                        
+
                         // 验证返回类型
                         if (method.ReturnType != typeof(System.Threading.Tasks.Task<string>))
                         {
@@ -225,11 +398,11 @@ namespace MicroDock.Services
                                 pluginName, type.Name, method.Name);
                             continue;
                         }
-                        
+
                         // 确定实例策略
                         object? targetInstance = null;
                         bool needsLazyInstance = false;
-                        
+
                         if (method.IsStatic)
                         {
                             // 静态方法：不需要实例
@@ -247,10 +420,10 @@ namespace MicroDock.Services
                             needsLazyInstance = true;
                             Log.Debug("发现其他类实例工具方法: {Type}.{Method} (将延迟创建实例)", type.Name, method.Name);
                         }
-                        
+
                         // 提取参数信息
                         var parameters = ExtractParameterInfo(method);
-                        
+
                         // 创建工具定义
                         var tool = new Plugin.ToolDefinition
                         {
@@ -265,19 +438,19 @@ namespace MicroDock.Services
                             NeedsLazyInstance = needsLazyInstance,
                             Parameters = parameters
                         };
-                        
+
                         // 注册到工具注册表
                         Infrastructure.ServiceLocator.Get<ToolRegistry>().RegisterTool(pluginName, tool);
                         toolCount++;
-                        
+
                         // 记录详细日志
-                        string methodTypeDesc = method.IsStatic ? "静态" : 
+                        string methodTypeDesc = method.IsStatic ? "静态" :
                                                needsLazyInstance ? "实例(延迟创建)" : "实例";
-                        Log.Debug("注册工具: {Tool} ({Type}.{Method}, {MethodType})", 
+                        Log.Debug("注册工具: {Tool} ({Type}.{Method}, {MethodType})",
                             toolAttr.Name, type.Name, method.Name, methodTypeDesc);
                     }
                 }
-                
+
                 if (toolCount > 0)
                 {
                     Log.Information("插件 {Plugin} 注册了 {Count} 个工具", pluginName, toolCount);
@@ -295,11 +468,11 @@ namespace MicroDock.Services
         private List<Plugin.ToolParameterInfo> ExtractParameterInfo(MethodInfo method)
         {
             var parameters = new List<Plugin.ToolParameterInfo>();
-            
+
             foreach (var param in method.GetParameters())
             {
                 var paramAttr = param.GetCustomAttribute<Plugin.ToolParameterAttribute>();
-                
+
                 parameters.Add(new Plugin.ToolParameterInfo
                 {
                     Name = paramAttr?.Name ?? param.Name!,
@@ -310,7 +483,7 @@ namespace MicroDock.Services
                     DefaultValue = param.HasDefaultValue ? param.DefaultValue : null
                 });
             }
-            
+
             return parameters;
         }
 
@@ -373,7 +546,7 @@ namespace MicroDock.Services
 
                 // 使用 manifest 中指定的 DLL 文件
                 string dllFile = Path.Combine(pluginFolder, manifest.Main);
-                
+
                 if (!File.Exists(dllFile))
                 {
                     Log.Error("插件 DLL 文件不存在: {DllFile}", dllFile);
@@ -386,7 +559,7 @@ namespace MicroDock.Services
 
                 // 使用 manifest 中指定的入口类
                 Type? pluginType = assembly.GetType(manifest.EntryClass);
-                
+
                 if (pluginType == null)
                 {
                     Log.Error("在程序集中未找到入口类: {EntryClass}", manifest.EntryClass);
@@ -413,27 +586,27 @@ namespace MicroDock.Services
                 {
                     // 创建插件实例
                     IMicroDockPlugin? dockPlugin = Activator.CreateInstance(pluginType) as IMicroDockPlugin;
-                    
+
                     if (dockPlugin == null)
                     {
                         Log.Error("无法创建插件实例: {Type}", pluginType.Name);
                         loadContext.Unload();
                         return null;
                     }
-                    
+
                     // 创建插件上下文（从 manifest 获取依赖列表）
                     string[] dependencies = manifest.Dependencies?.Keys.ToArray() ?? Array.Empty<string>();
                     PluginContextImpl context = new PluginContextImpl(
-                        manifest.Name, 
+                        manifest.Name,
                         dependencies,
                         pluginFolder);
-                    
+
                     // 调用 Initialize 方法注入上下文（Initialize 内部会调用 OnInit）
                     dockPlugin.Initialize(context);
-                    
+
                     // 自动发现并注册工具
                     DiscoverAndRegisterTools(dockPlugin, manifest.Name);
-                    
+
                     // 通过 Tabs 属性获取所有标签页
                     IMicroTab[]? tabs = dockPlugin.Tabs;
                     if (tabs == null)
@@ -441,7 +614,7 @@ namespace MicroDock.Services
                         Log.Warning("插件 {Name} 的 Tabs 属性返回 null", manifest.Name);
                         tabs = Array.Empty<IMicroTab>();
                     }
-                    
+
                     // 验证每个标签页是否为 Control 类型
                     List<Control> tabControls = new List<Control>();
                     foreach (IMicroTab tab in tabs)
@@ -455,7 +628,7 @@ namespace MicroDock.Services
                             Log.Warning("插件 {Name} 的标签页 {TabName} 不是 Control 类型", manifest.Name, tab.TabName);
                         }
                     }
-                    
+
                     Log.Information(
                         "成功加载插件: {DisplayName} ({Name}) v{Version}, 依赖: [{Dependencies}], 标签页数: {TabCount}",
                         manifest.EffectiveDisplayName,
@@ -463,7 +636,52 @@ namespace MicroDock.Services
                         manifest.Version,
                         string.Join(", ", dependencies),
                         tabControls.Count);
+
+                    // 从数据库读取插件启用状态
+                    PluginInfoDB? dbInfo = DBContext.GetPluginInfo(manifest.Name);
                     
+                    // 检查是否标记为待删除
+                    if (dbInfo?.PendingDelete == true)
+                    {
+                        Log.Information("跳过待删除插件: {PluginName}", manifest.Name);
+                        return null;
+                    }
+
+                    bool isEnabled = dbInfo?.IsEnabled ?? true; // 默认启用
+
+                    // 如果数据库中没有该插件信息，则自动添加
+                    if (dbInfo == null)
+                    {
+                        Log.Information("插件 {PluginName} 不在数据库中，自动添加记录", manifest.Name);
+                        dbInfo = new PluginInfoDB
+                        {
+                            PluginName = manifest.Name,
+                            DisplayName = manifest.EffectiveDisplayName,
+                            Version = manifest.Version,
+                            Description = manifest.Description ?? string.Empty,
+                            Author = manifest.Author ?? string.Empty,
+                            IsEnabled = true,
+                        };
+                        DBContext.AddPluginInfo(dbInfo);
+                        isEnabled = true;
+                    }
+                    else
+                    {
+                        // 更新版本信息（如果版本不同）
+                        if (dbInfo.Version != manifest.Version)
+                        {
+                            Log.Information("插件 {PluginName} 版本更新: {OldVersion} -> {NewVersion}", 
+                                manifest.Name, dbInfo.Version, manifest.Version);
+                            dbInfo.Version = manifest.Version;
+                            dbInfo.DisplayName = manifest.EffectiveDisplayName;
+                            dbInfo.Description = manifest.Description ?? string.Empty;
+                            dbInfo.Author = manifest.Author ?? string.Empty;
+                            DBContext.UpdatePluginInfo(dbInfo);
+                        }
+                    }
+
+                    Log.Information("插件 {PluginName} 启用状态: {IsEnabled} (来自数据库)", manifest.Name, isEnabled);
+
                     PluginInfo pluginInfo = new PluginInfo
                     {
                         Id = Guid.NewGuid().ToString(),
@@ -476,14 +694,14 @@ namespace MicroDock.Services
                         Manifest = manifest,
                         ControlInstance = tabControls.FirstOrDefault(), // 保留第一个标签页作为 ControlInstance（向后兼容）
                         IsInitialized = true,
-                        IsEnabled = false
+                        IsEnabled = isEnabled
                     };
 
                     return pluginInfo;
                 }
                 catch (Exception ex)
                 {
-                    Log.Error(ex, "加载插件失败: {Name}", manifest.Name);
+                    Log.Error(ex, "加载插件失败: {Name} , ErrorMsg: {Message}", manifest.Name, ex.Message);
                     loadContext?.Unload();
                     throw;
                 }
@@ -491,7 +709,7 @@ namespace MicroDock.Services
             catch (Exception ex)
             {
                 Log.Error(ex, "加载插件失败: {Name} (文件夹: {PluginFolder})", manifest.Name, pluginFolder);
-                
+
                 // 清理失败的上下文
                 try
                 {
@@ -537,7 +755,7 @@ namespace MicroDock.Services
                 {
                     // 在插件文件夹中查找 DLL 文件
                     string[] dllFiles = Directory.GetFiles(pluginFolder, "*.dll", SearchOption.TopDirectoryOnly);
-                    
+
                     foreach (string dllFile in dllFiles)
                     {
                         try
@@ -604,6 +822,386 @@ namespace MicroDock.Services
             {
                 Log.Error(ex, "卸载插件失败: {PluginName}", plugin.Name);
                 return false;
+            }
+        }
+
+        /// <summary>
+        /// 启用插件
+        /// </summary>
+        /// <param name="pluginName">插件唯一名称</param>
+        /// <returns>是否成功</returns>
+        public bool EnablePlugin(string pluginName)
+        {
+            try
+            {
+                // 1. 查找已加载的插件
+                PluginInfo? plugin = _loadedPlugins.FirstOrDefault(p => p.UniqueName == pluginName);
+                
+                if (plugin != null)
+                {
+                    // 插件已加载
+                    if (plugin.IsEnabled)
+                    {
+                        Log.Information("插件 {PluginName} 已经是启用状态", pluginName);
+                        return true;
+                    }
+
+                    // 调用 OnEnable
+                    plugin.PluginInstance?.OnEnable();
+                    plugin.IsEnabled = true;
+
+                    Log.Information("插件 {PluginName} 已启用", pluginName);
+                }
+                else
+                {
+                    // 插件未加载，需要重新加载
+                    Log.Information("插件 {PluginName} 未加载，尝试重新加载", pluginName);
+                    
+                    // 从数据库获取插件信息
+                    PluginInfoDB? dbInfo = DBContext.GetPluginInfo(pluginName);
+                    if (dbInfo == null)
+                    {
+                        Log.Warning("插件 {PluginName} 在数据库中不存在", pluginName);
+                        return false;
+                    }
+
+                    // 尝试从插件目录加载
+                    string appDirectory = System.AppContext.BaseDirectory;
+                    string pluginDirectory = Path.Combine(appDirectory, "Plugins");
+                    string pluginFolder = Path.Combine(pluginDirectory, pluginName);
+
+                    if (!Directory.Exists(pluginFolder))
+                    {
+                        Log.Error("插件目录不存在: {PluginFolder}", pluginFolder);
+                        return false;
+                    }
+
+                    string manifestPath = Path.Combine(pluginFolder, "plugin.json");
+                    if (!File.Exists(manifestPath))
+                    {
+                        Log.Error("插件 manifest 文件不存在: {ManifestPath}", manifestPath);
+                        return false;
+                    }
+
+                    PluginManifest? manifest = LoadManifest(manifestPath);
+                    if (manifest == null)
+                    {
+                        Log.Error("加载插件 manifest 失败: {PluginName}", pluginName);
+                        return false;
+                    }
+
+                    PluginInfo? loadedPlugin = LoadPlugin(pluginFolder, manifest);
+                    if (loadedPlugin == null)
+                    {
+                        Log.Error("加载插件失败: {PluginName}", pluginName);
+                        return false;
+                    }
+
+                    loadedPlugin.IsEnabled = true;
+                    _loadedPlugins.Add(loadedPlugin);
+                    
+                    Log.Information("插件 {PluginName} 重新加载并启用成功", pluginName);
+                }
+
+                // 4. 更新数据库状态
+                DBContext.SetPluginEnabled(pluginName, true);
+
+                // 5. 发布插件状态变更事件
+                Infrastructure.EventAggregator.Instance.Publish(new Infrastructure.PluginStateChangedMessage 
+                { 
+                    PluginName = pluginName, 
+                    IsEnabled = true 
+                });
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "启用插件失败: {PluginName}", pluginName);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 禁用插件
+        /// </summary>
+        /// <param name="pluginName">插件唯一名称</param>
+        /// <returns>是否成功</returns>
+        public bool DisablePlugin(string pluginName)
+        {
+            try
+            {
+                // 1. 查找已加载的插件
+                PluginInfo? plugin = _loadedPlugins.FirstOrDefault(p => p.UniqueName == pluginName);
+                
+                if (plugin == null)
+                {
+                    Log.Warning("尝试禁用不存在的插件: {PluginName}", pluginName);
+                    // 即使插件不在内存中，也更新数据库状态
+                    DBContext.SetPluginEnabled(pluginName, false);
+                    return true;
+                }
+
+                if (!plugin.IsEnabled)
+                {
+                    Log.Information("插件 {PluginName} 已经是禁用状态", pluginName);
+                    return true;
+                }
+
+                // 2. 调用 OnDisable
+                plugin.PluginInstance?.OnDisable();
+                plugin.IsEnabled = false;
+
+                // 3. 更新数据库状态
+                DBContext.SetPluginEnabled(pluginName, false);
+
+                // 4. 发布插件状态变更事件（从导航菜单移除标签页）
+                Infrastructure.EventAggregator.Instance.Publish(new Infrastructure.PluginStateChangedMessage 
+                { 
+                    PluginName = pluginName, 
+                    IsEnabled = false 
+                });
+
+                Log.Information("插件 {PluginName} 已禁用", pluginName);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "禁用插件失败: {PluginName}", pluginName);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 标记插件为待删除
+        /// </summary>
+        /// <param name="pluginName">插件唯一名称</param>
+        /// <returns>删除结果（成功/失败，消息）</returns>
+        public async Task<(bool success, string message)> MarkPluginForDeletionAsync(string pluginName)
+        {
+            try
+            {
+                // 1. 禁用插件
+                DisablePlugin(pluginName);
+                
+                // 2. 标记为待删除
+                DBContext.MarkPluginForDeletion(pluginName, true);
+                
+                // 3. 发布插件删除事件（移除导航项）
+                Infrastructure.EventAggregator.Instance.Publish(
+                    new Infrastructure.PluginDeletedMessage { PluginName = pluginName });
+                
+                Log.Information("插件 {PluginName} 已标记为待删除", pluginName);
+                return (true, "插件将在下次启动时删除");
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "标记插件删除失败: {PluginName}", pluginName);
+                return (false, $"标记失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 取消插件删除标记
+        /// </summary>
+        /// <param name="pluginName">插件唯一名称</param>
+        /// <returns>是否成功</returns>
+        public bool CancelPluginDeletion(string pluginName)
+        {
+            try
+            {
+                DBContext.MarkPluginForDeletion(pluginName, false);
+                
+                Log.Information("已取消删除插件: {PluginName}", pluginName);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "取消删除失败: {PluginName}", pluginName);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 删除所有标记为待删除的插件（启动时调用）
+        /// </summary>
+        /// <param name="pluginDirectory">插件目录</param>
+        private void DeletePendingPlugins(string pluginDirectory)
+        {
+            var pendingPlugins = DBContext.GetPendingDeletePlugins();
+            
+            if (pendingPlugins.Count == 0)
+            {
+                return;
+            }
+
+            Log.Information("发现 {Count} 个待删除的插件", pendingPlugins.Count);
+
+            foreach (var plugin in pendingPlugins)
+            {
+                string pluginFolder = Path.Combine(pluginDirectory, plugin.PluginName);
+                
+                if (Directory.Exists(pluginFolder))
+                {
+                    try
+                    {
+                        Directory.Delete(pluginFolder, true);
+                        Log.Information("已删除插件目录: {PluginFolder}", pluginFolder);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error(ex, "删除插件目录失败: {PluginFolder}", pluginFolder);
+                        // 继续处理其他插件
+                    }
+                }
+                else
+                {
+                    Log.Warning("插件目录不存在，跳过文件删除: {PluginFolder}", pluginFolder);
+                }
+
+                // 清理数据库记录
+                try
+                {
+                    DBContext.DeletePluginInfo(plugin.PluginName);
+                    DBContext.DeleteAllPluginData(plugin.PluginName);
+                    Log.Information("已删除待删除插件: {PluginName}", plugin.PluginName);
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "清理插件数据库记录失败: {PluginName}", plugin.PluginName);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 删除插件（保留用于向后兼容，实际使用 MarkPluginForDeletionAsync）
+        /// </summary>
+        /// <param name="pluginName">插件唯一名称</param>
+        /// <returns>删除结果（成功/失败，消息）</returns>
+        [Obsolete("使用 MarkPluginForDeletionAsync 代替")]
+        public async Task<(bool success, string message)> DeletePluginAsync(string pluginName)
+        {
+            try
+            {
+                // 1. 如果插件已加载，先禁用并卸载
+                PluginInfo? plugin = _loadedPlugins.FirstOrDefault(p => p.UniqueName == pluginName);
+                if (plugin != null)
+                {
+                    Log.Information("正在卸载插件: {PluginName}", pluginName);
+                    
+                    // 禁用插件
+                    if (plugin.IsEnabled)
+                    {
+                        plugin.PluginInstance?.OnDisable();
+                        plugin.IsEnabled = false;
+                    }
+
+                    // 清除插件实例引用
+                    plugin.PluginInstance = null;
+                    plugin.ControlInstance = null;
+
+                    // 卸载 AssemblyLoadContext
+                    plugin.LoadContext?.Unload();
+                    plugin.LoadContext = null;
+                    
+                    // 清除程序集引用
+                    plugin.Assembly = null;
+
+                    // 从列表中移除
+                    _loadedPlugins.Remove(plugin);
+
+                    // 强制垃圾回收，释放程序集
+                    Log.Information("触发垃圾回收以释放插件程序集...");
+                    for (int i = 0; i < 3; i++)
+                    {
+                        GC.Collect();
+                        GC.WaitForPendingFinalizers();
+                        await Task.Delay(100);
+                    }
+                    
+                    Log.Information("插件 {PluginName} 已卸载", pluginName);
+                }
+
+                // 2. 从数据库中删除插件信息
+                DBContext.DeletePluginInfo(pluginName);
+
+                // 删除插件的所有数据
+                DBContext.DeleteAllPluginData(pluginName);
+
+                // 3. 从文件系统中删除插件目录
+                string appDirectory = System.AppContext.BaseDirectory;
+                string pluginDirectory = Path.Combine(appDirectory, "Plugins");
+                string pluginFolder = Path.Combine(pluginDirectory, pluginName);
+
+                if (Directory.Exists(pluginFolder))
+                {
+                    await Task.Run(() =>
+                    {
+                        try
+                        {
+                            // 多次重试删除，处理文件被占用的情况
+                            int retryCount = 5;
+                            Exception? lastException = null;
+                            
+                            for (int i = 0; i < retryCount; i++)
+                            {
+                                try
+                                {
+                                    Directory.Delete(pluginFolder, true);
+                                    Log.Information("插件目录已删除: {PluginFolder}", pluginFolder);
+                                    return;
+                                }
+                                catch (UnauthorizedAccessException ex)
+                                {
+                                    lastException = ex;
+                                    Log.Warning("删除插件目录失败（尝试 {Attempt}/{Total}）: {Message}", 
+                                        i + 1, retryCount, ex.Message);
+                                    
+                                    if (i < retryCount - 1)
+                                    {
+                                        System.Threading.Thread.Sleep(500); // 等待500ms后重试
+                                    }
+                                }
+                                catch (IOException ex)
+                                {
+                                    lastException = ex;
+                                    Log.Warning("删除插件目录失败（尝试 {Attempt}/{Total}）: {Message}", 
+                                        i + 1, retryCount, ex.Message);
+                                    
+                                    if (i < retryCount - 1)
+                                    {
+                                        System.Threading.Thread.Sleep(500); // 等待500ms后重试
+                                    }
+                                }
+                            }
+                            
+                            // 所有重试都失败，抛出最后的异常
+                            if (lastException != null)
+                            {
+                                throw lastException;
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Error(ex, "删除插件目录失败: {PluginFolder}", pluginFolder);
+                            throw;
+                        }
+                    });
+                }
+
+                // 4. 发布插件删除事件
+                Infrastructure.EventAggregator.Instance.Publish(new Infrastructure.PluginDeletedMessage 
+                { 
+                    PluginName = pluginName 
+                });
+
+                Log.Information("插件 {PluginName} 已成功删除", pluginName);
+                return (true, "插件已删除");
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "删除插件失败: {PluginName}", pluginName);
+                return (false, $"删除失败: {ex.Message}");
             }
         }
 

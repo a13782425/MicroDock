@@ -4,6 +4,7 @@
 			 xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
 			 xmlns:vm="using:MicroDock.ViewModels"
 			 xmlns:models="using:MicroDock.Models"
+			 xmlns:plugin="using:MicroDock.Plugin"
 			 xmlns:db="using:MicroDock.Database"
 			 xmlns:fa="clr-namespace:FluentAvalonia.UI.Controls;assembly=FluentAvalonia"
 			 xmlns:controls="using:MicroDock.Views.Controls"
@@ -118,12 +119,17 @@
 			<!-- 插件管理分组 -->
 			<fa:SettingsExpander Header="插件管理"
 								 IconSource="ViewAll"
-								 Description="查看已加载的插件和注册的工具">
+								 Description="查看、导入和管理插件">
+				<fa:SettingsExpander.Footer>
+					<Button Content="导入插件"
+							Command="{Binding ImportPluginCommand}"
+							Classes="accent"/>
+				</fa:SettingsExpander.Footer>
 				<ItemsControl ItemsSource="{Binding PluginSettings}" Margin="0,0,0,0">
 					<ItemsControl.ItemTemplate>
 						<DataTemplate x:DataType="vm:PluginSettingItem">
 							<fa:SettingsExpander Margin="0,4"
-												 Description="{Binding ToolCountText}">
+												 Description="{Binding Version}">
 								<fa:SettingsExpander.Header>
 									<StackPanel Orientation="Horizontal" Spacing="8">
 										<TextBlock Text="{Binding PluginName}"
@@ -135,10 +141,51 @@
 												   Cursor="Hand"
 												   VerticalAlignment="Bottom"
 												   PointerPressed="PluginUniqueName_PointerPressed"/>
+										
+										<!-- 待删除标记 -->
+										<Border Background="Orange" CornerRadius="3" Padding="4,2" 
+												IsVisible="{Binding IsPendingDelete}">
+											<TextBlock Text="待删除" FontSize="10" Foreground="White"/>
+										</Border>
 									</StackPanel>
 								</fa:SettingsExpander.Header>
 
+								<fa:SettingsExpander.Footer>
+									<StackPanel Orientation="Horizontal" Spacing="8">
+										<!-- 启用/禁用开关（待删除时禁用） -->
+										<ToggleSwitch IsChecked="{Binding IsEnabled, Mode=TwoWay}"
+													  IsEnabled="{Binding !IsPendingDelete}"
+													  OnContent="已启用"
+													  OffContent="已禁用"/>
+										
+										<!-- 取消删除按钮（仅待删除时显示） -->
+										<Button Content="取消删除"
+												Command="{Binding CancelDeleteCommand}"
+												IsVisible="{Binding IsPendingDelete}"
+												Classes="accent"/>
+
+										<!-- 删除按钮（待删除时隐藏） -->
+										<Button Content="删除"
+												Command="{Binding DeleteCommand}"
+												IsVisible="{Binding !IsPendingDelete}"
+												Classes="danger"/>
+									</StackPanel>
+								</fa:SettingsExpander.Footer>
+
 								<StackPanel Margin="10,5" Spacing="8">
+									<!-- 插件信息 -->
+									<StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
+										<TextBlock Text="安装时间："
+												   FontSize="11"
+												   Foreground="Gray"/>
+										<TextBlock Text="{Binding InstalledAtText}"
+												   FontSize="11"
+												   Foreground="Gray"/>
+										<TextBlock Text="·" FontSize="11" Foreground="Gray"/>
+										<TextBlock Text="{Binding ToolCountText}"
+												   FontSize="11"
+												   Foreground="Gray"/>
+									</StackPanel>
 									<!-- 插件设置控件 -->
 									<ContentControl Content="{Binding SettingsControl}"
 													IsVisible="{Binding HasSettings}"/>
@@ -152,7 +199,7 @@
 
 										<ItemsControl ItemsSource="{Binding Tools}">
 											<ItemsControl.ItemTemplate>
-												<DataTemplate>
+												<DataTemplate DataType="plugin:ToolInfo">
 													<Border Background="{DynamicResource SubtleFillColorSecondaryBrush}"
 															BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
 															BorderThickness="1"

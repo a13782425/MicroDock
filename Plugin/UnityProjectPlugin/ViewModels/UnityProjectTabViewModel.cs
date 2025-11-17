@@ -16,7 +16,9 @@ namespace UnityProjectPlugin.ViewModels
         private readonly UnityProjectPlugin _plugin;
         private ObservableCollection<UnityProject> _projects = new();
         private ObservableCollection<UnityProject> _filteredProjects = new();
+        private ObservableCollection<ProjectGroupView> _groupedProjects = new();
         private string _searchText = string.Empty;
+        private bool _isGroupViewEnabled = false;
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -44,7 +46,7 @@ namespace UnityProjectPlugin.ViewModels
         }
 
         /// <summary>
-        /// 过滤后的项目列表
+        /// 过滤后的项目列表（平铺视图）
         /// </summary>
         public ObservableCollection<UnityProject> FilteredProjects
         {
@@ -55,6 +57,39 @@ namespace UnityProjectPlugin.ViewModels
                 {
                     _filteredProjects = value;
                     OnPropertyChanged();
+                }
+            }
+        }
+
+        /// <summary>
+        /// 分组后的项目列表（分组视图）
+        /// </summary>
+        public ObservableCollection<ProjectGroupView> GroupedProjects
+        {
+            get => _groupedProjects;
+            set
+            {
+                if (_groupedProjects != value)
+                {
+                    _groupedProjects = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        /// <summary>
+        /// 是否启用分组视图
+        /// </summary>
+        public bool IsGroupViewEnabled
+        {
+            get => _isGroupViewEnabled;
+            set
+            {
+                if (_isGroupViewEnabled != value)
+                {
+                    _isGroupViewEnabled = value;
+                    OnPropertyChanged();
+                    FilterProjects(); // 重新过滤和分组
                 }
             }
         }
@@ -91,36 +126,76 @@ namespace UnityProjectPlugin.ViewModels
         }
 
         /// <summary>
-        /// 过滤项目列表
+        /// 过滤项目列表（同时更新平铺和分组视图）
         /// </summary>
         private void FilterProjects()
         {
-            _filteredProjects.Clear();
+            List<UnityProject> filtered;
 
             if (string.IsNullOrWhiteSpace(_searchText))
             {
                 // 没有搜索文本，显示所有项目
-                foreach (UnityProject project in _projects)
-                {
-                    _filteredProjects.Add(project);
-                }
+                filtered = _projects.ToList();
             }
             else
             {
                 // 按项目名或分组名搜索（大小写不敏感）
                 string searchLower = _searchText.ToLowerInvariant();
-                foreach (UnityProject project in _projects)
+                filtered = _projects.Where(project =>
                 {
                     bool matchesName = project.Name.ToLowerInvariant().Contains(searchLower);
-                    bool matchesGroup = !string.IsNullOrEmpty(project.GroupName) && 
+                    bool matchesGroup = !string.IsNullOrEmpty(project.GroupName) &&
                                        project.GroupName.ToLowerInvariant().Contains(searchLower);
-                    
-                    if (matchesName || matchesGroup)
-                    {
-                        _filteredProjects.Add(project);
-                    }
-                }
+                    return matchesName || matchesGroup;
+                }).ToList();
             }
+
+            // 更新平铺视图
+            _filteredProjects.Clear();
+            foreach (UnityProject project in filtered)
+            {
+                _filteredProjects.Add(project);
+            }
+
+            // 更新分组视图
+            UpdateGroupedProjects(filtered);
+        }
+
+        /// <summary>
+        /// 更新分组项目列表
+        /// </summary>
+        private void UpdateGroupedProjects(List<UnityProject> projects)
+        {
+            _groupedProjects.Clear();
+
+            // 按分组名分组
+            IEnumerable<IGrouping<string, UnityProject>> groups = projects
+                .OrderBy(p => p.GroupName ?? string.Empty)
+                .ThenBy(p => p.Name)
+                .GroupBy(p => p.GroupName ?? string.Empty);
+
+            foreach (IGrouping<string, UnityProject> group in groups)
+            {
+                ProjectGroupView groupView = new ProjectGroupView
+                {
+                    GroupName = string.IsNullOrEmpty(group.Key) ? "未分组" : group.Key
+                };
+
+                foreach (UnityProject project in group)
+                {
+                    groupView.Projects.Add(project);
+                }
+
+                _groupedProjects.Add(groupView);
+            }
+        }
+
+        /// <summary>
+        /// 切换分组视图
+        /// </summary>
+        public void ToggleGroupView()
+        {
+            IsGroupViewEnabled = !IsGroupViewEnabled;
         }
 
         /// <summary>

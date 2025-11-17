@@ -1,0 +1,148 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:ClaudeSwitchPlugin.ViewModels"
+             xmlns:views="clr-namespace:ClaudeSwitchPlugin.Views"
+             mc:Ignorable="d"
+             d:DesignWidth="600"
+             d:DesignHeight="500"
+             x:Class="ClaudeSwitchPlugin.Views.ClaudeSwitchTabView">
+
+  <Design.DataContext>
+    <vm:ClaudeSwitchTabViewModel/>
+  </Design.DataContext>
+
+  <Grid RowDefinitions="Auto,*">
+    <!-- 头部标题栏 -->
+    <Border Grid.Row="0"
+            Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
+            BorderThickness="0,0,0,1"
+            BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}">
+      <Grid ColumnDefinitions="*,Auto">
+        <StackPanel Grid.Column="0"
+                    Orientation="Horizontal"
+                    Spacing="12"
+                    Margin="16,12">
+          <Border CornerRadius="4"
+                Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
+                Width="32"
+                Height="32"
+                VerticalAlignment="Center">
+            <TextBlock Text="AI"
+                       FontSize="14"
+                       FontWeight="Bold"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"/>
+        </Border>
+          <StackPanel Spacing="2">
+            <TextBlock Text="AI 配置管理器"
+                       FontSize="18"
+                       FontWeight="SemiBold"/>
+            <TextBlock Text="管理 Claude 和 OpenAI 配置"
+                       FontSize="12"
+                       Opacity="0.7"/>
+          </StackPanel>
+        </StackPanel>
+
+        <!-- 添加配置按钮 -->
+        <Button Grid.Column="1"
+                Content="添加配置"
+                Command="{Binding AddConfigurationCommand}"
+                Margin="16,0"
+                Padding="16,8"
+                CornerRadius="6"
+                Background="#0078d4"
+                Foreground="White"/>
+      </Grid>
+    </Border>
+
+    <!-- 主要内容区域 -->
+    <TabControl Grid.Row="1"
+                Margin="0,12,0,0">
+
+      <!-- Claude 配置页签 -->
+      <TabItem Header="Claude">
+        <Grid RowDefinitions="Auto,*">
+          <!-- Claude 搜索栏 -->
+          <Border Grid.Row="0"
+                  Margin="16,0,16,12"
+                  CornerRadius="8"
+                  Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
+                  BorderThickness="1"
+                  BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}">
+            <Grid ColumnDefinitions="Auto,*">
+              <TextBlock Grid.Column="0"
+                         Text="搜索:"
+                         FontSize="16"
+                         VerticalAlignment="Center"
+                         Margin="12,0,8,0"/>
+              <TextBox Grid.Column="1"
+                       Text="{Binding ClaudeTab.SearchText}"
+                       Watermark="搜索 Claude 配置..."
+                       Margin="0,0,12,0"
+                       Padding="8"
+                       BorderThickness="0"/>
+            </Grid>
+          </Border>
+
+          <!-- Claude 配置列表 -->
+          <ScrollViewer Grid.Row="1"
+                        VerticalScrollBarVisibility="Auto"
+                        HorizontalScrollBarVisibility="Disabled"
+                        Padding="16,0">
+            <ItemsControl ItemsSource="{Binding ClaudeTab.Configurations}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <views:ConfigurationCard/>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+        </Grid>
+      </TabItem>
+
+      <!-- OpenAI 配置页签 -->
+      <TabItem Header="OpenAI">
+        <Grid RowDefinitions="Auto,*">
+          <!-- OpenAI 搜索栏 -->
+          <Border Grid.Row="0"
+                  Margin="16,0,16,12"
+                  CornerRadius="8"
+                  Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
+                  BorderThickness="1"
+                  BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}">
+            <Grid ColumnDefinitions="Auto,*">
+              <TextBlock Grid.Column="0"
+                         Text="搜索:"
+                         FontSize="16"
+                         VerticalAlignment="Center"
+                         Margin="12,0,8,0"/>
+              <TextBox Grid.Column="1"
+                       Text="{Binding OpenAITab.SearchText}"
+                       Watermark="搜索 OpenAI 配置..."
+                       Margin="0,0,12,0"
+                       Padding="8"
+                       BorderThickness="0"/>
+            </Grid>
+          </Border>
+
+          <!-- OpenAI 配置列表 -->
+          <ScrollViewer Grid.Row="1"
+                        VerticalScrollBarVisibility="Auto"
+                        HorizontalScrollBarVisibility="Disabled"
+                        Padding="16,0">
+            <ItemsControl ItemsSource="{Binding OpenAITab.Configurations}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <views:ConfigurationCard/>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+        </Grid>
+      </TabItem>
+
+    </TabControl>
+  </Grid>
+</UserControl>
