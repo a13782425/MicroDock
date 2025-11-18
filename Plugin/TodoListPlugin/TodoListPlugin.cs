@@ -609,7 +609,7 @@ namespace TodoListPlugin
         /// <summary>
         /// 添加字段模板
         /// </summary>
-        public void AddFieldTemplate(string name, FieldType fieldType, bool required = false, string? defaultValue = null, bool isFilterable = false)
+        public void AddFieldTemplate(string name, FieldType fieldType, bool required = false, string? defaultValue = null, bool isFilterable = false, List<string>? options = null)
         {
             if (string.IsNullOrWhiteSpace(name))
             {
@@ -629,7 +629,8 @@ namespace TodoListPlugin
                 Required = required,
                 DefaultValue = defaultValue,
                 IsFilterable = isFilterable,
-                Order = _fieldTemplates.Count
+                Order = _fieldTemplates.Count,
+                Options = options ?? new List<string>()
             };
 
             _fieldTemplates.Add(template);
@@ -641,7 +642,7 @@ namespace TodoListPlugin
         /// <summary>
         /// 更新字段模板
         /// </summary>
-        public void UpdateFieldTemplate(string id, string newName, FieldType fieldType, bool required, string? defaultValue, bool isFilterable)
+        public void UpdateFieldTemplate(string id, string newName, FieldType fieldType, bool required, string? defaultValue, bool isFilterable, List<string>? options = null)
         {
             CustomFieldTemplate? template = _fieldTemplates.FirstOrDefault(f => f.Id == id);
             if (template == null)
@@ -660,6 +661,7 @@ namespace TodoListPlugin
             template.Required = required;
             template.DefaultValue = defaultValue;
             template.IsFilterable = isFilterable;
+            template.Options = options ?? new List<string>();
             SaveFieldTemplatesToFile();
 
             LogInfo($"已更新字段模板: {newName}");
@@ -886,9 +888,12 @@ namespace TodoListPlugin
         /// </summary>
         private void EnsureDefaultFields()
         {
-            List<CustomFieldTemplate> requiredFields = new List<CustomFieldTemplate>
+            bool hasChanges = false;
+
+            // 标题字段
+            if (!_fieldTemplates.Any(f => f.Id == "builtin-title"))
             {
-                new CustomFieldTemplate
+                _fieldTemplates.Add(new CustomFieldTemplate
                 {
                     Id = "builtin-title",
                     Name = "标题",
@@ -896,8 +901,15 @@ namespace TodoListPlugin
                     IsFilterable = true,
                     IsDefault = true,
                     Order = -2
-                },
-                new CustomFieldTemplate
+                });
+                hasChanges = true;
+                LogInfo("添加默认字段: 标题");
+            }
+
+            // 简述字段
+            if (!_fieldTemplates.Any(f => f.Id == "builtin-description"))
+            {
+                _fieldTemplates.Add(new CustomFieldTemplate
                 {
                     Id = "builtin-description",
                     Name = "简述",
@@ -905,42 +917,99 @@ namespace TodoListPlugin
                     IsFilterable = true,
                     IsDefault = true,
                     Order = -1
-                },
-                new CustomFieldTemplate
+                });
+                hasChanges = true;
+                LogInfo("添加默认字段: 简述");
+            }
+
+            // 优先级字段（Select类型）
+            CustomFieldTemplate? priorityField = _fieldTemplates.FirstOrDefault(f => f.Id == "default-priority");
+            if (priorityField == null)
+            {
+                priorityField = new CustomFieldTemplate
                 {
                     Id = "default-priority",
                     Name = "优先级",
-                    FieldType = FieldType.Text,
+                    FieldType = FieldType.Select,
                     IsFilterable = true,
                     IsDefault = true,
-                    Order = 0
-                },
-                new CustomFieldTemplate
+                    Order = 0,
+                    Options = new List<string>(_priorities.Select(p => p.Name))
+                };
+                _fieldTemplates.Add(priorityField);
+                hasChanges = true;
+                LogInfo("添加默认字段: 优先级");
+            }
+            else
+            {
+                // 更新已存在的优先级字段为Select类型，并更新Options
+                if (priorityField.FieldType != FieldType.Select)
+                {
+                    priorityField.FieldType = FieldType.Select;
+                    hasChanges = true;
+                }
+                priorityField.Options = new List<string>(_priorities.Select(p => p.Name));
+            }
+
+            // 标签字段（Select类型）
+            CustomFieldTemplate? tagsField = _fieldTemplates.FirstOrDefault(f => f.Id == "default-tags");
+            if (tagsField == null)
+            {
+                tagsField = new CustomFieldTemplate
                 {
                     Id = "default-tags",
                     Name = "标签",
-                    FieldType = FieldType.Text,
+                    FieldType = FieldType.Select,
                     IsFilterable = true,
                     IsDefault = true,
-                    Order = 1
-                }
-            };
-
-            bool hasChanges = false;
-            foreach (CustomFieldTemplate requiredField in requiredFields)
+                    Order = 1,
+                    Options = new List<string>(_tags.Select(t => t.Name))
+                };
+                _fieldTemplates.Add(tagsField);
+                hasChanges = true;
+                LogInfo("添加默认字段: 标签");
+            }
+            else
             {
-                if (!_fieldTemplates.Any(f => f.Id == requiredField.Id))
+                // 更新已存在的标签字段为Select类型，并更新Options
+                if (tagsField.FieldType != FieldType.Select)
                 {
-                    _fieldTemplates.Add(requiredField);
+                    tagsField.FieldType = FieldType.Select;
                     hasChanges = true;
-                    LogInfo($"添加默认字段: {requiredField.Name}");
                 }
+                tagsField.Options = new List<string>(_tags.Select(t => t.Name));
             }
 
             if (hasChanges)
             {
                 SaveFieldTemplatesToFile();
                 LogInfo("默认字段已更新");
+            }
+        }
+
+        /// <summary>
+        /// 更新优先级字段模板的Options
+        /// </summary>
+        private void UpdatePriorityFieldOptions()
+        {
+            CustomFieldTemplate? priorityField = _fieldTemplates.FirstOrDefault(f => f.Id == "default-priority");
+            if (priorityField != null)
+            {
+                priorityField.Options = new List<string>(_priorities.Select(p => p.Name));
+                SaveFieldTemplatesToFile();
+            }
+        }
+
+        /// <summary>
+        /// 更新标签字段模板的Options
+        /// </summary>
+        private void UpdateTagsFieldOptions()
+        {
+            CustomFieldTemplate? tagsField = _fieldTemplates.FirstOrDefault(f => f.Id == "default-tags");
+            if (tagsField != null)
+            {
+                tagsField.Options = new List<string>(_tags.Select(t => t.Name));
+                SaveFieldTemplatesToFile();
             }
         }
 
@@ -971,6 +1040,9 @@ namespace TodoListPlugin
 
             _priorities.Add(priority);
             SavePrioritiesToFile();
+            
+            // 更新优先级字段模板的Options
+            UpdatePriorityFieldOptions();
 
             LogInfo($"已添加优先级: {name}");
         }
@@ -1008,6 +1080,9 @@ namespace TodoListPlugin
 
             SavePrioritiesToFile();
             SaveItemsToFile();
+            
+            // 更新优先级字段模板的Options
+            UpdatePriorityFieldOptions();
 
             LogInfo($"已更新优先级: {oldName} -> {newName}");
         }
@@ -1032,6 +1107,9 @@ namespace TodoListPlugin
 
             _priorities.Remove(priority);
             SavePrioritiesToFile();
+            
+            // 更新优先级字段模板的Options
+            UpdatePriorityFieldOptions();
 
             LogInfo($"已删除优先级: {priority.Name}");
         }
@@ -1076,6 +1154,9 @@ namespace TodoListPlugin
 
             _tags.Add(tag);
             SaveTagsToFile();
+            
+            // 更新标签字段模板的Options
+            UpdateTagsFieldOptions();
 
             LogInfo($"已添加标签: {name}");
         }
@@ -1117,6 +1198,9 @@ namespace TodoListPlugin
 
             SaveTagsToFile();
             SaveItemsToFile();
+            
+            // 更新标签字段模板的Options
+            UpdateTagsFieldOptions();
 
             LogInfo($"已更新标签: {oldName} -> {newName}");
         }
@@ -1141,6 +1225,9 @@ namespace TodoListPlugin
 
             _tags.Remove(tag);
             SaveTagsToFile();
+            
+            // 更新标签字段模板的Options
+            UpdateTagsFieldOptions();
 
             LogInfo($"已删除标签: {tag.Name}");
         }

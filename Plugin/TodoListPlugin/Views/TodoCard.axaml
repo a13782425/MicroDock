@@ -60,7 +60,7 @@
 
     <Border Classes="todo-card"
             Name="CardBorder"
-            Width="280"
+            Width="240"
             ClipToBounds="False">
         <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto">
             <!-- 标题和提醒图标 -->

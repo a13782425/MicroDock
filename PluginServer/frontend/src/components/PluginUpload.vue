@@ -402,12 +402,14 @@ async function handleSubmit() {
 
     await pluginStore.uploadPlugin(formData_upload)
 
+    // 只有在真正成功时才显示成功消息
     notificationStore.showSuccess('插件上传成功')
     close()
     emit('uploaded')
 
   } catch (error) {
-    // 错误已在store中处理
+    // 错误已在API拦截器中处理，这里不需要额外处理
+    console.error('插件上传失败:', error)
   } finally {
     uploading.value = false
   }

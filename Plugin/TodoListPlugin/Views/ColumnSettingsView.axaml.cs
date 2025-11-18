@@ -28,6 +28,7 @@ namespace TodoListPlugin.Views
             InitializeControls();
             AttachEventHandlers();
             LoadColumns();
+            UpdateTabColorIndicators();
             
             // 加载字段模板视图
             if (this.FindControl<ContentControl>("FieldTemplateContent") is ContentControl content)
@@ -41,12 +42,15 @@ namespace TodoListPlugin.Views
             AvaloniaXamlLoader.Load(this);
         }
 
+        private TabControl? _tabControl;
+
         private void InitializeControls()
         {
             _newColumnNameTextBox = this.FindControl<TextBox>("NewColumnNameTextBox");
             _colorComboBox = this.FindControl<ComboBox>("ColorComboBox");
             _addColumnButton = this.FindControl<Button>("AddColumnButton");
             _columnsListControl = this.FindControl<ItemsControl>("ColumnsListControl");
+            _tabControl = this.FindControl<TabControl>("MainTabControl");
         }
 
         private void AttachEventHandlers()
@@ -69,6 +73,7 @@ namespace TodoListPlugin.Views
             Avalonia.Threading.Dispatcher.UIThread.Post(() =>
             {
                 UpdateColumnContainers();
+                UpdateTabColorIndicators();
             }, Avalonia.Threading.DispatcherPriority.Background);
         }
 
@@ -208,7 +213,9 @@ namespace TodoListPlugin.Views
                     Content = panel,
                     PrimaryButtonText = "保存",
                     CloseButtonText = "取消",
-                    DefaultButton = FluentAvalonia.UI.Controls.ContentDialogButton.Primary
+                    DefaultButton = FluentAvalonia.UI.Controls.ContentDialogButton.Primary,
+                    Width = 400,
+                    MaxWidth = 400
                 };
 
                 dialog.PrimaryButtonClick += (s, args) =>
@@ -275,6 +282,74 @@ namespace TodoListPlugin.Views
                             CloseButtonText = "确定"
                         };
                         await errorDialog.ShowAsync();
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// 更新TabItem颜色指示器
+        /// </summary>
+        private void UpdateTabColorIndicators()
+        {
+            if (_tabControl == null) return;
+
+            List<TodoColumn> columns = _plugin.GetColumns();
+            TodoColumn? firstColumn = columns.FirstOrDefault();
+            TodoColumn? secondColumn = columns.Count > 1 ? columns[1] : firstColumn;
+
+            // 设置Tab1（页签管理）的颜色指示器
+            if (_tabControl.Items.Count > 0 && _tabControl.Items[0] is TabItem tab1)
+            {
+                if (tab1.Header is Grid headerGrid1 && headerGrid1.Children.Count > 0)
+                {
+                    if (headerGrid1.Children[0] is Border border1)
+                    {
+                        if (firstColumn != null && !string.IsNullOrEmpty(firstColumn.Color))
+                        {
+                            try
+                            {
+                                border1.Background = new Avalonia.Media.SolidColorBrush(
+                                    Avalonia.Media.Color.Parse(firstColumn.Color));
+                                border1.IsVisible = true;
+                            }
+                            catch
+                            {
+                                border1.IsVisible = false;
+                            }
+                        }
+                        else
+                        {
+                            border1.IsVisible = false;
+                        }
+                    }
+                }
+            }
+
+            // 设置Tab2（字段模板）的颜色指示器
+            if (_tabControl.Items.Count > 1 && _tabControl.Items[1] is TabItem tab2)
+            {
+                if (tab2.Header is Grid headerGrid2 && headerGrid2.Children.Count > 0)
+                {
+                    if (headerGrid2.Children[0] is Border border2)
+                    {
+                        if (secondColumn != null && !string.IsNullOrEmpty(secondColumn.Color))
+                        {
+                            try
+                            {
+                                border2.Background = new Avalonia.Media.SolidColorBrush(
+                                    Avalonia.Media.Color.Parse(secondColumn.Color));
+                                border2.IsVisible = true;
+                            }
+                            catch
+                            {
+                                border2.IsVisible = false;
+                            }
+                        }
+                        else
+                        {
+                            border2.IsVisible = false;
+                        }
                     }
                 }
             }

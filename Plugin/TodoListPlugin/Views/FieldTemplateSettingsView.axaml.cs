@@ -17,6 +17,8 @@ namespace TodoListPlugin.Views
         private TextBox? _newFieldNameTextBox;
         private ComboBox? _fieldTypeComboBox;
         private TextBox? _defaultValueTextBox;
+        private TextBox? _optionsTextBox;
+        private StackPanel? _optionsPanel;
         private CheckBox? _requiredCheckBox;
         private CheckBox? _filterableCheckBox;
         private Button? _addFieldButton;
@@ -42,6 +44,8 @@ namespace TodoListPlugin.Views
             _newFieldNameTextBox = this.FindControl<TextBox>("NewFieldNameTextBox");
             _fieldTypeComboBox = this.FindControl<ComboBox>("FieldTypeComboBox");
             _defaultValueTextBox = this.FindControl<TextBox>("DefaultValueTextBox");
+            _optionsTextBox = this.FindControl<TextBox>("OptionsTextBox");
+            _optionsPanel = this.FindControl<StackPanel>("OptionsPanel");
             _requiredCheckBox = this.FindControl<CheckBox>("RequiredCheckBox");
             _filterableCheckBox = this.FindControl<CheckBox>("FilterableCheckBox");
             _addFieldButton = this.FindControl<Button>("AddFieldButton");
@@ -54,6 +58,19 @@ namespace TodoListPlugin.Views
             {
                 _addFieldButton.Click += OnAddFieldClick;
             }
+            
+            // 类型改变时显示/隐藏选项列表
+            if (_fieldTypeComboBox != null)
+            {
+                _fieldTypeComboBox.SelectionChanged += (s, e) =>
+                {
+                    if (_optionsPanel != null && _fieldTypeComboBox.SelectedItem is ComboBoxItem selectedItem)
+                    {
+                        string selectedType = selectedItem.Tag?.ToString() ?? "Text";
+                        _optionsPanel.IsVisible = selectedType == "Select";
+                    }
+                };
+            }
         }
 
         private void LoadFields()
@@ -61,7 +78,7 @@ namespace TodoListPlugin.Views
             if (_fieldsListControl == null) return;
 
             List<CustomFieldTemplate> fields = _plugin.GetFieldTemplates();
-            // 按Order排序
+            // 按Order排序，确保默认字段也显示
             fields = fields.OrderBy(f => f.Order).ToList();
             _fieldsListControl.ItemsSource = null;
             _fieldsListControl.ItemsSource = fields;
@@ -93,12 +110,24 @@ namespace TodoListPlugin.Views
                 bool filterable = _filterableCheckBox?.IsChecked == true;
                 string? defaultValue = _defaultValueTextBox?.Text;
 
-                _plugin.AddFieldTemplate(name, fieldType, required, defaultValue, filterable);
+                // 处理Select类型的Options
+                List<string> options = new List<string>();
+                if (fieldType == FieldType.Select && _optionsTextBox != null && !string.IsNullOrWhiteSpace(_optionsTextBox.Text))
+                {
+                    options = _optionsTextBox.Text.Split('\n')
+                        .Select(o => o.Trim())
+                        .Where(o => !string.IsNullOrEmpty(o))
+                        .ToList();
+                }
+
+                _plugin.AddFieldTemplate(name, fieldType, required, defaultValue, filterable, options);
 
                 // 清空输入
                 _newFieldNameTextBox.Text = string.Empty;
                 _fieldTypeComboBox.SelectedIndex = -1;
                 if (_defaultValueTextBox != null) _defaultValueTextBox.Text = string.Empty;
+                if (_optionsTextBox != null) _optionsTextBox.Text = string.Empty;
+                if (_optionsPanel != null) _optionsPanel.IsVisible = false;
                 if (_requiredCheckBox != null) _requiredCheckBox.IsChecked = false;
                 if (_filterableCheckBox != null) _filterableCheckBox.IsChecked = true;
 
@@ -147,6 +176,7 @@ namespace TodoListPlugin.Views
                 typeCombo.Items.Add(new ComboBoxItem { Content = "数字", Tag = "Number" });
                 typeCombo.Items.Add(new ComboBoxItem { Content = "日期", Tag = "Date" });
                 typeCombo.Items.Add(new ComboBoxItem { Content = "布尔", Tag = "Bool" });
+                typeCombo.Items.Add(new ComboBoxItem { Content = "单选项", Tag = "Select" });
                 
                 // 设置当前类型
                 string currentType = field.FieldType.ToString();
@@ -169,6 +199,31 @@ namespace TodoListPlugin.Views
                 defaultPanel.Children.Add(defaultTextBox);
                 panel.Children.Add(defaultPanel);
 
+                // Select类型的选项列表
+                StackPanel optionsPanel = new StackPanel { Spacing = 6 };
+                optionsPanel.Children.Add(new TextBlock { Text = "选项列表（每行一个）", FontWeight = Avalonia.Media.FontWeight.Medium });
+                TextBox optionsTextBox = new TextBox 
+                { 
+                    Text = field.FieldType == FieldType.Select ? string.Join("\n", field.Options ?? new List<string>()) : string.Empty,
+                    AcceptsReturn = true,
+                    TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                    MinHeight = 100,
+                    MaxHeight = 200
+                };
+                optionsPanel.Children.Add(optionsTextBox);
+                optionsPanel.IsVisible = field.FieldType == FieldType.Select;
+                panel.Children.Add(optionsPanel);
+
+                // 类型改变时显示/隐藏选项列表
+                typeCombo.SelectionChanged += (s, e) =>
+                {
+                    if (typeCombo.SelectedItem is ComboBoxItem selectedTypeItem)
+                    {
+                        string selectedType = selectedTypeItem.Tag?.ToString() ?? "Text";
+                        optionsPanel.IsVisible = selectedType == "Select";
+                    }
+                };
+
                 // 必填和可筛选
                 CheckBox requiredCheck = new CheckBox { Content = "必填字段", IsChecked = field.Required };
                 panel.Children.Add(requiredCheck);
@@ -182,7 +237,9 @@ namespace TodoListPlugin.Views
                     Content = panel,
                     PrimaryButtonText = "保存",
                     CloseButtonText = "取消",
-                    DefaultButton = FluentAvalonia.UI.Controls.ContentDialogButton.Primary
+                    DefaultButton = FluentAvalonia.UI.Controls.ContentDialogButton.Primary,
+                    Width = 500,
+                    MaxWidth = 500
                 };
 
                 dialog.PrimaryButtonClick += (s, args) =>
@@ -202,7 +259,17 @@ namespace TodoListPlugin.Views
                         bool filterable = filterableCheck.IsChecked == true;
                         string? defaultValue = defaultTextBox.Text;
 
-                        _plugin.UpdateFieldTemplate(field.Id, newName, fieldType, required, defaultValue, filterable);
+                        // 处理Select类型的Options
+                        List<string> options = new List<string>();
+                        if (fieldType == FieldType.Select && !string.IsNullOrWhiteSpace(optionsTextBox.Text))
+                        {
+                            options = optionsTextBox.Text.Split('\n')
+                                .Select(o => o.Trim())
+                                .Where(o => !string.IsNullOrEmpty(o))
+                                .ToList();
+                        }
+
+                        _plugin.UpdateFieldTemplate(field.Id, newName, fieldType, required, defaultValue, filterable, options);
                     }
                 catch (Exception ex)
                 {

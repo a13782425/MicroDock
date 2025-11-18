@@ -6,9 +6,21 @@
              mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="500"
              x:Class="TodoListPlugin.Views.ColumnSettingsView">
 
-    <TabControl>
+    <TabControl Name="MainTabControl">
         <!-- 页签管理标签页 -->
-        <TabItem Header="页签管理">
+        <TabItem>
+            <TabItem.Header>
+                <Grid ColumnDefinitions="Auto,*">
+                    <Border Grid.Column="0"
+                            Width="4"
+                            Height="20"
+                            CornerRadius="2"
+                            Margin="0,0,8,0"
+                            Name="Tab1ColorIndicator"
+                            VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="1" Text="页签管理" VerticalAlignment="Center"/>
+                </Grid>
+            </TabItem.Header>
             <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <StackPanel Spacing="16" Margin="12">
                     <!-- 添加新页签区域 -->
@@ -106,7 +118,19 @@
         </TabItem>
 
         <!-- 字段模板管理标签页 -->
-        <TabItem Header="字段模板">
+        <TabItem>
+            <TabItem.Header>
+                <Grid ColumnDefinitions="Auto,*">
+                    <Border Grid.Column="0"
+                            Width="4"
+                            Height="20"
+                            CornerRadius="2"
+                            Margin="0,0,8,0"
+                            Name="Tab2ColorIndicator"
+                            VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="1" Text="字段模板" VerticalAlignment="Center"/>
+                </Grid>
+            </TabItem.Header>
             <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <ContentControl Name="FieldTemplateContent" Margin="12"/>
             </ScrollViewer>

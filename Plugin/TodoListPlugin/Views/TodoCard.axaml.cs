@@ -322,7 +322,10 @@ namespace TodoListPlugin.Views
                 Content = content,
                 PrimaryButtonText = "保存",
                 CloseButtonText = "取消",
-                DefaultButton = FluentAvalonia.UI.Controls.ContentDialogButton.Primary
+                DefaultButton = FluentAvalonia.UI.Controls.ContentDialogButton.Primary,
+                Width = 600,
+                MaxWidth = 600,
+                MaxHeight = 700
             };
             
             dialog.PrimaryButtonClick += (s, args) =>

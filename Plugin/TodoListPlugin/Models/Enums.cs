@@ -23,7 +23,12 @@ namespace TodoListPlugin.Models
         /// <summary>
         /// 数字（支持整数和小数）
         /// </summary>
-        Number
+        Number,
+
+        /// <summary>
+        /// 单选项（下拉选择）
+        /// </summary>
+        Select
     }
 
     /// <summary>

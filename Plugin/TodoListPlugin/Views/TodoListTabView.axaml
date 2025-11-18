@@ -141,7 +141,7 @@
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
                         <!-- 每个页签列 -->
-                        <Border Width="320"
+                        <Border Width="260"
                                 Background="{DynamicResource LayerFillColorDefaultBrush}"
                                 BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
                                 BorderThickness="1"
@@ -149,7 +149,10 @@
                                 Padding="12">
                             <Grid RowDefinitions="Auto,*">
                                 <!-- 列标题 -->
-                                <StackPanel Grid.Row="0" Spacing="8" Margin="0,0,0,12">
+                                <StackPanel Grid.Row="0" 
+                                            Spacing="8" 
+                                            Margin="0,0,0,12"
+                                            Name="ColumnHeaderPanel">
                                     <Grid ColumnDefinitions="*,Auto">
                                         <TextBlock Grid.Column="0"
                                                    Text="{Binding Name}"

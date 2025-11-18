@@ -74,7 +74,7 @@ async def delete_plugin(plugin_id: int):
                 break
 
         if plugin_index == -1:
-            return {"success": False, "error": f"插件 ID {plugin_id} 不存在"}
+            return {"success": False, "error": f"插件 ID {plugin_id} 不存在"}, 404
 
         # 获取插件信息用于日志
         deleted_plugin = plugin_storage[plugin_index]
@@ -89,7 +89,7 @@ async def delete_plugin(plugin_id: int):
         }
 
     except Exception as e:
-        return {"success": False, "error": f"删除插件失败: {str(e)}"}
+        return {"success": False, "error": f"删除插件失败: {str(e)}"}, 500
 
 @app.post("/api/plugins")
 async def upload_plugin(file: UploadFile = File(...)):
@@ -98,17 +98,16 @@ async def upload_plugin(file: UploadFile = File(...)):
     try:
         # 验证文件类型
         if not file.filename or not file.filename.lower().endswith('.zip'):
-            return {"success": False, "error": "只支持 .zip 文件格式"}
+            return {"success": False, "error": "只支持 .zip 文件格式"}, 400
 
         # 读取文件内容到内存
         content = await file.read()
 
-        # 使用配置的临时文件夹，避免系统权限问题
-        temp_dir = Path(__file__).parent / TEMP_DIR
-        temp_dir.mkdir(exist_ok=True)
-
-        # 生成安全的临时文件名
+        # 使用系统临时目录，避免权限问题
+        import tempfile
         import uuid
+
+        temp_dir = Path(tempfile.gettempdir())
         temp_filename = f"plugin_upload_{uuid.uuid4().hex[:8]}.zip"
         temp_file_path = temp_dir / temp_filename
 
@@ -120,10 +119,23 @@ async def upload_plugin(file: UploadFile = File(...)):
             # 验证ZIP文件
             is_valid, message = validate_plugin_zip(str(temp_file_path))
             if not is_valid:
-                return {"success": False, "error": message}
+                return {"success": False, "error": message}, 400
 
             # 解析插件信息
             metadata = parse_plugin_from_zip(str(temp_file_path))
+
+            # 检查插件名称和版本是否已存在
+            plugin_name = metadata.get("name")
+            plugin_version = metadata.get("version")
+
+            if plugin_name and plugin_version:
+                for existing_plugin in plugin_storage:
+                    if (existing_plugin.get("name") == plugin_name and
+                        existing_plugin.get("version") == plugin_version):
+                        return {
+                            "success": False,
+                            "error": f"插件 '{plugin_name}' 版本 '{plugin_version}' 已存在，不能重复上传相同名称和版本的插件"
+                        }, 400
 
             # 创建插件记录
             import datetime
@@ -151,10 +163,10 @@ async def upload_plugin(file: UploadFile = File(...)):
             }
 
         except Exception as e:
-            return {"success": False, "error": f"解析失败: {str(e)}"}
+            return {"success": False, "error": f"解析失败: {str(e)}"}, 400
 
     except Exception as e:
-        return {"success": False, "error": f"文件处理失败: {str(e)}"}
+        return {"success": False, "error": f"文件处理失败: {str(e)}"}, 500
     finally:
         # 清理临时文件
         if temp_file_path and temp_file_path.exists():
@@ -170,17 +182,16 @@ async def preview_plugin(file: UploadFile = File(...)):
     try:
         # 验证文件类型
         if not file.filename or not file.filename.lower().endswith('.zip'):
-            return {"success": False, "error": "只支持 .zip 文件格式"}
+            return {"success": False, "error": "只支持 .zip 文件格式"}, 400
 
         # 读取文件内容到内存
         content = await file.read()
 
-        # 使用配置的临时文件夹，避免系统权限问题
-        temp_dir = Path(__file__).parent / TEMP_DIR
-        temp_dir.mkdir(exist_ok=True)
-
-        # 生成安全的临时文件名
+        # 使用系统临时目录，避免权限问题
+        import tempfile
         import uuid
+
+        temp_dir = Path(tempfile.gettempdir())
         temp_filename = f"plugin_preview_{uuid.uuid4().hex[:8]}.zip"
         temp_file_path = temp_dir / temp_filename
 
@@ -192,7 +203,7 @@ async def preview_plugin(file: UploadFile = File(...)):
             # 验证ZIP文件
             is_valid, message = validate_plugin_zip(str(temp_file_path))
             if not is_valid:
-                return {"success": False, "error": message}
+                return {"success": False, "error": message}, 400
 
             # 解析插件信息
             metadata = parse_plugin_from_zip(str(temp_file_path))
@@ -205,10 +216,10 @@ async def preview_plugin(file: UploadFile = File(...)):
             }
 
         except Exception as e:
-            return {"success": False, "error": f"解析失败: {str(e)}"}
+            return {"success": False, "error": f"解析失败: {str(e)}"}, 400
 
     except Exception as e:
-        return {"success": False, "error": f"文件处理失败: {str(e)}"}
+        return {"success": False, "error": f"文件处理失败: {str(e)}"}, 500
     finally:
         # 清理临时文件
         if temp_file_path and temp_file_path.exists():

@@ -230,21 +230,40 @@ namespace TodoListPlugin.Views
                                 }
                             }
 
-                            // 设置列颜色
+                            // 设置列颜色和标题背景色
                             if (!string.IsNullOrEmpty(column.Color))
                             {
-                                Avalonia.Controls.Border? colorBar = container.FindDescendantOfType<Avalonia.Controls.Border>();
-                                if (colorBar != null && colorBar.Height == 2)
+                                try
                                 {
-                                    try
+                                    var colorBrush = new Avalonia.Media.SolidColorBrush(
+                                        Avalonia.Media.Color.Parse(column.Color));
+                                    
+                                    // 设置标题背景色
+                                    StackPanel? headerPanel = container.FindDescendantOfType<StackPanel>("ColumnHeaderPanel");
+                                    if (headerPanel != null)
                                     {
-                                        colorBar.Background = new Avalonia.Media.SolidColorBrush(
-                                            Avalonia.Media.Color.Parse(column.Color));
+                                        headerPanel.Background = colorBrush;
                                     }
-                                    catch
+                                    
+                                    // 设置底部颜色条
+                                    Avalonia.Controls.Border? colorBar = container.FindDescendantOfType<Avalonia.Controls.Border>();
+                                    if (colorBar != null && colorBar.Height == 2)
                                     {
-                                        // 颜色解析失败，忽略
+                                        colorBar.Background = colorBrush;
                                     }
+                                }
+                                catch
+                                {
+                                    // 颜色解析失败，忽略
+                                }
+                            }
+                            else
+                            {
+                                // 如果没有颜色，清除标题背景色
+                                StackPanel? headerPanel = container.FindDescendantOfType<StackPanel>("ColumnHeaderPanel");
+                                if (headerPanel != null)
+                                {
+                                    headerPanel.Background = null;
                                 }
                             }
                         }
@@ -310,6 +329,7 @@ namespace TodoListPlugin.Views
         {
             var dialog = new FluentAvalonia.UI.Controls.ContentDialog
             {                
+                Width = 400,
                 Content = new ColumnSettingsView(_plugin),
                 CloseButtonText = "关闭"
             };

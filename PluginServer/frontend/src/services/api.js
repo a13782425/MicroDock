@@ -40,9 +40,25 @@ api.interceptors.response.use(
     if (error.response) {
       const { status, data } = error.response
 
+      // 优先使用自定义错误消息
+      let errorMessage = '请求失败'
+
+      // 检查是否是我们的自定义错误格式 {success: false, error: "..."}
+      if (data && data.success === false && data.error) {
+        errorMessage = data.error
+      }
+      // FastAPI 默认错误格式
+      else if (data && data.detail) {
+        errorMessage = data.detail
+      }
+      // 其他自定义错误消息
+      else if (data && data.message) {
+        errorMessage = data.message
+      }
+
       switch (status) {
         case 400:
-          notificationStore.showError(data.detail || '请求参数错误')
+          notificationStore.showError(errorMessage)
           break
         case 401:
           notificationStore.showError('认证失败，请重新登录')
@@ -57,13 +73,13 @@ api.interceptors.response.use(
           notificationStore.showError('请求的资源不存在')
           break
         case 422:
-          notificationStore.showError(data.detail || '数据验证失败')
+          notificationStore.showError(errorMessage)
           break
         case 500:
           notificationStore.showError('服务器内部错误')
           break
         default:
-          notificationStore.showError(data.detail || '请求失败')
+          notificationStore.showError(errorMessage)
       }
     } else if (error.request) {
       // 网络错误

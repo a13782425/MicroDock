@@ -36,7 +36,19 @@
                         <ComboBoxItem Content="数字" Tag="Number"/>
                         <ComboBoxItem Content="日期" Tag="Date"/>
                         <ComboBoxItem Content="布尔" Tag="Bool"/>
+                        <ComboBoxItem Content="单选项" Tag="Select"/>
                     </ComboBox>
+                </StackPanel>
+
+                <!-- Select类型的选项列表 -->
+                <StackPanel Name="OptionsPanel" Spacing="4" IsVisible="False">
+                    <TextBlock Text="选项列表（每行一个）" FontSize="12" Opacity="0.7"/>
+                    <TextBox Name="OptionsTextBox"
+                             AcceptsReturn="True"
+                             TextWrapping="Wrap"
+                             MinHeight="80"
+                             MaxHeight="150"
+                             Watermark="输入选项，每行一个..."/>
                 </StackPanel>
 
                 <!-- 默认值 -->
@@ -116,19 +128,23 @@
                                             Content="&#xE70F;"
                                             FontFamily="{StaticResource SymbolThemeFontFamily}"
                                             Name="EditFieldButton"
+                                            Tag="{Binding}"
                                             IsVisible="{Binding !IsDefault}"
                                             Padding="8"
                                             Margin="0,0,4,0"
-                                            ToolTip.Tip="编辑"/>
+                                            ToolTip.Tip="编辑"
+                                            Click="OnEditFieldClick"/>
 
                                     <!-- 删除按钮 - 默认字段不显示 -->
                                     <Button Grid.Column="2"
                                             Content="&#xE74D;"
                                             FontFamily="{StaticResource SymbolThemeFontFamily}"
                                             Name="DeleteFieldButton"
+                                            Tag="{Binding}"
                                             IsVisible="{Binding !IsDefault}"
                                             Padding="8"
-                                            ToolTip.Tip="删除"/>
+                                            ToolTip.Tip="删除"
+                                            Click="OnDeleteFieldClick"/>
                                 </Grid>
                             </Border>
                         </DataTemplate>

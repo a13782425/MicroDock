@@ -141,19 +141,19 @@ namespace TodoListPlugin.Views
                 _customFieldsContainer.Children.Add(label);
 
                 // 根据类型创建输入控件
-                Control inputControl = CreateInputFieldForType(template.FieldType, template.Name);
+                Control inputControl = CreateInputFieldForType(template);
                 _fieldControls[template.Id] = inputControl;
                 _customFieldsContainer.Children.Add(inputControl);
             }
         }
 
-        private Control CreateInputFieldForType(FieldType fieldType, string fieldName)
+        private Control CreateInputFieldForType(CustomFieldTemplate template)
         {
-            return fieldType switch
+            return template.FieldType switch
             {
                 FieldType.Text => new TextBox
                 {
-                    Watermark = $"输入{fieldName}...",
+                    Watermark = $"输入{template.Name}...",
                     AcceptsReturn = true,
                     TextWrapping = Avalonia.Media.TextWrapping.Wrap,
                     MinHeight = 60,
@@ -171,6 +171,13 @@ namespace TodoListPlugin.Views
                 FieldType.Number => new TextBox
                 {
                     Watermark = $"输入数字..."
+                },
+                FieldType.Select => new ComboBox
+                {
+                    HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch,
+                    PlaceholderText = $"选择{template.Name}...",
+                    ItemsSource = template.Options ?? new List<string>(),
+                    IsEditable = false
                 },
                 _ => new TextBox { Watermark = "未知类型" }
             };
@@ -249,6 +256,9 @@ namespace TodoListPlugin.Views
                         datePicker.SelectedDate = date;
                     }
                     break;
+                case ComboBox comboBox:
+                    comboBox.SelectedItem = value;
+                    break;
             }
         }
 
@@ -259,6 +269,7 @@ namespace TodoListPlugin.Views
                 TextBox textBox => textBox.Text,
                 ToggleSwitch toggle => toggle.IsChecked == true ? "true" : "false",
                 DatePicker datePicker => datePicker.SelectedDate?.ToString("yyyy-MM-dd"),
+                ComboBox comboBox => comboBox.SelectedItem?.ToString(),
                 _ => null
             };
         }
@@ -279,6 +290,18 @@ namespace TodoListPlugin.Views
             }
 
             return true;
+        }
+
+        /// <summary>
+        /// 获取当前选择的列ID
+        /// </summary>
+        public string? GetColumnId()
+        {
+            if (_columnComboBox?.SelectedItem is TodoColumn selectedColumn)
+            {
+                return selectedColumn.Id;
+            }
+            return null;
         }
 
         /// <summary>

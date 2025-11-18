@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace TodoListPlugin.Models
 {
@@ -46,6 +47,11 @@ namespace TodoListPlugin.Models
         /// 是否为默认字段（默认字段不可删除和修改）
         /// </summary>
         public bool IsDefault { get; set; }
+
+        /// <summary>
+        /// Select类型的选项列表（仅在FieldType为Select时使用）
+        /// </summary>
+        public List<string> Options { get; set; } = new List<string>();
     }
 }
 
