@@ -104,7 +104,7 @@ public class AutoHideService : IWindowService, IDisposable
     public void Enable()
     {
         if (!CheckWindow()) return;
-        
+
         if (!_isEnabled)
         {
             _window!.PositionChanged += OnWindowPositionChanged;
@@ -125,7 +125,7 @@ public class AutoHideService : IWindowService, IDisposable
     public void Disable()
     {
         if (!CheckWindow()) return;
-        
+
         _window!.PositionChanged -= OnWindowPositionChanged;
         _window.PointerExited -= OnWindowPointerExited;
         _window.Deactivated -= OnWindowDeactivated;
@@ -140,7 +140,7 @@ public class AutoHideService : IWindowService, IDisposable
         }
 
         _isEnabled = false;
-        System.Diagnostics.Debug.WriteLine("[AutoHide] 服务已禁用");
+        Serilog.Log.Information("[AutoHide] 服务已禁用");
     }
 
     /// <summary>
@@ -168,8 +168,6 @@ public class AutoHideService : IWindowService, IDisposable
     {
         if (!_isEnabled || _state != AutoHideState.Visible)
             return;
-
-        System.Diagnostics.Debug.WriteLine($"[AutoHide] 事件: PositionChanged -> {e.Point}");
         CheckAndStartHideTimer();
     }
 
@@ -180,8 +178,6 @@ public class AutoHideService : IWindowService, IDisposable
     {
         if (!_isEnabled || _state != AutoHideState.Visible)
             return;
-
-        System.Diagnostics.Debug.WriteLine("[AutoHide] 事件: PointerExited（鼠标离开窗口）");
         // 鼠标离开窗口时，检查是否在边缘
         CheckAndStartHideTimer();
     }
@@ -193,8 +189,6 @@ public class AutoHideService : IWindowService, IDisposable
     {
         if (!_isEnabled || _state != AutoHideState.Visible)
             return;
-
-        System.Diagnostics.Debug.WriteLine("[AutoHide] 事件: Deactivated（窗口失去焦点）");
         // 窗口失去焦点时，检查是否在边缘
         CheckAndStartHideTimer();
     }
@@ -204,7 +198,6 @@ public class AutoHideService : IWindowService, IDisposable
     /// </summary>
     private void CheckAndStartHideTimer()
     {
-        System.Diagnostics.Debug.WriteLine($"[AutoHide] CheckAndStartHideTimer 被调用, 当前位置: {_window.Position}");
         EdgePosition edge = GetEdgePosition(_window.Position);
 
         if (edge != EdgePosition.None)
@@ -216,18 +209,11 @@ public class AutoHideService : IWindowService, IDisposable
                 _hiddenEdge = edge;
                 _hideTimer?.Stop();
                 _hideTimer?.Start();
-                System.Diagnostics.Debug.WriteLine($"[AutoHide] 检测到窗口在{edge}边缘，{HIDE_DELAY}ms 后隐藏");
             }
             else if (_hideTimer?.Enabled != true)
             {
                 // 同一边缘但计时器未运行，启动计时器
                 _hideTimer?.Start();
-                System.Diagnostics.Debug.WriteLine($"[AutoHide] 重新启动隐藏计时器（{edge}边缘）");
-            }
-            else
-            {
-                // 计时器已经在运行，不要重启
-                System.Diagnostics.Debug.WriteLine($"[AutoHide] 计时器正在运行中，不重启（{edge}边缘）");
             }
         }
         else
@@ -236,7 +222,6 @@ public class AutoHideService : IWindowService, IDisposable
             if (_hideTimer?.Enabled == true)
             {
                 _hideTimer.Stop();
-                System.Diagnostics.Debug.WriteLine($"[AutoHide] 窗口离开边缘，取消隐藏计时（当前位置: {_window.Position}）");
             }
             _hiddenEdge = EdgePosition.None;
         }
@@ -247,18 +232,11 @@ public class AutoHideService : IWindowService, IDisposable
     /// </summary>
     private void OnHideTimerElapsed(object? sender, ElapsedEventArgs e)
     {
-        System.Diagnostics.Debug.WriteLine($"[AutoHide] 计时器到期: _isEnabled={_isEnabled}, _state={_state}, _hiddenEdge={_hiddenEdge}");
-
         Dispatcher.UIThread.InvokeAsync(() =>
         {
             if (_isEnabled && _state == AutoHideState.Visible && _hiddenEdge != EdgePosition.None)
             {
-                System.Diagnostics.Debug.WriteLine("[AutoHide] 条件满足，开始执行隐藏");
                 HideWindow(_hiddenEdge);
-            }
-            else
-            {
-                System.Diagnostics.Debug.WriteLine($"[AutoHide] 条件不满足，取消隐藏: _isEnabled={_isEnabled}, _state={_state}, _hiddenEdge={_hiddenEdge}");
             }
         });
     }
@@ -300,7 +278,6 @@ public class AutoHideService : IWindowService, IDisposable
         Screen? screen = _window.Screens.ScreenFromWindow(_window);
         if (screen == null)
         {
-            System.Diagnostics.Debug.WriteLine("[AutoHide] 无法获取屏幕信息");
             return EdgePosition.None;
         }
 
@@ -318,25 +295,21 @@ public class AutoHideService : IWindowService, IDisposable
         // 检查是否靠近左边缘（允许负值，即窗口部分移出屏幕）
         if (distanceLeft <= threshold)
         {
-            System.Diagnostics.Debug.WriteLine($"[AutoHide] 判定在Left边缘: X={position.X}, WorkingArea.X={workingArea.X}, Distance={distanceLeft}, Threshold={threshold}");
             return EdgePosition.Left;
         }
 
         // 检查是否靠近右边缘（允许负值）
         if (distanceRight <= threshold)
         {
-            System.Diagnostics.Debug.WriteLine($"[AutoHide] 判定在Right边缘: Distance={distanceRight}, Threshold={threshold}");
             return EdgePosition.Right;
         }
 
         // 检查是否靠近上边缘（允许负值）
         if (distanceTop <= threshold)
         {
-            System.Diagnostics.Debug.WriteLine($"[AutoHide] 判定在Top边缘: Distance={distanceTop}, Threshold={threshold}");
             return EdgePosition.Top;
         }
 
-        System.Diagnostics.Debug.WriteLine($"[AutoHide] 不在边缘: Position={position}, DistanceLeft={distanceLeft}, DistanceRight={distanceRight}, DistanceTop={distanceTop}");
         return EdgePosition.None;
     }
 
@@ -371,13 +344,10 @@ public class AutoHideService : IWindowService, IDisposable
                 break;
         }
 
-        System.Diagnostics.Debug.WriteLine($"[AutoHide] 开始隐藏: Edge={edge}, Position={_window.Position}, Target={targetPosition}");
-
         _state = AutoHideState.Hiding;
         StartAnimation(_window.Position, targetPosition, () =>
         {
             _state = AutoHideState.Hidden;
-            System.Diagnostics.Debug.WriteLine($"[AutoHide] 隐藏完成: FinalPosition={_window.Position}");
         });
     }
 
@@ -405,7 +375,6 @@ public class AutoHideService : IWindowService, IDisposable
         if (!positionValid)
         {
             // 位置已失效，根据边缘重新计算安全位置
-            System.Diagnostics.Debug.WriteLine("[AutoHide] 检测到保存位置失效，重新计算");
             switch (_hiddenEdge)
             {
                 case EdgePosition.Left:
@@ -420,15 +389,12 @@ public class AutoHideService : IWindowService, IDisposable
             }
         }
 
-        System.Diagnostics.Debug.WriteLine($"[AutoHide] 开始显示: Position={_window.Position}, Target={targetPosition}");
-
         _state = AutoHideState.Showing;
         StartAnimation(_window.Position, targetPosition, () =>
         {
             _state = AutoHideState.Visible;
             _hiddenEdge = EdgePosition.None;
             _hiddenScreen = null;
-            System.Diagnostics.Debug.WriteLine($"[AutoHide] 显示完成: FinalPosition={_window.Position}");
         });
     }
 
@@ -478,8 +444,6 @@ public class AutoHideService : IWindowService, IDisposable
         _state = AutoHideState.Visible;
         _hiddenEdge = EdgePosition.None;
         _hiddenScreen = null;
-
-        System.Diagnostics.Debug.WriteLine($"[AutoHide] 立即恢复显示: Position={_window.Position}");
     }
 
     /// <summary>
@@ -552,11 +516,6 @@ public class AutoHideService : IWindowService, IDisposable
                 return false;
         }
 
-        if (inTriggerZone)
-        {
-            System.Diagnostics.Debug.WriteLine($"[AutoHide] 鼠标触发显示: MousePos=({mousePosX},{mousePosY}), TriggerZone={SHOW_TRIGGER_ZONE}px");
-        }
-
         return inTriggerZone;
     }
 
@@ -597,7 +556,6 @@ public class AutoHideService : IWindowService, IDisposable
         if (progress >= 1.0)
         {
             _animationTimer?.Stop();
-            System.Diagnostics.Debug.WriteLine($"[AutoHide] 动画完成100%: Position=({x},{y})");
 
             // 执行完成回调
             Action? callback = _animationOnComplete;
@@ -606,11 +564,6 @@ public class AutoHideService : IWindowService, IDisposable
             {
                 callback.Invoke();
             }
-        }
-        else if (progress > 0 && progress % 0.25 < 0.05) // 每25%进度输出一次日志
-        {
-            string action = _state == AutoHideState.Hiding ? "隐藏" : "显示";
-            System.Diagnostics.Debug.WriteLine($"[AutoHide] {action}动画: 进度={progress:P0}, Position=({x},{y})");
         }
     }
 
@@ -632,7 +585,7 @@ public class AutoHideService : IWindowService, IDisposable
         if (_disposed)
             return;
 
-        System.Diagnostics.Debug.WriteLine("[AutoHide] 释放资源");
+        Serilog.Log.Information("[AutoHide] 释放资源");
 
         Disable();
 

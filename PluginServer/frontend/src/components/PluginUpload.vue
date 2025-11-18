@@ -1,10 +1,10 @@
 <template>
-  <Modal v-model:show="show" title="上传插件" @close="resetForm">
+  <Modal :show="show" @update:show="emit('update:show', $event)" title="上传插件" @close="resetForm">
     <form @submit.prevent="handleSubmit" class="space-y-4">
       <!-- 文件上传区域 -->
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-2">
-          插件文件
+          插件文件 <span class="text-danger-500">*</span>
         </label>
         <div
           @drop="handleDrop"
@@ -12,14 +12,15 @@
           @dragenter.prevent
           :class="[
             'relative border-2 border-dashed rounded-lg p-6 text-center transition-colors duration-200',
-            isDragging ? 'border-primary-500 bg-primary-50' : 'border-gray-300 hover:border-gray-400'
+            isDragging ? 'border-primary-500 bg-primary-50' : 'border-gray-300 hover:border-gray-400',
+            previewing ? 'border-warning-400 bg-warning-50' : ''
           ]"
         >
           <input
             ref="fileInput"
             type="file"
             @change="handleFileSelect"
-            accept=".zip,.dll"
+            accept=".zip"
             class="hidden"
           />
 
@@ -31,7 +32,7 @@
             </div>
             <div>
               <p class="text-sm text-gray-600">
-                拖拽文件到此处，或者
+                拖拽ZIP文件到此处，或者
                 <button
                   type="button"
                   @click="$refs.fileInput.click()"
@@ -41,20 +42,37 @@
                 </button>
               </p>
               <p class="text-xs text-gray-500 mt-1">
-                支持 .zip 和 .dll 格式，最大 100MB
+                仅支持 .zip 格式，最大 50MB
+              </p>
+              <p class="text-xs text-primary-600 mt-1">
+                <strong>新版功能:</strong> 自动从 plugin.json 提取插件信息
               </p>
             </div>
           </div>
 
           <div v-else class="space-y-2">
-            <div class="mx-auto w-12 h-12 bg-success-100 rounded-full flex items-center justify-center">
-              <svg class="w-6 h-6 text-success-600" fill="currentColor" viewBox="0 0 20 20">
+            <div class="mx-auto w-12 h-12 rounded-full flex items-center justify-center"
+                 :class="previewError ? 'bg-danger-100' : 'bg-success-100'">
+              <svg v-if="previewError" class="w-6 h-6 text-danger-600" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+              </svg>
+              <svg v-else class="w-6 h-6 text-success-600" fill="currentColor" viewBox="0 0 20 20">
                 <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
               </svg>
             </div>
             <div>
               <p class="text-sm font-medium text-gray-900">{{ selectedFile.name }}</p>
               <p class="text-xs text-gray-500">{{ formatFileSize(selectedFile.size) }}</p>
+              <div v-if="previewing" class="flex items-center mt-1">
+                <div class="w-3 h-3 mr-2 loading-spinner"></div>
+                <p class="text-xs text-warning-600">正在解析插件信息...</p>
+              </div>
+              <div v-else-if="previewError" class="mt-1">
+                <p class="text-xs text-danger-600">解析失败: {{ previewError }}</p>
+              </div>
+              <div v-else-if="extractedMetadata" class="mt-1">
+                <p class="text-xs text-success-600">✓ 成功解析 plugin.json</p>
+              </div>
             </div>
             <button
               type="button"
@@ -67,80 +85,88 @@
         </div>
       </div>
 
-      <!-- 插件信息 -->
-      <div class="grid grid-cols-2 gap-4">
+  
+      <!-- 插件信息表单 -->
+      <div class="space-y-4">
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+              插件名称 <span class="text-danger-500">*</span>
+              <span v-if="extractedMetadata" class="text-xs text-primary-600 ml-1">(已自动填充)</span>
+            </label>
+            <input
+              v-model="formData.name"
+              type="text"
+              required
+              class="form-input"
+              placeholder="例如: MyPlugin"
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+              版本号 <span class="text-danger-500">*</span>
+              <span v-if="extractedMetadata" class="text-xs text-primary-600 ml-1">(已自动填充)</span>
+            </label>
+            <input
+              v-model="formData.version"
+              type="text"
+              required
+              class="form-input"
+              placeholder="例如: 1.0.0"
+            />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+              显示名称
+              <span v-if="extractedMetadata" class="text-xs text-primary-600 ml-1">(已自动填充)</span>
+            </label>
+            <input
+              v-model="formData.display_name"
+              type="text"
+              class="form-input"
+              placeholder="插件显示名称"
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+              插件类型
+            </label>
+            <select v-model="formData.plugin_type" class="form-select">
+              <option value="storage">存储器</option>
+              <option value="service">服务</option>
+              <option value="tab">标签页</option>
+            </select>
+          </div>
+        </div>
+
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">
-            插件名称 *
+            作者
+            <span v-if="extractedMetadata && extractedMetadata.author" class="text-xs text-primary-600 ml-1">(已自动填充)</span>
           </label>
           <input
-            v-model="formData.name"
-            type="text"
-            required
-            class="form-input"
-            placeholder="例如: MyPlugin"
-          />
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">
-            版本号 *
-          </label>
-          <input
-            v-model="formData.version"
-            type="text"
-            required
-            class="form-input"
-            placeholder="例如: 1.0.0"
-          />
-        </div>
-      </div>
-
-      <div class="grid grid-cols-2 gap-4">
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">
-            显示名称
-          </label>
-          <input
-            v-model="formData.display_name"
+            v-model="formData.author"
             type="text"
             class="form-input"
-            placeholder="插件显示名称"
+            placeholder="插件作者"
           />
         </div>
+
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">
-            插件类型
+            描述
+            <span v-if="extractedMetadata && extractedMetadata.description" class="text-xs text-primary-600 ml-1">(已自动填充)</span>
           </label>
-          <select v-model="formData.plugin_type" class="form-select">
-            <option value="storage">存储器</option>
-            <option value="service">服务</option>
-            <option value="tab">标签页</option>
-          </select>
+          <textarea
+            v-model="formData.description"
+            rows="3"
+            class="form-textarea"
+            placeholder="插件功能描述..."
+          ></textarea>
         </div>
-      </div>
-
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">
-          作者
-        </label>
-        <input
-          v-model="formData.author"
-          type="text"
-          class="form-input"
-          placeholder="插件作者"
-        />
-      </div>
-
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">
-          描述
-        </label>
-        <textarea
-          v-model="formData.description"
-          rows="3"
-          class="form-textarea"
-          placeholder="插件功能描述..."
-        ></textarea>
       </div>
     </form>
 
@@ -167,9 +193,10 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useNotificationStore } from '@/stores/notification'
 import { usePluginStore } from '@/stores/plugins'
+import { API_BASE_URL } from '@/services/api'
 import Modal from './Modal.vue'
 
 const props = defineProps({
@@ -188,6 +215,9 @@ const fileInput = ref(null)
 const selectedFile = ref(null)
 const isDragging = ref(false)
 const uploading = ref(false)
+const previewing = ref(false)
+const previewError = ref('')
+const extractedMetadata = ref(null)
 
 const formData = ref({
   name: '',
@@ -202,7 +232,8 @@ const canSubmit = computed(() => {
   return selectedFile.value &&
          formData.value.name.trim() &&
          formData.value.version.trim() &&
-         !uploading.value
+         !uploading.value &&
+         !previewing.value
 })
 
 function close() {
@@ -213,6 +244,9 @@ function resetForm() {
   selectedFile.value = null
   isDragging.value = false
   uploading.value = false
+  previewing.value = false
+  previewError.value = ''
+  extractedMetadata.value = null
   formData.value = {
     name: '',
     display_name: '',
@@ -240,30 +274,90 @@ function handleFileSelect(e) {
   }
 }
 
-function handleFile(file) {
+async function handleFile(file) {
   try {
-    // 验证文件
-    pluginService.validatePluginFile(file)
+    // 重置状态
+    previewError.value = ''
+    extractedMetadata.value = null
+    previewing.value = true
+
+    // 严格的文件验证 - 只允许ZIP
+    const fileExt = file.name.toLowerCase().substring(file.name.lastIndexOf('.'))
+    if (fileExt !== '.zip') {
+      throw new Error('新版仅支持 .zip 格式文件，请确保插件包含 plugin.json 配置文件')
+    }
+
+    if (file.size > 50 * 1024 * 1024) { // 50MB
+      throw new Error('文件大小不能超过 50MB')
+    }
 
     selectedFile.value = file
 
-    // 如果文件名看起来像插件名，自动填充
-    const nameWithoutExt = file.name.replace(/\.[^/.]+$/, '')
-    if (!formData.value.name) {
-      formData.value.name = nameWithoutExt
-    }
-    if (!formData.value.display_name) {
-      formData.value.display_name = nameWithoutExt
-    }
+    // 预览并提取插件元数据
+    await previewPlugin(file)
 
   } catch (error) {
     notificationStore.showError(error.message)
+    previewError.value = error.message
     selectedFile.value = null
+    previewing.value = false
+  }
+}
+
+async function previewPlugin(file) {
+  try {
+    previewing.value = true
+    previewError.value = ''
+
+    // 创建FormData预览
+    const formData_preview = new FormData()
+    formData_preview.append('file', file)
+
+    // 调用预览API
+    const response = await fetch(`${API_BASE_URL}/plugins/preview`, {
+      method: 'POST',
+      body: formData_preview
+    })
+
+    const result = await response.json()
+
+    if (result.success && result.metadata) {
+      extractedMetadata.value = result.metadata
+
+      // 自动填充表单数据
+      if (result.metadata.name) {
+        formData.value.name = result.metadata.name
+      }
+      if (result.metadata.displayName) {
+        formData.value.display_name = result.metadata.displayName
+      }
+      if (result.metadata.version) {
+        formData.value.version = result.metadata.version
+      }
+      if (result.metadata.author) {
+        formData.value.author = result.metadata.author
+      }
+      if (result.metadata.description) {
+        formData.value.description = result.metadata.description
+      }
+
+      notificationStore.showSuccess('插件信息提取成功')
+    } else {
+      throw new Error(result.error || '无法解析插件文件')
+    }
+
+  } catch (error) {
+    previewError.value = error.message
+    throw error
+  } finally {
+    previewing.value = false
   }
 }
 
 function removeFile() {
   selectedFile.value = null
+  extractedMetadata.value = null
+  previewError.value = ''
   if (fileInput.value) {
     fileInput.value.value = ''
   }
@@ -285,11 +379,25 @@ async function handleSubmit() {
 
     const formData_upload = new FormData()
     formData_upload.append('file', selectedFile.value)
-    formData_upload.append('name', formData.value.name.trim())
-    formData_upload.append('display_name', formData.value.display_name.trim())
-    formData_upload.append('version', formData.value.version.trim())
-    formData_upload.append('description', formData.value.description.trim())
-    formData_upload.append('author', formData.value.author.trim())
+
+    // 如果有提取的元数据，则使用提取的值，否则使用表单中的值
+    if (extractedMetadata.value) {
+      // 后端会优先使用ZIP文件中的元数据，这里可以不传或传空值
+      // 但为了兼容性，我们仍然传递表单值作为后备
+      formData_upload.append('name', formData.value.name.trim())
+      formData_upload.append('display_name', formData.value.display_name.trim())
+      formData_upload.append('version', formData.value.version.trim())
+      formData_upload.append('description', formData.value.description.trim())
+      formData_upload.append('author', formData.value.author.trim())
+    } else {
+      // 兜底：如果没有提取到元数据，使用表单中的值
+      formData_upload.append('name', formData.value.name.trim())
+      formData_upload.append('display_name', formData.value.display_name.trim())
+      formData_upload.append('version', formData.value.version.trim())
+      formData_upload.append('description', formData.value.description.trim())
+      formData_upload.append('author', formData.value.author.trim())
+    }
+
     formData_upload.append('plugin_type', formData.value.plugin_type)
 
     await pluginStore.uploadPlugin(formData_upload)
@@ -315,4 +423,11 @@ function handleDragLeave(e) {
   e.preventDefault()
   isDragging.value = false
 }
+
+// 监听对话框关闭，清理状态
+watch(() => props.show, (newVal) => {
+  if (!newVal) {
+    resetForm()
+  }
+})
 </script>

@@ -105,21 +105,51 @@ chmod +x deploy.sh
 ### 🛠️ 本地开发
 
 <details>
-<summary><strong>🔧 开发环境搭建</strong></summary>
+<summary><strong>🚀 本地开发环境快速启动</strong></summary>
 
-#### 后端开发
+#### ⚡ 一键启动 (推荐)
+```bash
+# 启动后端服务 (FastAPI)
+cd backend
+python start_local.py
+
+# 新开终端窗口，启动前端服务 (Vue3)
+cd frontend
+npm run dev
+```
+
+🎊 **启动完成！** 访问地址：
+- 📱 **前端界面**: http://localhost:3001
+- 📚 **API文档**: http://localhost:8001/docs
+- 🔍 **健康检查**: http://localhost:8001/health
+
+#### 📋 环境要求
+- **Python**: 3.11+ (后端)
+- **Node.js**: 16.0+ (前端)
+- **操作系统**: Windows 10+ / macOS / Linux
+
+#### 🔧 手动启动 (开发者)
+
+**后端开发**:
 ```bash
 cd backend
 pip install -r requirements.txt
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+uvicorn main:app --reload --host 0.0.0.0 --port 8001
 ```
 
-#### 前端开发
+**前端开发**:
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
+
+#### 📁 项目结构说明
+- **backend/**: FastAPI 后端服务
+- **frontend/**: Vue3 前端应用
+- **start_local.py**: 简化的本地启动脚本
+- **.env**: 前端环境配置文件
+- **LOCAL_DEV.md**: 详细的本地开发指南
 
 </details>
 
@@ -197,10 +227,12 @@ npm run dev
 启动服务后，可通过以下地址访问完整的 API 文档：
 
 ### 📚 接口文档
-- **Swagger UI**: http://localhost:8000/api/docs
-- **ReDoc**: http://localhost:8000/api/redoc
+- **Swagger UI**: http://localhost:8001/docs
+- **ReDoc**: http://localhost:8001/redoc
 
 ### 🎯 核心 API 端点
+
+> **注意**: 本地开发环境中，API 基础地址为 `http://localhost:8001`
 
 #### 🔌 插件管理
 ```http
@@ -476,6 +508,7 @@ spec:
 - **🎨 现代界面**: 基于 TailwindCSS 的响应式用户界面
 - **🐳 容器化**: 完整的 Docker 部署方案
 - **📚 自动文档**: OpenAPI/Swagger 自动生成 API 文档
+- **🛠️ 本地开发**: 简化的本地开发环境，一键启动脚本
 
 #### 🔧 技术升级
 - **⚡ 性能提升**: 异步 API + Vue3 组合式 API

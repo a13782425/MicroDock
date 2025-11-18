@@ -19,6 +19,11 @@ from api import plugins, versions, backups
 # 导入工具函数
 from utils.database import init_database
 
+# 添加当前目录到Python路径
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).parent))
+
 # 配置
 BASE_DIR = Path(__file__).parent.parent
 DATA_DIR = BASE_DIR / "data"

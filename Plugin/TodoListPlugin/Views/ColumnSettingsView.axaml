@@ -1,0 +1,115 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="500"
+             x:Class="TodoListPlugin.Views.ColumnSettingsView">
+
+    <TabControl>
+        <!-- 页签管理标签页 -->
+        <TabItem Header="页签管理">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel Spacing="16" Margin="12">
+                    <!-- 添加新页签区域 -->
+                    <Border Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                            BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Padding="16">
+                        <StackPanel Spacing="12">
+                            <TextBlock Text="添加新页签" FontSize="14" FontWeight="SemiBold"/>
+                            
+                            <TextBox Name="NewColumnNameTextBox"
+                                     Watermark="页签名称..."
+                                     MaxLength="20"/>
+
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="页签颜色（可选）" FontSize="12" Opacity="0.7"/>
+                                <ComboBox Name="ColorComboBox"
+                                          HorizontalAlignment="Stretch"
+                                          PlaceholderText="选择颜色...">
+                                    <ComboBoxItem Content="蓝色" Tag="#FF6B9BD1"/>
+                                    <ComboBoxItem Content="橙色" Tag="#FFFFA500"/>
+                                    <ComboBoxItem Content="绿色" Tag="#FF90EE90"/>
+                                    <ComboBoxItem Content="紫色" Tag="#FFB19CD9"/>
+                                    <ComboBoxItem Content="红色" Tag="#FFFF6B6B"/>
+                                    <ComboBoxItem Content="黄色" Tag="#FFFFD93D"/>
+                                    <ComboBoxItem Content="青色" Tag="#FF6BCB77"/>
+                                </ComboBox>
+                            </StackPanel>
+                            
+                            <Button Name="AddColumnButton"
+                                    Content="添加页签"
+                                    HorizontalAlignment="Right"
+                                    Padding="24,8"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 已有页签列表 -->
+                    <TextBlock Text="已有页签" FontSize="14" FontWeight="SemiBold" Margin="0,8,0,0"/>
+                    
+                    <ItemsControl Name="ColumnsListControl">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                                        BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="6"
+                                        Padding="12"
+                                        Margin="0,0,0,8">
+                                    <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                                        <!-- 颜色指示器 -->
+                                        <Border Grid.Column="0"
+                                                Width="4"
+                                                Height="32"
+                                                CornerRadius="2"
+                                                Margin="0,0,12,0"
+                                                Name="ColorIndicator"/>
+
+                                        <!-- 名称 -->
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                            <TextBlock Name="ColumnNameText"
+                                                       Text="{Binding Name}"
+                                                       FontWeight="Medium"/>
+                                            <TextBlock Name="ItemCountText"
+                                                       FontSize="11"
+                                                       Opacity="0.6"
+                                                       Text="0 个待办"/>
+                                        </StackPanel>
+
+                                        <!-- 编辑按钮 -->
+                                        <Button Grid.Column="2"
+                                                Content="&#xE70F;"
+                                                FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                                Tag="{Binding}"
+                                                Padding="8"
+                                                Margin="0,0,4,0"
+                                                ToolTip.Tip="编辑"
+                                                Click="OnEditColumnClick"/>
+
+                                        <!-- 删除按钮 -->
+                                        <Button Grid.Column="3"
+                                                Content="&#xE74D;"
+                                                FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                                Tag="{Binding}"
+                                                Padding="8"
+                                                ToolTip.Tip="删除"
+                                                Click="OnDeleteColumnClick"/>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </ScrollViewer>
+        </TabItem>
+
+        <!-- 字段模板管理标签页 -->
+        <TabItem Header="字段模板">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <ContentControl Name="FieldTemplateContent" Margin="12"/>
+            </ScrollViewer>
+        </TabItem>
+    </TabControl>
+</UserControl>

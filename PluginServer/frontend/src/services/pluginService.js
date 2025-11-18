@@ -10,7 +10,7 @@ export const pluginService = {
     })
 
     if (plugin_type) queryParams.append('plugin_type', plugin_type)
-    if (is_active !== undefined) queryParams.append('is_active', is_active.toString())
+    if (is_active !== undefined && is_active !== null) queryParams.append('is_active', is_active.toString())
     if (search) queryParams.append('search', search)
 
     return api.get(`/plugins?${queryParams}`)
@@ -28,7 +28,7 @@ export const pluginService = {
 
   // 上传插件
   async uploadPlugin(formData) {
-    return api.post('/plugins/', formData, {
+    return api.post('/plugins', formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }

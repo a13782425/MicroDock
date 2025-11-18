@@ -1,0 +1,211 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
+             x:Class="TodoListPlugin.Views.TodoListTabView">
+
+    <Grid RowDefinitions="Auto,*" Margin="0,12,12,12">
+        <!-- 工具栏 -->
+        <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto,Auto" Margin="0,0,0,12">
+            <!-- 添加待办按钮 -->
+            <Button Grid.Column="0"
+                    Content="添加待办"
+                    Name="AddTodoButton"
+                    Padding="16,8"
+                    Margin="0,0,12,0"/>
+
+            <!-- 搜索框 -->
+            <TextBox Grid.Column="1"
+                     Watermark="搜索待办事项（标题或描述）..."
+                     Name="SearchTextBox"
+                     Margin="0,0,12,0"/>
+
+            <!-- 筛选按钮 -->
+            <Button Grid.Column="2"
+                    Name="FilterButton"
+                    Padding="12,8"
+                    Margin="0,0,12,0"
+                    ToolTip.Tip="筛选">
+                <Button.Flyout>
+                    <Flyout Placement="BottomEdgeAlignedRight">
+                        <StackPanel Width="350" Spacing="12">
+                            <!-- 筛选面板标题 -->
+                            <TextBlock Text="筛选条件" FontSize="16" FontWeight="SemiBold"/>
+
+                            <!-- 添加筛选条件区域 -->
+                            <StackPanel Spacing="8">
+                                <!-- 字段选择 -->
+                                <TextBlock Text="选择字段" FontSize="12" Opacity="0.7"/>
+                                <ComboBox Name="FilterFieldComboBox"
+                                          PlaceholderText="选择要筛选的字段..."
+                                          HorizontalAlignment="Stretch"/>
+
+                                <!-- 操作符选择 -->
+                                <TextBlock Text="操作符" FontSize="12" Opacity="0.7"/>
+                                <ComboBox Name="FilterOperatorComboBox"
+                                          PlaceholderText="选择操作符..."
+                                          HorizontalAlignment="Stretch"/>
+
+                                <!-- 值输入 -->
+                                <TextBlock Text="筛选值" FontSize="12" Opacity="0.7"/>
+                                <TextBox Name="FilterValueTextBox"
+                                         Watermark="输入筛选值..."
+                                         HorizontalAlignment="Stretch"/>
+
+                                <!-- 添加按钮 -->
+                                <Button Name="AddFilterButton"
+                                        Content="添加筛选条件"
+                                        HorizontalAlignment="Stretch"
+                                        Padding="12,6"/>
+                            </StackPanel>
+
+                            <!-- 分隔线 -->
+                            <Border Height="1"
+                                    Background="{DynamicResource DividerStrokeColorDefaultBrush}"
+                                    Opacity="0.3"/>
+
+                            <!-- 已添加的筛选条件列表 -->
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="已应用的筛选" FontSize="12" Opacity="0.7"/>
+                                <ScrollViewer MaxHeight="200" HorizontalScrollBarVisibility="Disabled">
+                                    <ItemsControl Name="ActiveFiltersControl">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                                                        BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                                                        BorderThickness="1"
+                                                        CornerRadius="4"
+                                                        Padding="8"
+                                                        Margin="0,2">
+                                                    <Grid ColumnDefinitions="*,Auto">
+                                                        <TextBlock Grid.Column="0"
+                                                                   TextWrapping="Wrap"
+                                                                   VerticalAlignment="Center"/>
+                                                        <Button Grid.Column="1"
+                                                                Content="&#xE711;"
+                                                                FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                                                Padding="4"
+                                                                FontSize="12"
+                                                                ToolTip.Tip="移除"/>
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                            </StackPanel>
+
+                            <!-- 操作按钮 -->
+                            <Grid ColumnDefinitions="*,Auto">
+                                <Button Grid.Column="0"
+                                        Name="ClearFiltersButton"
+                                        Content="清除所有"
+                                        HorizontalAlignment="Stretch"
+                                        Margin="0,0,8,0"
+                                        Padding="12,6"/>
+                                <Button Grid.Column="1"
+                                        Name="ApplyFiltersButton"
+                                        Content="应用"
+                                        Padding="12,6"/>
+                            </Grid>
+                        </StackPanel>
+                    </Flyout>
+                </Button.Flyout>
+                <StackPanel Orientation="Horizontal" Spacing="4">
+                    <ui:SymbolIcon Symbol="Filter" FontSize="16"/>
+                    <TextBlock Text="筛选" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Button>
+
+            <!-- 页签管理按钮 -->
+            <Button Grid.Column="3"
+                    Content="管理页签"
+                    Name="ManageColumnsButton"
+                    Padding="12,8"
+                    ToolTip.Tip="在设置中管理页签"/>
+        </Grid>
+
+        <!-- 主内容区 - 横向滚动的页签列表 -->
+        <ScrollViewer Grid.Row="1"
+                      HorizontalScrollBarVisibility="Auto"
+                      VerticalScrollBarVisibility="Disabled">
+            <ItemsControl Name="ColumnsControl"
+                          ItemsSource="{Binding Columns}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="Horizontal" Spacing="16"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <!-- 每个页签列 -->
+                        <Border Width="320"
+                                Background="{DynamicResource LayerFillColorDefaultBrush}"
+                                BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="12">
+                            <Grid RowDefinitions="Auto,*">
+                                <!-- 列标题 -->
+                                <StackPanel Grid.Row="0" Spacing="8" Margin="0,0,0,12">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBlock Grid.Column="0"
+                                                   Text="{Binding Name}"
+                                                   FontSize="16"
+                                                   FontWeight="SemiBold"/>
+                                        <TextBlock Grid.Column="1"
+                                                   Name="ItemCountText"
+                                                   FontSize="12"
+                                                   Opacity="0.6"
+                                                   VerticalAlignment="Center"/>
+                                    </Grid>
+                                    <Border Height="2"
+                                            CornerRadius="1"
+                                            HorizontalAlignment="Stretch"/>
+                                </StackPanel>
+
+                                <!-- 待办事项列表 -->
+                                <ScrollViewer Grid.Row="1"
+                                              VerticalScrollBarVisibility="Auto"
+                                              HorizontalScrollBarVisibility="Disabled"
+                                              MaxHeight="600">
+                                    <StackPanel Name="ItemsPanel"
+                                                Spacing="12"
+                                                MinHeight="100">
+                                        <!-- 待办事项卡片将在代码中动态添加 -->
+                                    </StackPanel>
+                                </ScrollViewer>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+
+        <!-- 空状态提示 -->
+        <StackPanel Name="EmptyState"
+                    Grid.Row="1"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Spacing="16"
+                    IsVisible="False">
+            <Viewbox Width="96" Height="96" Opacity="0.3">
+                <Canvas Width="24" Height="24">
+                    <Path Fill="{DynamicResource TextFillColorSecondaryBrush}"
+                          Data="M9,2V8H11V11H5C3.89,11 3,11.89 3,13V16H1V22H7V16H5V13H11V16H9V22H15V16H13V13H19V16H17V22H23V16H21V13C21,11.89 20.11,11 19,11H13V8H15V2M11,4H13V6H11V4M3,18V20H5V18H3M11,18V20H13V18H11M19,18V20H21V18H19Z"/>
+                </Canvas>
+            </Viewbox>
+            <TextBlock Text="还没有页签"
+                       FontSize="16"
+                       Opacity="0.6"
+                       HorizontalAlignment="Center"/>
+            <TextBlock Text="请前往设置添加页签"
+                       FontSize="14"
+                       Opacity="0.5"
+                       HorizontalAlignment="Center"/>
+        </StackPanel>
+    </Grid>
+</UserControl>
+

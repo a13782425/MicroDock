@@ -87,7 +87,7 @@ public class EventAggregator
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[EventAggregator] 处理消息时发生错误: {ex.Message}");
+                Serilog.Log.Error($"[EventAggregator] 处理消息时发生错误: {ex.Message}");
             }
         }
     }

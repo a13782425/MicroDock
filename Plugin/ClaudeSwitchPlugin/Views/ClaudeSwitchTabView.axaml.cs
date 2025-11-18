@@ -170,7 +170,7 @@ namespace ClaudeSwitchPlugin.Views
             catch (Exception ex)
             {
                 // 记录错误（LogError 是 protected 方法，需要通过插件实例内部调用）
-                System.Diagnostics.Debug.WriteLine($"添加配置失败: {ex.Message}");
+                _plugin.Context?.LogError($"添加配置失败: {ex.Message}");
             }
         }
 
@@ -208,7 +208,7 @@ namespace ClaudeSwitchPlugin.Views
             catch (Exception ex)
             {
                 // 记录错误
-                System.Diagnostics.Debug.WriteLine($"编辑配置失败: {ex.Message}");
+                _plugin.Context?.LogError($"编辑配置失败: {ex.Message}");
             }
         }
 
@@ -239,7 +239,7 @@ namespace ClaudeSwitchPlugin.Views
             catch (Exception ex)
             {
                 // 记录错误
-                System.Diagnostics.Debug.WriteLine($"删除配置失败: {ex.Message}");
+                _plugin.Context?.LogError($"删除配置失败: {ex.Message}");
             }
         }
 
@@ -256,7 +256,7 @@ namespace ClaudeSwitchPlugin.Views
             catch (Exception ex)
             {
                 // 记录错误
-                System.Diagnostics.Debug.WriteLine($"应用配置失败: {ex.Message}");
+                _plugin.Context?.LogError($"应用配置失败: {ex.Message}");
             }
         }
     }

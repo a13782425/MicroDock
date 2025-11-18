@@ -1,9 +1,12 @@
 import axios from 'axios'
 import { useNotificationStore } from '@/stores/notification'
 
+// 导出API基础URL供其他模块使用
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
+
 // 创建axios实例
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
+  baseURL: API_BASE_URL,
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json'

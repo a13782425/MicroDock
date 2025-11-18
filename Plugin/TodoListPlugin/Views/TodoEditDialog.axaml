@@ -1,0 +1,94 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             mc:Ignorable="d" d:DesignWidth="500" d:DesignHeight="600"
+             x:Class="TodoListPlugin.Views.TodoEditDialog">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="24" Spacing="16">
+            <!-- 标题 -->
+            <StackPanel Spacing="6">
+                <TextBlock Text="标题" FontWeight="Medium"/>
+                <TextBox Name="TitleTextBox"
+                         Watermark="输入标题..."
+                         MaxLength="100"/>
+            </StackPanel>
+
+            <!-- 简述 -->
+            <StackPanel Spacing="6">
+                <TextBlock Text="简述" FontWeight="Medium"/>
+                <TextBox Name="DescriptionTextBox"
+                         Watermark="输入简述..."
+                         AcceptsReturn="True"
+                         TextWrapping="Wrap"
+                         MinHeight="80"
+                         MaxLength="500"/>
+            </StackPanel>
+
+            <!-- 所属页签 -->
+            <StackPanel Spacing="6">
+                <TextBlock Text="所属页签" FontWeight="Medium"/>
+                <ComboBox Name="ColumnComboBox"
+                          PlaceholderText="选择页签..."
+                          HorizontalAlignment="Stretch"/>
+            </StackPanel>
+
+            <!-- 优先级 -->
+            <StackPanel Spacing="6">
+                <TextBlock Text="优先级" FontWeight="Medium"/>
+                <ComboBox Name="PriorityComboBox"
+                          IsEditable="True"
+                          PlaceholderText="选择或输入优先级..."
+                          HorizontalAlignment="Stretch"/>
+            </StackPanel>
+
+            <!-- 标签 -->
+            <StackPanel Spacing="6">
+                <TextBlock Text="标签" FontWeight="Medium"/>
+                <ComboBox Name="TagComboBox"
+                          IsEditable="True"
+                          PlaceholderText="选择或输入标签..."
+                          HorizontalAlignment="Stretch"/>
+                <WrapPanel Name="SelectedTagsPanel" Margin="0,4,0,0">
+                    <!-- 已选标签将动态添加 -->
+                </WrapPanel>
+            </StackPanel>
+
+            <!-- 自定义字段 -->
+            <StackPanel Name="CustomFieldsContainer"
+                        Spacing="12">
+                <!-- 自定义字段将动态添加 -->
+            </StackPanel>
+
+                <!-- 提醒设置 -->
+                <StackPanel Spacing="12">
+                    <TextBlock Text="提醒设置" FontWeight="Medium" FontSize="14"/>
+
+                    <!-- 启用提醒开关 -->
+                    <ToggleSwitch Name="ReminderToggle"
+                                  OnContent="已启用提醒"
+                                  OffContent="未启用提醒"/>
+
+                    <!-- 提醒间隔选择 -->
+                    <StackPanel Name="ReminderIntervalPanel"
+                                Spacing="8"
+                                IsVisible="{Binding #ReminderToggle.IsChecked}">
+                        <TextBlock Text="提醒间隔" FontSize="12" Opacity="0.7"/>
+                        <ComboBox Name="ReminderIntervalComboBox"
+                                  HorizontalAlignment="Stretch"
+                                  PlaceholderText="选择提醒间隔...">
+                            <ComboBoxItem Content="每15分钟" Tag="Every15Minutes"/>
+                            <ComboBoxItem Content="每30分钟" Tag="Every30Minutes"/>
+                            <ComboBoxItem Content="每1小时" Tag="Every1Hour"/>
+                            <ComboBoxItem Content="每2小时" Tag="Every2Hours"/>
+                            <ComboBoxItem Content="每天早上9:00" Tag="EveryDayAt9AM"/>
+                        </ComboBox>
+                    </StackPanel>
+                </StackPanel>
+
+            </StackPanel>
+        </ScrollViewer>
+    </UserControl>
+

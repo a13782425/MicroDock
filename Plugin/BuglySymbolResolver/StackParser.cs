@@ -22,7 +22,7 @@ public class StackParser
         Bit32,
         Bit64
     }
-    
+
     /// <summary>
     /// 堆栈信息
     /// </summary>
@@ -33,7 +33,7 @@ public class StackParser
         public string SoFile { get; set; } = string.Empty;
         public string FullLine { get; set; } = string.Empty;
     }
-    
+
     /// <summary>
     /// 解析结果
     /// </summary>
@@ -44,18 +44,18 @@ public class StackParser
         public bool Success { get; set; }
         public string? ErrorMessage { get; set; }
     }
-    
+
     /// <summary>
     /// 从输入文本中提取堆栈信息
     /// </summary>
     public static List<StackInfo> ExtractStacks(string inputText)
     {
         var stacks = new List<StackInfo>();
-        
+
         // 匹配格式: #03 pc 00000000004fe08c /data/app/.../libunity.so
         var pattern = @"#(\d+)\s+pc\s+([0-9a-fA-F]+)\s+(.+\.so)";
         var matches = Regex.Matches(inputText, pattern);
-        
+
         foreach (Match match in matches)
         {
             if (match.Groups.Count >= 4)
@@ -69,10 +69,10 @@ public class StackParser
                 });
             }
         }
-        
+
         return stacks;
     }
-    
+
     /// <summary>
     /// 检测架构类型（根据堆栈地址长度）
     /// </summary>
@@ -89,7 +89,7 @@ public class StackParser
             return ArchitectureType.Bit32;
         }
     }
-    
+
     /// <summary>
     /// 解析单个堆栈地址（使用符号文件夹）
     /// </summary>
@@ -104,7 +104,7 @@ public class StackParser
         {
             OriginalLine = stackInfo.FullLine
         };
-        
+
         try
         {
             // 确定使用的架构类型
@@ -113,30 +113,30 @@ public class StackParser
             {
                 actualArch = DetectArchitecture(stackInfo.Address);
             }
-            
+
             // 确定使用的解析器路径
             string? resolverPath = actualArch == ArchitectureType.Bit32 ? resolver32BitPath : resolver64BitPath;
-            
+
             if (string.IsNullOrEmpty(resolverPath) || !System.IO.File.Exists(resolverPath))
             {
                 result.Success = false;
                 result.ErrorMessage = $"解析器路径不存在: {resolverPath}";
                 return result;
             }
-            
+
             // 从堆栈信息中提取 .so 文件名（不含路径）
             string soFileName = System.IO.Path.GetFileName(stackInfo.SoFile);
-            
+
             // 特殊处理：如果是 libil2cpp.so，使用 libil2cpp.sym.so
             string symbolFileName = soFileName;
             if (soFileName.Equals("libil2cpp.so", StringComparison.OrdinalIgnoreCase))
             {
                 symbolFileName = "libil2cpp.sym.so";
             }
-            
+
             // 根据架构类型查找对应的符号文件
             string? symbolFilePath = null;
-            
+
             if (actualArch == ArchitectureType.Bit32)
             {
                 // 优先查找32位符号文件
@@ -161,7 +161,7 @@ public class StackParser
                     // 降级：使用32位符号文件
                 }
             }
-            
+
             if (string.IsNullOrEmpty(symbolFilePath) || !System.IO.File.Exists(symbolFilePath))
             {
                 result.Success = false;
@@ -169,7 +169,7 @@ public class StackParser
                 result.SymbolizedLine = $"{stackInfo.Address} -- [未找到符号文件: {symbolFileName}]";
                 return result;
             }
-            
+
             // 调用解析器
             var processInfo = new ProcessStartInfo
             {
@@ -180,11 +180,11 @@ public class StackParser
                 UseShellExecute = false,
                 CreateNoWindow = true
             };
-            
+
             using var process = new Process { StartInfo = processInfo };
             var outputBuilder = new StringBuilder();
             var errorBuilder = new StringBuilder();
-            
+
             process.OutputDataReceived += (s, e) =>
             {
                 if (!string.IsNullOrEmpty(e.Data))
@@ -192,7 +192,7 @@ public class StackParser
                     outputBuilder.AppendLine(e.Data);
                 }
             };
-            
+
             process.ErrorDataReceived += (s, e) =>
             {
                 if (!string.IsNullOrEmpty(e.Data))
@@ -200,16 +200,16 @@ public class StackParser
                     errorBuilder.AppendLine(e.Data);
                 }
             };
-            
+
             process.Start();
             process.BeginOutputReadLine();
             process.BeginErrorReadLine();
-            
+
             await process.WaitForExitAsync();
-            
+
             string output = outputBuilder.ToString().Trim();
             string error = errorBuilder.ToString().Trim();
-            
+
             if (process.ExitCode == 0 && !string.IsNullOrEmpty(output))
             {
                 result.Success = true;
@@ -228,10 +228,10 @@ public class StackParser
             result.ErrorMessage = ex.Message;
             result.SymbolizedLine = $"{stackInfo.Address} -- [错误: {ex.Message}]";
         }
-        
+
         return result;
     }
-    
+
     /// <summary>
     /// 批量解析堆栈（使用符号文件夹）
     /// </summary>
@@ -243,7 +243,7 @@ public class StackParser
         SymbolFileScanner.ScanResult symbolScanResult)
     {
         var results = new List<ParseResult>();
-        
+
         foreach (var stack in stacks)
         {
             var result = await ResolveStackAsync(
@@ -254,7 +254,7 @@ public class StackParser
                 symbolScanResult);
             results.Add(result);
         }
-        
+
         return results;
     }
 }
@@ -273,52 +273,52 @@ public class SymbolFileScanner
         /// 32位符号文件映射 (文件名 -> 完整路径)
         /// </summary>
         public Dictionary<string, string> Symbol32BitMap { get; set; } = new Dictionary<string, string>();
-        
+
         /// <summary>
         /// 64位符号文件映射 (文件名 -> 完整路径)
         /// </summary>
         public Dictionary<string, string> Symbol64BitMap { get; set; } = new Dictionary<string, string>();
-        
+
         /// <summary>
         /// 未知架构的符号文件列表
         /// </summary>
         public List<string> UnknownArchFiles { get; set; } = new List<string>();
-        
+
         /// <summary>
         /// 32位符号文件总数
         /// </summary>
         public int Count32Bit => Symbol32BitMap.Count;
-        
+
         /// <summary>
         /// 64位符号文件总数
         /// </summary>
         public int Count64Bit => Symbol64BitMap.Count;
-        
+
         /// <summary>
         /// 未知架构文件总数
         /// </summary>
         public int CountUnknown => UnknownArchFiles.Count;
-        
+
         /// <summary>
         /// 总文件数
         /// </summary>
         public int TotalCount => Count32Bit + Count64Bit + CountUnknown;
     }
-    
+
     /// <summary>
     /// 扫描符号文件夹
     /// </summary>
     /// <param name="folderPath">符号文件夹路径</param>
     /// <returns>扫描结果</returns>
-    public static ScanResult ScanSymbolFolder(string folderPath)
+    public static ScanResult ScanSymbolFolder(BuglySymbolResolverPlugin? plugin, string folderPath)
     {
         var result = new ScanResult();
-        
+
         if (string.IsNullOrEmpty(folderPath) || !System.IO.Directory.Exists(folderPath))
         {
             return result;
         }
-        
+
         try
         {
             // 使用 EnumerationOptions 优化性能
@@ -328,18 +328,18 @@ public class SymbolFileScanner
                 MatchCasing = System.IO.MatchCasing.CaseInsensitive,
                 AttributesToSkip = System.IO.FileAttributes.System | System.IO.FileAttributes.Hidden
             };
-            
+
             // 递归搜索所有 .so 文件
             var soFiles = System.IO.Directory.GetFiles(folderPath, "*.so", options);
-            
+
             foreach (var soFilePath in soFiles)
             {
                 // 获取文件名（不含路径）
                 string fileName = System.IO.Path.GetFileName(soFilePath);
-                
+
                 // 判断架构位数（根据父文件夹名称）
                 int archBits = DetectArchitectureFromPath(soFilePath);
-                
+
                 if (archBits == 32)
                 {
                     // 32位：如果已存在同名文件，保留第一个找到的
@@ -366,12 +366,12 @@ public class SymbolFileScanner
         catch (Exception ex)
         {
             // 扫描出错，返回空结果
-            System.Diagnostics.Debug.WriteLine($"符号文件夹扫描失败: {ex.Message}");
+            plugin?.Context?.LogError($"符号文件夹扫描失败: {ex.Message}");
         }
-        
+
         return result;
     }
-    
+
     /// <summary>
     /// 根据文件路径检测架构位数
     /// </summary>
@@ -387,9 +387,9 @@ public class SymbolFileScanner
             {
                 return 0;
             }
-            
+
             string parentFolderName = System.IO.Path.GetFileName(parentDir);
-            
+
             // 根据标准 Android NDK 架构文件夹名称判断
             if (parentFolderName.Equals("armeabi-v7a", StringComparison.OrdinalIgnoreCase) ||
                 parentFolderName.Equals("armeabi", StringComparison.OrdinalIgnoreCase))
@@ -401,7 +401,7 @@ public class SymbolFileScanner
             {
                 return 64;
             }
-            
+
             // 未知架构
             return 0;
         }
@@ -410,15 +410,15 @@ public class SymbolFileScanner
             return 0;
         }
     }
-    
+
     /// <summary>
     /// 异步扫描符号文件夹
     /// </summary>
     /// <param name="folderPath">符号文件夹路径</param>
     /// <returns>扫描结果</returns>
-    public static Task<ScanResult> ScanSymbolFolderAsync(string folderPath)
+    public static Task<ScanResult> ScanSymbolFolderAsync(BuglySymbolResolverPlugin? plugin, string folderPath)
     {
-        return Task.Run(() => ScanSymbolFolder(folderPath));
+        return Task.Run(() => ScanSymbolFolder(plugin, folderPath));
     }
 }
 

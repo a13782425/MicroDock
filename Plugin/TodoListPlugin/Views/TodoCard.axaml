@@ -1,0 +1,280 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             mc:Ignorable="d" d:DesignWidth="280" d:DesignHeight="200"
+             x:Class="TodoListPlugin.Views.TodoCard">
+
+    <UserControl.Styles>
+        <!-- 卡片样式 -->
+        <Style Selector="Border.todo-card">
+            <Setter Property="Background" Value="{DynamicResource CardBackgroundFillColorDefaultBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource CardStrokeColorDefaultBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="Padding" Value="16"/>
+            <Setter Property="BoxShadow" Value="0 4 12 2 #20000000"/>
+            <Setter Property="ClipToBounds" Value="False"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+
+        <Style Selector="Border.todo-card:pointerover">
+            <Setter Property="Background" Value="{DynamicResource CardBackgroundFillColorSecondaryBrush}"/>
+            <Setter Property="BoxShadow" Value="0 6 16 4 #30000000"/>
+            <Setter Property="ClipToBounds" Value="False"/>
+        </Style>
+
+        <!-- 悬停放大动画 -->
+        <Style Selector="Border.todo-card">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.2"/>
+                    <BoxShadowsTransition Property="BoxShadow" Duration="0:0:0.2"/>
+                </Transitions>
+            </Setter>
+        </Style>
+
+        <Style Selector="Border.todo-card:pointerover">
+            <Setter Property="RenderTransform" Value="scale(1.02)"/>
+        </Style>
+
+        <!-- 提醒图标样式 -->
+        <Style Selector="ui|SymbolIcon.reminder-icon">
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Foreground" Value="{DynamicResource AccentFillColorDefaultBrush}"/>
+        </Style>
+
+        <!-- 标签样式 -->
+        <Style Selector="Border.tag">
+            <Setter Property="Background" Value="{DynamicResource AccentFillColorDefaultBrush}"/>
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="Padding" Value="6,3"/>
+        </Style>
+
+        <Style Selector="Border.tag TextBlock">
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Border Classes="todo-card"
+            Name="CardBorder"
+            Width="280"
+            ClipToBounds="False">
+        <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto">
+            <!-- 标题和提醒图标 -->
+            <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto">
+                <TextBlock Grid.Column="0"
+                           Name="TitleText"
+                           Text="标题"
+                           FontSize="15"
+                           FontWeight="SemiBold"
+                           TextTrimming="CharacterEllipsis"
+                           TextWrapping="Wrap"
+                           MaxLines="2"
+                           ToolTip.Tip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
+
+                <!-- 提醒图标 -->
+                <TextBlock Grid.Column="1"
+                           Text="🔔"
+                           FontSize="14"
+                           Name="ReminderIcon"
+                           IsVisible="False"
+                           Margin="8,0,0,0"
+                           VerticalAlignment="Center"
+                           Foreground="{DynamicResource AccentFillColorDefaultBrush}"
+                           ToolTip.Tip="已设置提醒"/>
+
+                <!-- 菜单按钮 -->
+                <Button Grid.Column="2"
+                        Name="MenuButton"
+                        Padding="4"
+                        Margin="4,0,0,0"
+                        Background="Transparent"
+                        BorderThickness="0">
+                    <Button.Flyout>
+                        <MenuFlyout>
+                            <MenuItem Header="编辑" Name="EditMenuItem">
+                                <MenuItem.Icon>
+                                    <ui:SymbolIcon Symbol="Edit"/>
+                                </MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Header="删除" Name="DeleteMenuItem">
+                                <MenuItem.Icon>
+                                    <ui:SymbolIcon Symbol="Delete"/>
+                                </MenuItem.Icon>
+                            </MenuItem>
+                        </MenuFlyout>
+                    </Button.Flyout>
+                    <ui:SymbolIcon Symbol="MoreVertical" FontSize="14"/>
+                </Button>
+            </Grid>
+
+            <!-- 简述 -->
+            <TextBlock Grid.Row="1"
+                       Name="DescriptionText"
+                       Text="简述"
+                       FontSize="12"
+                       Opacity="0.7"
+                       TextTrimming="CharacterEllipsis"
+                       TextWrapping="Wrap"
+                       MaxLines="3"
+                       Margin="0,8,0,0"
+                       ToolTip.Tip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
+
+            <!-- 优先级和标签 -->
+            <StackPanel Grid.Row="2"
+                        Orientation="Horizontal"
+                        Spacing="8"
+                        Margin="0,8,0,0">
+                <!-- 优先级按钮 -->
+                <Button Name="PriorityButton"
+                        Padding="8,4"
+                        VerticalAlignment="Center"
+                        ToolTip.Tip="点击管理优先级">
+                    <Button.Flyout>
+                        <Flyout Placement="Bottom">
+                            <StackPanel Width="250" Spacing="12">
+                                <TextBlock Text="管理优先级" FontSize="14" FontWeight="SemiBold"/>
+                                
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="优先级" FontSize="12" Opacity="0.7"/>
+                                    <ComboBox Name="PriorityComboBox"
+                                              IsEditable="True"
+                                              PlaceholderText="选择或输入优先级..."
+                                              HorizontalAlignment="Stretch"/>
+                                </StackPanel>
+
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="所有优先级" FontSize="12" Opacity="0.7"/>
+                                    <ScrollViewer MaxHeight="200" HorizontalScrollBarVisibility="Disabled">
+                                        <ItemsControl Name="PrioritiesListControl">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Grid ColumnDefinitions="*,Auto" Margin="0,4">
+                                                        <TextBlock Grid.Column="0" 
+                                                                   Text="{Binding Name}"
+                                                                   VerticalAlignment="Center"/>
+                                                        <Button Grid.Column="1"
+                                                                Content="&#xE74D;"
+                                                                FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                                                Padding="4"
+                                                                FontSize="12"
+                                                                ToolTip.Tip="删除优先级"
+                                                                Tag="{Binding}"
+                                                                Click="DeletePriorityButton_Click"/>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </ScrollViewer>
+                                </StackPanel>
+
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="新建优先级" FontSize="12" Opacity="0.7"/>
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBox Grid.Column="0"
+                                                 Name="NewPriorityNameTextBox"
+                                                 Watermark="输入新优先级名称..."
+                                                 Margin="0,0,8,0"/>
+                                        <Button Grid.Column="1"
+                                                Content="添加"
+                                                Name="AddPriorityButton"
+                                                Padding="12,6"/>
+                                    </Grid>
+                                </StackPanel>
+                            </StackPanel>
+                        </Flyout>
+                    </Button.Flyout>
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <ui:SymbolIcon Symbol="Flag" FontSize="12"/>
+                        <TextBlock Name="PriorityButtonText" 
+                                   Text="无优先级" 
+                                   FontSize="11"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+
+                <!-- 标签按钮 -->
+                <Button Name="TagButton"
+                        Padding="8,4"
+                        VerticalAlignment="Center"
+                        ToolTip.Tip="点击管理标签">
+                    <Button.Flyout>
+                        <Flyout Placement="Bottom">
+                            <StackPanel Width="250" Spacing="12">
+                                <TextBlock Text="管理标签" FontSize="14" FontWeight="SemiBold"/>
+                                
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="当前标签" FontSize="12" Opacity="0.7"/>
+                                    <ScrollViewer MaxHeight="150" HorizontalScrollBarVisibility="Disabled">
+                                        <WrapPanel Name="CurrentTagsPanel">
+                                            <!-- 当前标签将动态添加 -->
+                                        </WrapPanel>
+                                    </ScrollViewer>
+                                </StackPanel>
+
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="添加标签" FontSize="12" Opacity="0.7"/>
+                                    <ComboBox Name="TagComboBox"
+                                              IsEditable="True"
+                                              PlaceholderText="选择或输入标签..."
+                                              HorizontalAlignment="Stretch"/>
+                                </StackPanel>
+
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="所有标签" FontSize="12" Opacity="0.7"/>
+                                    <ScrollViewer MaxHeight="200" HorizontalScrollBarVisibility="Disabled">
+                                        <ItemsControl Name="TagsListControl">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Grid ColumnDefinitions="*,Auto" Margin="0,4">
+                                                        <TextBlock Grid.Column="0" 
+                                                                   Text="{Binding Name}"
+                                                                   VerticalAlignment="Center"/>
+                                                        <Button Grid.Column="1"
+                                                                Content="&#xE74D;"
+                                                                FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                                                Padding="4"
+                                                                FontSize="12"
+                                                                ToolTip.Tip="删除标签"
+                                                                Tag="{Binding}"
+                                                                Click="DeleteTagButton_Click"/>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </ScrollViewer>
+                                </StackPanel>
+                            </StackPanel>
+                        </Flyout>
+                    </Button.Flyout>
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <ui:SymbolIcon Symbol="Tag" FontSize="12"/>
+                        <TextBlock Name="TagButtonText" 
+                                   Text="无标签" 
+                                   FontSize="11"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+
+            <!-- 自定义字段显示区域 -->
+            <WrapPanel Grid.Row="3"
+                       Name="CustomFieldsPanel"
+                       Margin="0,8,0,0">
+                <!-- 自定义字段将在代码中动态添加 -->
+            </WrapPanel>
+
+            <!-- 创建时间 -->
+            <TextBlock Grid.Row="4"
+                       Name="CreatedTimeText"
+                       Text="创建于..."
+                       FontSize="10"
+                       Opacity="0.5"
+                       Margin="0,8,0,0"/>
+        </Grid>
+    </Border>
+</UserControl>
+

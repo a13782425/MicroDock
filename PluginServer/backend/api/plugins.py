@@ -14,14 +14,15 @@ import tempfile
 import shutil
 from pathlib import Path
 
-from ..models.plugin import (
+from models.plugin import (
     Plugin, PluginCreate, PluginUpdate, PluginResponse,
     PluginWithVersions
 )
-from ..services.plugin_service import PluginService
-from ..services.security_service import SecurityService
-from ..utils.database import get_database_session
-from ..utils.helpers import validate_file_type, get_safe_filename
+from services.plugin_service import PluginService
+from services.security_service import SecurityService
+from utils.database import get_database_session
+from utils.helpers import get_safe_filename
+from utils.plugin_parser import PluginParser, PluginParseError, PluginValidationError
 
 router = APIRouter()
 
@@ -110,35 +111,127 @@ async def get_plugin_by_name(plugin_name: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"获取插件失败: {str(e)}")
 
+@router.post("/preview", response_model=dict)
+async def preview_plugin(file: UploadFile = File(...)):
+    """
+    预览ZIP文件中的插件元数据，不创建插件记录
+
+    Args:
+        file: 插件ZIP文件
+
+    Returns:
+        ZIP文件中的插件元数据信息
+    """
+    temp_file_path = None
+    try:
+        # 验证文件类型 - 只支持ZIP文件
+        if not file.filename or not file.filename.lower().endswith('.zip'):
+            raise HTTPException(status_code=400, detail="只支持 .zip 文件格式")
+
+        # 创建临时文件保存上传内容
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.zip') as temp_file:
+            temp_file_path = temp_file.name
+            shutil.copyfileobj(file.file, temp_file)
+
+        # 使用插件解析器解析ZIP文件
+        with PluginParser() as parser:
+            try:
+                # 验证ZIP文件并提取元数据
+                plugin_metadata = parser.extract_plugin_metadata(temp_file_path)
+
+                # 获取文件列表
+                file_list = parser.get_plugin_file_list(temp_file_path)
+
+                return {
+                    "success": True,
+                    "filename": file.filename,
+                    "metadata": plugin_metadata,
+                    "file_list": file_list,
+                    "message": "插件文件预览成功"
+                }
+
+            except (PluginParseError, PluginValidationError) as e:
+                return {
+                    "success": False,
+                    "filename": file.filename,
+                    "error": str(e),
+                    "message": "插件文件解析失败"
+                }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        return {
+            "success": False,
+            "filename": file.filename,
+            "error": str(e),
+            "message": "文件预览失败"
+        }
+    finally:
+        # 清理临时文件
+        if temp_file_path and Path(temp_file_path).exists():
+            Path(temp_file_path).unlink(missing_ok=True)
+
 @router.post("/", response_model=PluginResponse)
 async def create_plugin(
     file: UploadFile = File(...),
-    name: str = Form(..., min_length=1, max_length=255),
+    name: Optional[str] = Form(None, min_length=1, max_length=255),
     display_name: Optional[str] = Form(None, max_length=255),
     description: Optional[str] = Form(None),
     author: Optional[str] = Form(None, max_length=255),
-    version: str = Form(..., min_length=1, max_length=50),
+    version: Optional[str] = Form(None, min_length=1, max_length=50),
     plugin_type: str = Form(default="storage", regex="^(storage|service|tab)$")
 ):
     """
     上传并创建新插件
+    支持ZIP文件自动解析plugin.json元数据
 
     Args:
-        file: 插件文件（ZIP或DLL）
-        name: 插件名称（唯一标识）
-        display_name: 显示名称
-        description: 插件描述
-        author: 作者
-        version: 版本号
+        file: 插件文件（仅支持ZIP格式）
+        name: 插件名称（可选，将从plugin.json自动提取）
+        display_name: 显示名称（可选，将从plugin.json自动提取）
+        description: 插件描述（可选，将从plugin.json自动提取）
+        author: 作者（可选，将从plugin.json自动提取）
+        version: 版本号（可选，将从plugin.json自动提取）
         plugin_type: 插件类型
 
     Returns:
         创建的插件信息
     """
+    temp_file_path = None
     try:
-        # 验证文件类型
-        if not validate_file_type(file.filename):
-            raise HTTPException(status_code=400, detail="只支持 .zip 和 .dll 文件")
+        # 验证文件类型 - 只支持ZIP文件
+        if not file.filename or not file.filename.lower().endswith('.zip'):
+            raise HTTPException(status_code=400, detail="只支持 .zip 文件格式")
+
+        # 创建临时文件保存上传内容
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.zip') as temp_file:
+            temp_file_path = temp_file.name
+            shutil.copyfileobj(file.file, temp_file)
+
+        # 使用插件解析器解析ZIP文件
+        with PluginParser() as parser:
+            try:
+                # 验证ZIP文件并提取元数据
+                plugin_metadata = parser.extract_plugin_metadata(temp_file_path)
+
+                # 从ZIP文件中提取的信息优先，但允许表单字段覆盖
+                final_name = name if name else plugin_metadata.get('name')
+                final_display_name = display_name if display_name else plugin_metadata.get('displayName')
+                final_description = description if description else plugin_metadata.get('description')
+                final_author = author if author else plugin_metadata.get('author')
+                final_version = version if version else plugin_metadata.get('version')
+
+                # 验证必需字段
+                if not final_name:
+                    raise HTTPException(status_code=400, detail="插件名称缺失，请在plugin.json中指定或通过表单提供")
+                if not final_display_name:
+                    raise HTTPException(status_code=400, detail="插件显示名称缺失，请在plugin.json中指定或通过表单提供")
+                if not final_version:
+                    raise HTTPException(status_code=400, detail="插件版本号缺失，请在plugin.json中指定或通过表单提供")
+
+            except (PluginParseError, PluginValidationError) as e:
+                raise HTTPException(status_code=400, detail=f"插件文件解析失败: {str(e)}")
 
         # 创建安全的文件名
         safe_filename = get_safe_filename(file.filename)
@@ -154,40 +247,20 @@ async def create_plugin(
             safe_filename = f"{stem}_{timestamp}{ext}"
             file_path = plugin_dir / safe_filename
 
-        # 保存文件
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-
-        # 验证ZIP文件（如果是ZIP格式）
-        if safe_filename.lower().endswith('.zip'):
-            try:
-                import zipfile
-                with zipfile.ZipFile(file_path, 'r') as zip_file:
-                    # 检查是否为有效ZIP文件
-                    zip_file.testzip()
-
-                    # 验证是否包含plugin.json（推荐）
-                    has_plugin_json = any(
-                        f.filename.endswith('plugin.json') and '/' not in f.filename.replace('\\', '/')
-                        for f in zip_file.filelist
-                    )
-                    if not has_plugin_json:
-                        print(f"警告: ZIP文件 {safe_filename} 不包含根目录的plugin.json")
-
-            except zipfile.BadZipFile:
-                file_path.unlink(missing_ok=True)
-                raise HTTPException(status_code=400, detail="ZIP文件格式无效")
+        # 移动临时文件到最终位置
+        shutil.move(temp_file_path, file_path)
+        temp_file_path = None  # 防止在finally中删除
 
         # 创建插件记录
         file_size = file_path.stat().st_size
         file_hash = SecurityService.calculate_file_sha256(file_path)
 
         plugin_create = PluginCreate(
-            name=name,
-            display_name=display_name,
-            description=description,
-            author=author,
-            version=version,
+            name=final_name,
+            display_name=final_display_name,
+            description=final_description,
+            author=final_author,
+            version=final_version,
             plugin_type=plugin_type,
             file_path=str(file_path),
             file_size=file_size,
@@ -200,10 +273,11 @@ async def create_plugin(
     except HTTPException:
         raise
     except Exception as e:
-        # 清理已上传的文件
-        if 'file_path' in locals() and Path(file_path).exists():
-            Path(file_path).unlink(missing_ok=True)
         raise HTTPException(status_code=500, detail=f"创建插件失败: {str(e)}")
+    finally:
+        # 清理临时文件
+        if temp_file_path and Path(temp_file_path).exists():
+            Path(temp_file_path).unlink(missing_ok=True)
 
 @router.put("/{plugin_id}", response_model=PluginResponse)
 async def update_plugin(

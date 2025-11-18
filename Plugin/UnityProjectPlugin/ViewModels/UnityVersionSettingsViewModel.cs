@@ -78,7 +78,7 @@ namespace UnityProjectPlugin.ViewModels
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"删除版本失败: {version.Version} - {ex.Message}");
+               _plugin.Context?.LogError($"删除版本失败: {version.Version} - {ex.Message}");
             }
         }
 
