@@ -7,7 +7,7 @@
              x:Class="TodoListPlugin.Views.TodoEditDialog">
 
     <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <StackPanel Margin="24" Spacing="16">
+        <StackPanel Margin="24" Spacing="16" MinWidth="360">
             <!-- 标题 -->
             <StackPanel Spacing="6">
                 <TextBlock Text="标题" FontWeight="Medium"/>

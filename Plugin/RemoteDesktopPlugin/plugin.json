@@ -1,7 +1,7 @@
 {
   "name": "com.microdock.remotedesktop",
   "displayName": "远程桌面管理",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "管理和快速连接远程桌面，支持分组管理、配置保存、一键连接",
   "author": "MicroDock",
   "license": "MIT",

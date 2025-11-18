@@ -185,15 +185,15 @@ namespace RemoteDesktopPlugin.Views
                     {
                         Task.Run(async () =>
                         {
-                            await clipboard.SetTextAsync(connection.FullAddress);
+                            await clipboard.SetTextAsync(connection.Host);
                         });
                     }
 
-                    _plugin?.Context?.LogInfo($"已复制主机地址: {connection.FullAddress}");
+                    _plugin?.Context?.LogInfo($"已复制主机地址: {connection.Host}");
                 }
                 catch (Exception ex)
                 {
-                    _plugin?.Context?.LogError($"复制主机地址失败: {connection.FullAddress}", ex);
+                    _plugin?.Context?.LogError($"复制主机地址失败: {connection.Host}", ex);
                 }
             }
         }

@@ -127,7 +127,8 @@ namespace TodoListPlugin.Views
         {
             if (_customFieldsContainer == null) return;
 
-            List<CustomFieldTemplate> templates = _plugin.GetFieldTemplates();
+            // 只获取用户自定义字段，排除默认字段（标题、简述、优先级、标签已有专门控件）
+            List<CustomFieldTemplate> templates = _plugin.GetUserFieldTemplates();
             
             foreach (CustomFieldTemplate template in templates.OrderBy(t => t.Order))
             {

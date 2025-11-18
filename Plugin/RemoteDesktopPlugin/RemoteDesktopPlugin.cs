@@ -307,8 +307,8 @@ namespace RemoteDesktopPlugin
         /// </summary>
         private string GenerateRdpFileContent(RemoteConnection connection)
         {
-            var content = $"full address:s:{connection.Host}\n";
-            content += $"server port:i:{connection.Port}\n";
+            // 使用 FullAddress，端口信息已包含（非3389时格式为 host:port）
+            var content = $"full address:s:{connection.FullAddress}\n";
             content += $"username:s:{connection.Username}\n";
 
             if (!string.IsNullOrEmpty(connection.Domain))

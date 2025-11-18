@@ -1,0 +1,101 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:AIChatPlugin.ViewModels"
+             xmlns:views="clr-namespace:AIChatPlugin.Views"
+             x:Class="AIChatPlugin.Views.AIChatTabView">
+    <UserControl.Resources>
+        <!-- 转换器 -->
+        <views:RoleToBackgroundConverter x:Key="RoleToBackgroundConverter"/>
+        <views:RoleToAlignmentConverter x:Key="RoleToAlignmentConverter"/>
+        <views:RoleToNameConverter x:Key="RoleToNameConverter"/>
+        <views:StringToBoolConverter x:Key="StringToBoolConverter"/>
+        <views:InvertBoolConverter x:Key="InvertBoolConverter"/>
+    </UserControl.Resources>
+    
+    <Grid ColumnDefinitions="200,*,Auto" RowDefinitions="Auto,*,Auto,Auto">
+        <!-- 对话列表侧边栏 -->
+        <Border Grid.Column="0" Grid.Row="0" Grid.RowSpan="4" 
+                Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                BorderThickness="0,0,1,0">
+            <Grid RowDefinitions="Auto,*">
+                <StackPanel Grid.Row="0" Margin="12" Spacing="8">
+                    <TextBlock Text="对话列表" FontSize="16" FontWeight="Bold"/>
+                    <Button Content="新对话" Command="{Binding CreateNewConversationCommand}" Padding="12,4"/>
+                </StackPanel>
+                
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                    <ItemsControl ItemsSource="{Binding Conversations}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <views:ConversationItem DataContext="{Binding}"/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Grid>
+        </Border>
+
+        <!-- 头部工具栏 -->
+        <Grid Grid.Column="1" Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="0,12,12,12">
+            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
+                <TextBlock Text="AI 对话助手" FontSize="18" FontWeight="Bold"/>
+            </StackPanel>
+            
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+                <Button Content="清空" Command="{Binding ClearMessagesCommand}" Padding="12,4"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- 消息列表区域（局部滚动） -->
+        <ScrollViewer Grid.Column="1" Grid.Row="1" 
+                      VerticalScrollBarVisibility="Auto"
+                      Margin="0,0,12,12"
+                      Name="MessagesScrollViewer">
+            <ItemsControl ItemsSource="{Binding Messages}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <views:MessageBubble DataContext="{Binding}"/>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+
+        <!-- 错误提示 -->
+        <Border Grid.Column="1" Grid.Row="2" 
+                IsVisible="{Binding ErrorMessage, Converter={StaticResource StringToBoolConverter}}"
+                Background="#FFE0E0" 
+                Padding="8" 
+                Margin="0,0,12,8" 
+                CornerRadius="4">
+            <TextBlock Text="{Binding ErrorMessage}" Foreground="#CC0000" TextWrapping="Wrap"/>
+        </Border>
+
+        <!-- 输入区域 -->
+        <Grid Grid.Column="1" Grid.Row="3" ColumnDefinitions="*,Auto" Margin="0,0,12,12">
+            <TextBox Grid.Column="0" 
+                     Text="{Binding InputText, Mode=TwoWay}" 
+                     Watermark="输入消息..." 
+                     AcceptsReturn="True" 
+                     MinHeight="60"
+                     IsEnabled="{Binding IsLoading, Converter={StaticResource InvertBoolConverter}}"/>
+            <Button Grid.Column="1" 
+                    Content="发送" 
+                    Command="{Binding SendMessageCommand}"
+                    IsEnabled="{Binding IsLoading, Converter={StaticResource InvertBoolConverter}}"
+                    Padding="20,8"/>
+        </Grid>
+
+        <!-- 加载指示器 -->
+        <Border Grid.Column="1" Grid.Row="1" Grid.RowSpan="3" 
+                IsVisible="{Binding IsLoading}"
+                Background="#80000000" 
+                HorizontalAlignment="Stretch" 
+                VerticalAlignment="Stretch">
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8">
+                <TextBlock Text="AI 正在思考..." Foreground="White" FontSize="16"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>
+

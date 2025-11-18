@@ -1,0 +1,14 @@
+{
+  "name": "com.microdock.aichat",
+  "displayName": "AI 对话",
+  "version": "1.0.0",
+  "description": "AI 对话助手插件，支持多种 AI 模型（OpenAI、Claude 等），提供流式输出、Markdown 渲染、代码高亮和工具调用功能",
+  "author": "MicroDock",
+  "license": "MIT",
+  "main": "AIChatPlugin.dll",
+  "entryClass": "AIChatPlugin.AIChatPlugin",
+  "engines": {
+    "microdock": ">=0.0.3.0"
+  }
+}
+

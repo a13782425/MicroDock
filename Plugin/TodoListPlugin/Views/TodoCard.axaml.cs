@@ -184,62 +184,47 @@ namespace TodoListPlugin.Views
             // 获取所有字段模板
             System.Collections.Generic.List<CustomFieldTemplate> templates = _plugin.GetFieldTemplates();
 
+            // 默认字段ID列表（这些字段已有专门的显示方式，不在自定义字段面板中显示）
+            string[] defaultFieldIds = { "builtin-title", "builtin-description", "default-priority", "default-tags" };
+
             foreach (CustomFieldTemplate template in templates)
             {
+                // 跳过默认字段，避免重复显示
+                if (defaultFieldIds.Contains(template.Id))
+                {
+                    continue;
+                }
+
                 if (_item.CustomFields.TryGetValue(template.Id, out string? value) && !string.IsNullOrWhiteSpace(value))
                 {
-                    // 检查是否为标签类型字段（优先级或标签）
-                    if (template.Id == "default-priority" || template.Id == "default-tags")
+                    // 普通字段显示
+                    StackPanel fieldPanel = new StackPanel
                     {
-                        // 使用标签样式显示
-                        Border tagBorder = new Border
-                        {
-                            Margin = new Avalonia.Thickness(0, 0, 6, 6),
-                            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
-                        };
-                        tagBorder.Classes.Add("tag");
+                        Spacing = 2
+                    };
 
-                        TextBlock tagText = new TextBlock
-                        {
-                            Text = value,
-                            FontSize = 10,
-                            Foreground = Avalonia.Media.Brushes.White
-                        };
-                        tagBorder.Child = tagText;
-
-                        _customFieldsPanel.Children.Add(tagBorder);
-                    }
-                    else
+                    // 字段名称
+                    TextBlock nameText = new TextBlock
                     {
-                        // 普通字段显示
-                        StackPanel fieldPanel = new StackPanel
-                        {
-                            Spacing = 2
-                        };
+                        Text = template.Name,
+                        FontSize = 10,
+                        Opacity = 0.6,
+                        FontWeight = Avalonia.Media.FontWeight.Medium
+                    };
+                    fieldPanel.Children.Add(nameText);
 
-                        // 字段名称
-                        TextBlock nameText = new TextBlock
-                        {
-                            Text = template.Name,
-                            FontSize = 10,
-                            Opacity = 0.6,
-                            FontWeight = Avalonia.Media.FontWeight.Medium
-                        };
-                        fieldPanel.Children.Add(nameText);
+                    // 字段值
+                    string displayValue = FormatFieldValue(value, template.FieldType);
+                    TextBlock valueText = new TextBlock
+                    {
+                        Text = displayValue,
+                        FontSize = 11,
+                        Opacity = 0.8,
+                        TextTrimming = Avalonia.Media.TextTrimming.CharacterEllipsis
+                    };
+                    fieldPanel.Children.Add(valueText);
 
-                        // 字段值
-                        string displayValue = FormatFieldValue(value, template.FieldType);
-                        TextBlock valueText = new TextBlock
-                        {
-                            Text = displayValue,
-                            FontSize = 11,
-                            Opacity = 0.8,
-                            TextTrimming = Avalonia.Media.TextTrimming.CharacterEllipsis
-                        };
-                        fieldPanel.Children.Add(valueText);
-
-                        _customFieldsPanel.Children.Add(fieldPanel);
-                    }
+                    _customFieldsPanel.Children.Add(fieldPanel);
                 }
             }
         }
@@ -278,21 +263,11 @@ namespace TodoListPlugin.Views
                     _isDragging = true;
                     
                     // 创建拖放数据并开始拖拽
-#pragma warning disable CS0618 // 类型或成员已过时
-                    var dataObject = new DataObject();
-                    dataObject.Set("TodoItem", _item);
+                    DataTransfer dataTransfer = new DataTransfer();
+                    DataTransferItem item = DataTransferItem.Create(DataFormat.Text, _item.Id);
+                    dataTransfer.Add(item);
                     
-                    var args = new PointerPressedEventArgs(
-                        e.Source!,
-                        e.Pointer,
-                        (Visual)e.Source!,
-                        point.Position,
-                        e.Timestamp,
-                        new PointerPointProperties(RawInputModifiers.None, PointerUpdateKind.LeftButtonPressed),
-                        e.KeyModifiers);
-                    
-                    await DragDrop.DoDragDrop(args, dataObject, DragDropEffects.Move);
-#pragma warning restore CS0618
+                    await DragDrop.DoDragDropAsync(e, dataTransfer, DragDropEffects.Move);
                 }
             }
         }
@@ -323,9 +298,7 @@ namespace TodoListPlugin.Views
                 PrimaryButtonText = "保存",
                 CloseButtonText = "取消",
                 DefaultButton = FluentAvalonia.UI.Controls.ContentDialogButton.Primary,
-                Width = 600,
-                MaxWidth = 600,
-                MaxHeight = 700
+              
             };
             
             dialog.PrimaryButtonClick += (s, args) =>

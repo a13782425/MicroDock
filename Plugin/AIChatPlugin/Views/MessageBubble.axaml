@@ -1,0 +1,47 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:md="clr-namespace:Markdown.Avalonia;assembly=Markdown.Avalonia"
+             xmlns:views="clr-namespace:AIChatPlugin.Views"
+             xmlns:models="clr-namespace:AIChatPlugin.Models"
+             x:Class="AIChatPlugin.Views.MessageBubble">
+    <UserControl.Resources>
+        <views:RoleToBackgroundConverter x:Key="RoleToBackgroundConverter"/>
+        <views:RoleToAlignmentConverter x:Key="RoleToAlignmentConverter"/>
+        <views:RoleToNameConverter x:Key="RoleToNameConverter"/>
+        <views:IsAssistantRoleConverter x:Key="IsAssistantRoleConverter"/>
+        <views:IsUserRoleConverter x:Key="IsUserRoleConverter"/>
+    </UserControl.Resources>
+    
+    <Border CornerRadius="8" Padding="12" Margin="0,0,0,12"
+            Background="{Binding Role, Converter={StaticResource RoleToBackgroundConverter}}"
+            HorizontalAlignment="{Binding Role, Converter={StaticResource RoleToAlignmentConverter}}">
+        <StackPanel Spacing="8">
+            <!-- 角色标识 -->
+            <TextBlock Text="{Binding Role, Converter={StaticResource RoleToNameConverter}}"
+                       FontSize="12" FontWeight="Bold" Opacity="0.7"/>
+            
+            <!-- 消息内容：根据角色显示不同控件 -->
+            <Grid>
+                <!-- 用户消息：普通文本 -->
+                <TextBlock Text="{Binding Content}" 
+                           TextWrapping="Wrap"
+                           IsVisible="{Binding Role, Converter={StaticResource IsUserRoleConverter}}"/>
+                
+                <!-- AI 消息：Markdown 渲染 -->
+                <md:MarkdownScrollViewer Markdown="{Binding Content}" 
+                                         MaxHeight="600"
+                                         IsVisible="{Binding Role, Converter={StaticResource IsAssistantRoleConverter}}"/>
+            </Grid>
+            
+            <!-- 流式指示器 -->
+            <TextBlock Text="正在输入..." 
+                       IsVisible="{Binding IsStreaming}"
+                       FontSize="12" Opacity="0.6" FontStyle="Italic"/>
+            
+            <!-- 时间戳 -->
+            <TextBlock Text="{Binding Timestamp, StringFormat='{}{0:yyyy-MM-dd HH:mm:ss}'}"
+                       FontSize="10" Opacity="0.5"/>
+        </StackPanel>
+    </Border>
+</UserControl>
+

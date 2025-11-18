@@ -8,7 +8,7 @@
 
     <Grid RowDefinitions="Auto,*" Margin="0,12,12,12">
         <!-- 工具栏 -->
-        <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto,Auto" Margin="0,0,0,12">
+        <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,12">
             <!-- 添加待办按钮 -->
             <Button Grid.Column="0"
                     Content="添加待办"
@@ -119,12 +119,6 @@
                 </StackPanel>
             </Button>
 
-            <!-- 页签管理按钮 -->
-            <Button Grid.Column="3"
-                    Content="管理页签"
-                    Name="ManageColumnsButton"
-                    Padding="12,8"
-                    ToolTip.Tip="在设置中管理页签"/>
         </Grid>
 
         <!-- 主内容区 - 横向滚动的页签列表 -->

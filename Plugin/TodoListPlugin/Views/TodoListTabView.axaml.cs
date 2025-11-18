@@ -23,7 +23,6 @@ namespace TodoListPlugin.Views
         private Button? _addTodoButton;
         private TextBox? _searchTextBox;
         private Button? _filterButton;
-        private Button? _manageColumnsButton;
         private ItemsControl? _columnsControl;
         private StackPanel? _emptyState;
         private ComboBox? _filterFieldComboBox;
@@ -64,7 +63,6 @@ namespace TodoListPlugin.Views
             _addTodoButton = this.FindControl<Button>("AddTodoButton");
             _searchTextBox = this.FindControl<TextBox>("SearchTextBox");
             _filterButton = this.FindControl<Button>("FilterButton");
-            _manageColumnsButton = this.FindControl<Button>("ManageColumnsButton");
             _columnsControl = this.FindControl<ItemsControl>("ColumnsControl");
             _emptyState = this.FindControl<StackPanel>("EmptyState");
             _filterFieldComboBox = this.FindControl<ComboBox>("FilterFieldComboBox");
@@ -98,11 +96,6 @@ namespace TodoListPlugin.Views
                 _searchTextBox.TextChanged += OnSearchTextChanged;
             }
 
-            if (_manageColumnsButton != null)
-            {
-                _manageColumnsButton.Click += OnManageColumnsClick;
-            }
-
             if (_addFilterButton != null)
             {
                 _addFilterButton.Click += OnAddFilterClick;
@@ -132,26 +125,17 @@ namespace TodoListPlugin.Views
                 }
             };
 
-            // 使用Loaded事件进行初始更新
-            if (_columnsControl != null)
-            {
-                _columnsControl.Loaded += OnColumnsControlLoaded;
-            }
+            // 使用 AttachedToVisualTree 事件，确保每次视图显示时都更新
+            this.AttachedToVisualTree += OnAttachedToVisualTree;
         }
 
-        private bool _isInitialized = false;
-
-        private void OnColumnsControlLoaded(object? sender, RoutedEventArgs e)
+        private void OnAttachedToVisualTree(object? sender, Avalonia.VisualTreeAttachmentEventArgs e)
         {
-            if (!_isInitialized)
+            // 延迟更新，确保容器已生成
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
             {
-                _isInitialized = true;
-                // 延迟更新，确保容器已生成
-                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-                {
-                    UpdateColumnContents();
-                }, Avalonia.Threading.DispatcherPriority.Background);
-            }
+                UpdateColumnContents();
+            }, Avalonia.Threading.DispatcherPriority.Background);
         }
 
         /// <summary>
@@ -195,7 +179,7 @@ namespace TodoListPlugin.Views
                     {
                         int index = _columnsControl.Items.IndexOf(item);
                         Control? container = _columnsControl.ContainerFromIndex(index) as Control;
-                        
+
                         if (container != null)
                         {
                             // 整个列容器都支持拖放，扩大检测范围
@@ -206,7 +190,7 @@ namespace TodoListPlugin.Views
 
                             // 找到 ItemsPanel
                             StackPanel? itemsPanel = container.FindDescendantOfType<StackPanel>("ItemsPanel");
-                            
+
                             if (itemsPanel != null)
                             {
                                 // 清空现有内容
@@ -237,14 +221,14 @@ namespace TodoListPlugin.Views
                                 {
                                     var colorBrush = new Avalonia.Media.SolidColorBrush(
                                         Avalonia.Media.Color.Parse(column.Color));
-                                    
+
                                     // 设置标题背景色
                                     StackPanel? headerPanel = container.FindDescendantOfType<StackPanel>("ColumnHeaderPanel");
                                     if (headerPanel != null)
                                     {
                                         headerPanel.Background = colorBrush;
                                     }
-                                    
+
                                     // 设置底部颜色条
                                     Avalonia.Controls.Border? colorBar = container.FindDescendantOfType<Avalonia.Controls.Border>();
                                     if (colorBar != null && colorBar.Height == 2)
@@ -300,14 +284,17 @@ namespace TodoListPlugin.Views
                 Content = content,
                 PrimaryButtonText = "保存",
                 CloseButtonText = "取消",
-                DefaultButton = FluentAvalonia.UI.Controls.ContentDialogButton.Primary
+                DefaultButton = FluentAvalonia.UI.Controls.ContentDialogButton.Primary,
+                MinWidth = 800,
+                MaxWidth = 1600,
+                MaxHeight = 700
             };
-            
+
             dialog.PrimaryButtonClick += (s, args) =>
             {
                 args.Cancel = !content.Validate();
             };
-            
+
             var result = await dialog.ShowAsync();
             if (result == FluentAvalonia.UI.Controls.ContentDialogResult.Primary)
             {
@@ -325,18 +312,6 @@ namespace TodoListPlugin.Views
             }
         }
 
-        private async void OnManageColumnsClick(object? sender, RoutedEventArgs e)
-        {
-            var dialog = new FluentAvalonia.UI.Controls.ContentDialog
-            {                
-                Width = 400,
-                Content = new ColumnSettingsView(_plugin),
-                CloseButtonText = "关闭"
-            };
-            await dialog.ShowAsync();
-            RefreshView(); // 关闭后刷新视图
-        }
-
         private void OnFilterFieldChanged(object? sender, SelectionChangedEventArgs e)
         {
             if (_filterFieldComboBox?.SelectedItem is CustomFieldTemplate template && _filterOperatorComboBox != null)
@@ -345,19 +320,19 @@ namespace TodoListPlugin.Views
                 List<FilterOperator> operators = template.FieldType switch
                 {
                     FieldType.Text => new List<FilterOperator> { FilterOperator.Contains, FilterOperator.Equals },
-                    FieldType.Number => new List<FilterOperator> 
-                    { 
-                        FilterOperator.Equals, 
-                        FilterOperator.GreaterThan, 
-                        FilterOperator.LessThan, 
-                        FilterOperator.GreaterOrEqual, 
-                        FilterOperator.LessOrEqual 
+                    FieldType.Number => new List<FilterOperator>
+                    {
+                        FilterOperator.Equals,
+                        FilterOperator.GreaterThan,
+                        FilterOperator.LessThan,
+                        FilterOperator.GreaterOrEqual,
+                        FilterOperator.LessOrEqual
                     },
-                    FieldType.Date => new List<FilterOperator> 
-                    { 
-                        FilterOperator.Equals, 
-                        FilterOperator.GreaterThan, 
-                        FilterOperator.LessThan 
+                    FieldType.Date => new List<FilterOperator>
+                    {
+                        FilterOperator.Equals,
+                        FilterOperator.GreaterThan,
+                        FilterOperator.LessThan
                     },
                     FieldType.Bool => new List<FilterOperator> { FilterOperator.Equals },
                     _ => new List<FilterOperator>()
@@ -399,7 +374,7 @@ namespace TodoListPlugin.Views
         private void OnApplyFiltersClick(object? sender, RoutedEventArgs e)
         {
             UpdateView();
-            
+
             // 关闭 Flyout
             if (_filterButton?.Flyout is Flyout flyout)
             {
@@ -437,7 +412,19 @@ namespace TodoListPlugin.Views
             if (sender is Control container && container.DataContext is TodoColumn targetColumn)
             {
                 // 从拖拽数据中获取待办事项ID
-                if (e.Data.Contains("TodoItemId") && e.Data.Get("TodoItemId") is string todoId)
+                string? todoId = null;
+
+                // 遍历 DataTransfer 的 Items 集合
+                foreach (DataTransferItem item in e.DataTransfer.Items)
+                {
+                    todoId = item.TryGetText();
+                    if (!string.IsNullOrWhiteSpace(todoId))
+                    {
+                        break;
+                    }
+                }
+
+                if (!string.IsNullOrEmpty(todoId))
                 {
                     TodoItem? item = _plugin.GetAllTodos().FirstOrDefault(t => t.Id == todoId);
                     if (item != null && item.ColumnId != targetColumn.Id)
@@ -460,7 +447,7 @@ namespace TodoListPlugin.Views
         public static T? FindDescendantOfType<T>(this Control control, string? name = null) where T : Control
         {
             System.Diagnostics.Debug.WriteLine($"FindDescendantOfType: 检查 {control.GetType().Name} (Name={control.Name})");
-            
+
             if (control is T result && (name == null || control.Name == name))
             {
                 System.Diagnostics.Debug.WriteLine($"  -> 找到匹配: {control.Name}");
@@ -470,7 +457,7 @@ namespace TodoListPlugin.Views
             // 尝试使用 Visual Tree Helper 进行深度搜索
             int childCount = Avalonia.VisualTree.VisualExtensions.GetVisualChildren(control).Count();
             System.Diagnostics.Debug.WriteLine($"  -> 子元素数量: {childCount}");
-            
+
             foreach (var child in Avalonia.VisualTree.VisualExtensions.GetVisualChildren(control))
             {
                 if (child is Control childControl)

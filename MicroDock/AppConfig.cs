@@ -11,7 +11,7 @@ namespace MicroDock;
 internal static class AppConfig
 {
     //主要的, 次要的, 构建的, 修订的
-    public static Version AppVersion { get; set; } = new Version(0, 0, 2, 0);
+    public static Version AppVersion { get; set; } = new Version(0, 0, 3, 0);
     public const string THEME_SYSTEM = "跟随系统";
     public const string THEME_DARK = "深色";
     public const string THEME_LIGHT = "浅色";

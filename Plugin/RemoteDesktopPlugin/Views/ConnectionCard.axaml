@@ -65,7 +65,7 @@
 
                 <!-- 主机地址、用户名和域名 -->
                 <StackPanel Orientation="Horizontal" Spacing="8">
-                    <TextBlock Text="{Binding FullAddress}"
+                    <TextBlock Text="{Binding Host}"
                                Name="HostTextBlock"
                                Classes="clickable-host"
                                FontSize="12"

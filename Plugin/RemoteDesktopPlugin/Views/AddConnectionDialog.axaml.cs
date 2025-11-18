@@ -18,7 +18,6 @@ namespace RemoteDesktopPlugin.Views
         // UI 控件引用
         private TextBox? _connectionNameTextBox;
         private TextBox? _hostTextBox;
-        private TextBox? _portTextBox;
         private TextBox? _usernameTextBox;
         private TextBox? _passwordTextBox;
         private TextBox? _domainTextBox;
@@ -59,7 +58,6 @@ namespace RemoteDesktopPlugin.Views
         {
             _connectionNameTextBox = this.FindControl<TextBox>("ConnectionNameTextBox");
             _hostTextBox = this.FindControl<TextBox>("HostTextBox");
-            _portTextBox = this.FindControl<TextBox>("PortTextBox");
             _usernameTextBox = this.FindControl<TextBox>("UsernameTextBox");
             _passwordTextBox = this.FindControl<TextBox>("PasswordTextBox");
             _domainTextBox = this.FindControl<TextBox>("DomainTextBox");
@@ -75,9 +73,6 @@ namespace RemoteDesktopPlugin.Views
 
             if (_hostTextBox != null)
                 _hostTextBox.Text = _editingConnection.Host;
-
-            if (_portTextBox != null)
-                _portTextBox.Text = _editingConnection.Port.ToString();
 
             if (_usernameTextBox != null)
                 _usernameTextBox.Text = _editingConnection.Username;
@@ -140,11 +135,8 @@ namespace RemoteDesktopPlugin.Views
             string username = _usernameTextBox?.Text?.Trim() ?? string.Empty;
             string password = _passwordTextBox?.Text ?? string.Empty;
 
-            // 解析端口
-            if (!int.TryParse(_portTextBox?.Text ?? "3389", out int port) || port <= 0 || port > 65535)
-            {
-                port = 3389;
-            }
+            // 固定使用默认端口 3389
+            int port = 3389;
 
             // 获取可选字段
             string? domain = string.IsNullOrWhiteSpace(_domainTextBox?.Text) ? null : _domainTextBox.Text.Trim();

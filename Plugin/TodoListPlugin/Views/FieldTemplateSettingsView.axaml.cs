@@ -77,8 +77,9 @@ namespace TodoListPlugin.Views
         {
             if (_fieldsListControl == null) return;
 
+            // 获取所有字段（包括默认字段），因为设置页面需要显示所有字段以便管理
             List<CustomFieldTemplate> fields = _plugin.GetFieldTemplates();
-            // 按Order排序，确保默认字段也显示
+            // 按Order排序
             fields = fields.OrderBy(f => f.Order).ToList();
             _fieldsListControl.ItemsSource = null;
             _fieldsListControl.ItemsSource = fields;

@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.Loader;
@@ -19,7 +20,7 @@ public class PluginLoadContext : AssemblyLoadContext
     {
         _pluginPath = pluginPath;
         _resolver = new AssemblyDependencyResolver(pluginPath);
-        
+
         Log.Debug("创建插件加载上下文: {PluginPath}", pluginPath);
     }
 
@@ -32,20 +33,26 @@ public class PluginLoadContext : AssemblyLoadContext
 
         if (defaultContextAssembly != null)
         {
-            Log.Debug("从主程序上下文加载程序集: {AssemblyName} (版本: {Version})", 
+            Log.Debug("从主程序上下文加载程序集: {AssemblyName} (版本: {Version})",
                 assemblyName.Name, assemblyName.Version);
             return null; // 返回 null 使用默认上下文，避免重复加载
         }
-        
+
         // 2. 如果主程序中未找到或版本不匹配，尝试从插件目录解析
         string? assemblyPath = _resolver.ResolveAssemblyToPath(assemblyName);
         if (assemblyPath != null)
         {
-            Log.Debug("从插件目录加载程序集: {AssemblyName} (版本: {Version}) -> {Path}", 
+            Log.Debug("从插件目录加载程序集: {AssemblyName} (版本: {Version}) -> {Path}",
                 assemblyName.Name, assemblyName.Version, assemblyPath);
             return LoadFromAssemblyPath(assemblyPath);
         }
-
+        assemblyPath = Path.Combine(_pluginPath, assemblyName.Name + ".dll");
+        if (File.Exists(assemblyPath))
+        {
+            Log.Debug("从插件目录加载程序集: {AssemblyName} (版本: {Version}) -> {Path}",
+             assemblyName.Name, assemblyName.Version, assemblyPath);
+            return LoadFromAssemblyPath(assemblyPath);
+        }
         return null;
     }
 
