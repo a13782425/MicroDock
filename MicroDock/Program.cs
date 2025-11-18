@@ -35,10 +35,11 @@ namespace MicroDock
             {
                 Log.Information("MicroDock 启动中...");
                 Log.Information("应用版本: {Version}", AppConfig.AppVersion);
-                
+
                 // ============================================
                 // 防止多实例启动 - 使用全局互斥锁
                 // ============================================
+#if !DEBUG
                 if (!Services.SingleInstanceService.TryAcquireMutex())
                 {
                     Log.Information("检测到已有 MicroDock 实例正在运行，通知显示窗口后退出");
@@ -46,6 +47,7 @@ namespace MicroDock
                     Log.Information("程序退出");
                     return; // 退出程序
                 }
+#endif
                 
                 BuildAvaloniaApp()
                     .StartWithClassicDesktopLifetime(args);
@@ -59,7 +61,9 @@ namespace MicroDock
             finally
             {
                 // 清理单实例资源
+#if !DEBUG
                 Services.SingleInstanceService.ReleaseMutex();
+#endif
                 Log.CloseAndFlush();
             }
         }
@@ -70,7 +74,7 @@ namespace MicroDock
         private static void InitializeLogger()
         {
             // 日志保存在软件目录下的Log文件夹
-            string logDirectory = Path.Combine(AppContext.BaseDirectory, "Log");
+            string logDirectory = Path.Combine(AppConfig.ROOT_PATH, "log");
             
             // 确保日志目录存在
             if (!Directory.Exists(logDirectory))

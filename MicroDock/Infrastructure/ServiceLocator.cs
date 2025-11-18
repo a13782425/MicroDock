@@ -28,7 +28,7 @@ public static class ServiceLocator
         // 3. 注册原本使用 Instance 单例的服务
         // 注意：IconService 是静态类，不需要注册
         // 注意：LogService 在 Program.InitializeLogger() 中已提前注册
-        Register(new PluginLoader());
+        Register(new PluginService());
         Register(new ToolRegistry());
         Register(new ThemeService());
     }

@@ -27,6 +27,7 @@ namespace MicroDock
                 {
                     logService.IsInit = true;
                 }
+                Infrastructure.ServiceLocator.GetService<Services.PluginService>()?.LoadPlugins();
                 // 2. 应用主题（在创建窗口之前）
                 ApplyThemeOnStartup();
 
@@ -44,6 +45,7 @@ namespace MicroDock
                 desktop.MainWindow = mainWindow;
 
                 // 5. 启动命名管道服务器，监听其他实例的显示窗口请求
+#if !DEBUG
                 Services.SingleInstanceService.StartPipeServer(() =>
                 {
                     // 在 UI 线程上执行窗口显示操作
@@ -72,11 +74,14 @@ namespace MicroDock
                         }
                     });
                 });
+#endif
 
                 // 6. 退出时清理
                 desktop.Exit += (s, e) =>
                 {
+#if !DEBUG
                     Services.SingleInstanceService.StopPipeServer();
+#endif
                     DBContext.Close();
                     Infrastructure.ServiceLocator.Clear();
                 };

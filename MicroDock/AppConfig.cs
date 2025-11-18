@@ -15,11 +15,16 @@ internal static class AppConfig
     public const string THEME_SYSTEM = "跟随系统";
     public const string THEME_DARK = "深色";
     public const string THEME_LIGHT = "浅色";
-    private static string _configFolder = Path.Combine(System.AppContext.BaseDirectory, "Config");
+    private static string _configFolder = Path.Combine(System.AppContext.BaseDirectory, "config");
     /// <summary>
     /// 应用配置文件夹
     /// </summary>
     public static string CONFIG_FOLDER => _configFolder;
+
+    /// <summary>
+    /// 根目录
+    /// </summary>
+    public static string ROOT_PATH => System.AppContext.BaseDirectory;
 
     /// <summary>
     /// 预设强调色

@@ -18,7 +18,7 @@ namespace MicroDock.Services
     /// 插件加载器，支持隔离加载和生命周期管理
     /// 注意：所有插件必须提供 plugin.json 配置文件
     /// </summary>
-    public class PluginLoader : IDisposable
+    public class PluginService : IDisposable
     {
         private readonly List<PluginInfo> _loadedPlugins = new List<PluginInfo>();
         private bool _disposed = false;
@@ -26,7 +26,7 @@ namespace MicroDock.Services
         /// <summary>
         /// 公共构造函数，用于 ServiceLocator 注册
         /// </summary>
-        public PluginLoader()
+        public PluginService()
         {
         }
 
@@ -81,12 +81,12 @@ namespace MicroDock.Services
 
                 // 5. 检查数据库中是否已存在该插件
                 PluginInfoDB? existingPluginInfo = DBContext.GetPluginInfo(pluginName);
-                
+
                 if (existingPluginInfo != null)
                 {
                     // 插件已存在，检查版本
                     string currentVersion = existingPluginInfo.Version;
-                    
+
                     if (currentVersion == newVersion)
                     {
                         // 版本相同，提示已安装
@@ -96,20 +96,19 @@ namespace MicroDock.Services
                     else
                     {
                         // 版本不同，标记为待更新
-                        Log.Information("插件 {PluginName} 版本不同: {CurrentVersion} -> {NewVersion}，标记为待更新", 
+                        Log.Information("插件 {PluginName} 版本不同: {CurrentVersion} -> {NewVersion}，标记为待更新",
                             pluginName, currentVersion, newVersion);
-                        
+
                         // 确保 PluginTemp 目录存在
-                        string appDirectory = System.AppContext.BaseDirectory;
-                        string pluginTempDirectory = Path.Combine(appDirectory, "PluginTemp");
+                        string pluginTempDirectory = Path.Combine(AppConfig.ROOT_PATH, "plugintemp");
                         if (!Directory.Exists(pluginTempDirectory))
                         {
                             Directory.CreateDirectory(pluginTempDirectory);
                         }
-                        
+
                         // 解压到 PluginTemp/[PluginName] 目录
                         string tempPluginDir = Path.Combine(pluginTempDirectory, pluginName);
-                        
+
                         // 如果临时目录已存在，先删除
                         if (Directory.Exists(tempPluginDir))
                         {
@@ -123,15 +122,15 @@ namespace MicroDock.Services
                                 Log.Warning(ex, "删除旧的临时插件目录失败: {Dir}", tempPluginDir);
                             }
                         }
-                        
+
                         // 复制文件到临时目录
                         Directory.CreateDirectory(tempPluginDir);
                         await Task.Run(() => CopyDirectory(tempDirectory, tempPluginDir));
                         Log.Information("插件文件已复制到临时目录: {TempDir}", tempPluginDir);
-                        
+
                         // 在数据库中标记为待更新
                         DBContext.MarkPluginForUpdate(pluginName, newVersion);
-                        
+
                         return (true, $"插件将在下次重启时更新：v{currentVersion} → v{newVersion}", pluginName);
                     }
                 }
@@ -139,20 +138,20 @@ namespace MicroDock.Services
                 {
                     // 插件不存在，直接导入
                     Log.Information("插件 {PluginName} 不存在，直接导入", pluginName);
-                    
+
                     // 确保插件目录存在
                     if (!Directory.Exists(pluginDirectory))
                     {
                         Directory.CreateDirectory(pluginDirectory);
                     }
-                    
+
                     // 复制文件到 Plugins/{插件名}/ 目录
                     string targetPluginDir = Path.Combine(pluginDirectory, pluginName);
                     Directory.CreateDirectory(targetPluginDir);
                     await Task.Run(() => CopyDirectory(tempDirectory, targetPluginDir));
-                    
+
                     Log.Information("插件文件已复制到: {TargetDir}", targetPluginDir);
-                    
+
                     // 验证插件加载
                     PluginInfo? pluginInfo = LoadPlugin(targetPluginDir, manifest);
                     if (pluginInfo == null)
@@ -165,10 +164,10 @@ namespace MicroDock.Services
                         catch { }
                         return (false, "插件加载验证失败", pluginName);
                     }
-                    
+
                     // 添加到内存列表
                     _loadedPlugins.Add(pluginInfo);
-                    
+
                     // 添加到数据库
                     PluginInfoDB dbInfo = new PluginInfoDB
                     {
@@ -180,7 +179,7 @@ namespace MicroDock.Services
                         IsEnabled = true,
                     };
                     DBContext.AddPluginInfo(dbInfo);
-                    
+
                     Log.Information("插件 {PluginName} 导入成功", pluginName);
                     return (true, $"插件已导入：{manifest.EffectiveDisplayName} v{manifest.Version}", pluginName);
                 }
@@ -248,26 +247,25 @@ namespace MicroDock.Services
             {
                 // 获取所有待更新的插件
                 List<PluginInfoDB> pendingUpdatePlugins = DBContext.GetPendingUpdatePlugins();
-                
+
                 if (pendingUpdatePlugins.Count == 0)
                 {
                     return;
                 }
-                
+
                 Log.Information("发现 {Count} 个待更新插件", pendingUpdatePlugins.Count);
-                
-                string appDirectory = System.AppContext.BaseDirectory;
-                string pluginTempDirectory = Path.Combine(appDirectory, "PluginTemp");
-                
+
+                string pluginTempDirectory = Path.Combine(AppConfig.ROOT_PATH, "plugintemp");
+
                 foreach (var pluginInfo in pendingUpdatePlugins)
                 {
                     string pluginName = pluginInfo.PluginName;
                     string tempPluginDir = Path.Combine(pluginTempDirectory, pluginName);
                     string targetPluginDir = Path.Combine(pluginDirectory, pluginName);
-                    
-                    Log.Information("处理待更新插件: {PluginName} v{OldVersion} -> v{NewVersion}", 
+
+                    Log.Information("处理待更新插件: {PluginName} v{OldVersion} -> v{NewVersion}",
                         pluginName, pluginInfo.Version, pluginInfo.PendingVersion);
-                    
+
                     try
                     {
                         // 1. 检查临时目录是否存在
@@ -278,7 +276,7 @@ namespace MicroDock.Services
                             DBContext.CancelPluginUpdate(pluginName);
                             continue;
                         }
-                        
+
                         // 2. 卸载旧版本插件（如果已加载）
                         PluginInfo? existingPlugin = _loadedPlugins.FirstOrDefault(p => p.UniqueName == pluginName);
                         if (existingPlugin != null)
@@ -292,10 +290,10 @@ namespace MicroDock.Services
                             {
                                 Log.Warning(ex, "调用插件 OnDestroy 失败");
                             }
-                            
+
                             // 从加载列表中移除
                             _loadedPlugins.Remove(existingPlugin);
-                            
+
                             // 卸载程序集上下文
                             try
                             {
@@ -305,32 +303,32 @@ namespace MicroDock.Services
                             {
                                 Log.Warning(ex, "卸载插件上下文失败");
                             }
-                            
+
                             // 强制垃圾回收
                             GC.Collect();
                             GC.WaitForPendingFinalizers();
                             GC.Collect();
                         }
-                        
+
                         // 3. 智能更新插件目录（保留 Data 目录，删除 Config）
                         if (Directory.Exists(targetPluginDir))
                         {
                             string dataDir = Path.Combine(targetPluginDir, "Data");
                             string tempDataBackup = null;
-                            
+
                             // 备份 Data 目录（如果存在）
                             try
                             {
                                 if (Directory.Exists(dataDir))
                                 {
                                     tempDataBackup = Path.Combine(pluginTempDirectory, $"{pluginName}_Data_Backup");
-                                    
+
                                     // 如果备份目录已存在，先删除
                                     if (Directory.Exists(tempDataBackup))
                                     {
                                         Directory.Delete(tempDataBackup, true);
                                     }
-                                    
+
                                     Directory.Move(dataDir, tempDataBackup);
                                     Log.Information("已备份插件数据目录: {DataDir} -> {BackupDir}", dataDir, tempDataBackup);
                                 }
@@ -340,11 +338,11 @@ namespace MicroDock.Services
                                 Log.Warning(ex, "备份 Data 目录失败，将继续更新（数据可能丢失）: {DataDir}", dataDir);
                                 tempDataBackup = null; // 确保后续不会尝试恢复
                             }
-                            
+
                             // 删除旧的插件目录（包括 Config，重试机制）
                             int maxRetries = 5;
                             bool deleted = false;
-                            
+
                             for (int i = 0; i < maxRetries && !deleted; i++)
                             {
                                 try
@@ -357,7 +355,7 @@ namespace MicroDock.Services
                                 {
                                     if (i < maxRetries - 1)
                                     {
-                                        Log.Warning("删除插件目录失败，重试 {Retry}/{MaxRetries}: {Message}", 
+                                        Log.Warning("删除插件目录失败，重试 {Retry}/{MaxRetries}: {Message}",
                                             i + 1, maxRetries, ex.Message);
                                         System.Threading.Thread.Sleep(1000);
                                     }
@@ -368,11 +366,11 @@ namespace MicroDock.Services
                                     }
                                 }
                             }
-                            
+
                             // 移动新插件到目标目录
                             Directory.Move(tempPluginDir, targetPluginDir);
                             Log.Information("已安装新版本插件: {Dir}", targetPluginDir);
-                            
+
                             // 恢复 Data 目录
                             if (tempDataBackup != null && Directory.Exists(tempDataBackup))
                             {
@@ -384,7 +382,7 @@ namespace MicroDock.Services
                                 }
                                 catch (Exception ex)
                                 {
-                                    Log.Error(ex, "恢复插件数据目录失败: {PluginName}，备份位置: {BackupDir}", 
+                                    Log.Error(ex, "恢复插件数据目录失败: {PluginName}，备份位置: {BackupDir}",
                                         pluginName, tempDataBackup);
                                     // 数据还在备份目录中，用户可以手动恢复
                                 }
@@ -394,16 +392,16 @@ namespace MicroDock.Services
                         {
                             // 目标目录不存在，直接移动（首次安装不应该走这个分支）
                             Directory.Move(tempPluginDir, targetPluginDir);
-                            Log.Information("插件目录不存在，直接移动: {From} -> {To}", 
+                            Log.Information("插件目录不存在，直接移动: {From} -> {To}",
                                 tempPluginDir, targetPluginDir);
                         }
-                        
+
                         // 5. 更新数据库
                         pluginInfo.Version = pluginInfo.PendingVersion ?? pluginInfo.Version;
                         pluginInfo.PendingUpdate = false;
                         pluginInfo.PendingVersion = null;
                         DBContext.UpdatePluginInfo(pluginInfo);
-                        
+
                         Log.Information("插件 {PluginName} 更新成功", pluginName);
                     }
                     catch (Exception ex)
@@ -412,7 +410,7 @@ namespace MicroDock.Services
                         // 不清除待更新标记，下次启动时再试
                     }
                 }
-                
+
                 // 清理 PluginTemp 目录中的残留文件
                 if (Directory.Exists(pluginTempDirectory))
                 {
@@ -449,8 +447,9 @@ namespace MicroDock.Services
         /// </summary>
         /// <param name="pluginDirectory">插件目录路径</param>
         /// <returns>加载的插件信息列表</returns>
-        public List<PluginInfo> LoadPlugins(string pluginDirectory)
+        public List<PluginInfo> LoadPlugins()
         {
+            string pluginDirectory = Path.Combine(AppConfig.ROOT_PATH, "plugins");
             List<PluginInfo> loadedPlugins = new List<PluginInfo>();
 
             if (!Directory.Exists(pluginDirectory))
@@ -883,7 +882,7 @@ namespace MicroDock.Services
 
                     // 从数据库读取插件启用状态
                     PluginInfoDB? dbInfo = DBContext.GetPluginInfo(manifest.Name);
-                    
+
                     // 检查是否标记为待删除
                     if (dbInfo?.PendingDelete == true)
                     {
@@ -914,7 +913,7 @@ namespace MicroDock.Services
                         // 更新版本信息（如果版本不同）
                         if (dbInfo.Version != manifest.Version)
                         {
-                            Log.Information("插件 {PluginName} 版本更新: {OldVersion} -> {NewVersion}", 
+                            Log.Information("插件 {PluginName} 版本更新: {OldVersion} -> {NewVersion}",
                                 manifest.Name, dbInfo.Version, manifest.Version);
                             dbInfo.Version = manifest.Version;
                             dbInfo.DisplayName = manifest.EffectiveDisplayName;
@@ -966,98 +965,6 @@ namespace MicroDock.Services
         }
 
         /// <summary>
-        /// 加载插件动作（静态方法，用于独立加载动作）
-        /// </summary>
-        public static List<MicroAction> LoadActions(string pluginDirectory)
-        {
-            List<MicroAction> actions = new List<MicroAction>();
-
-            if (!Directory.Exists(pluginDirectory))
-            {
-                return actions;
-            }
-
-            // 扫描插件目录下的直接子文件夹
-            string[] pluginFolders = Directory.GetDirectories(pluginDirectory);
-            Log.Debug("扫描插件动作，发现 {Count} 个插件文件夹", pluginFolders.Length);
-
-            foreach (string pluginFolder in pluginFolders)
-            {
-                try
-                {
-                    // 在插件文件夹中查找 DLL 文件
-                    string[] dllFiles = Directory.GetFiles(pluginFolder, "*.dll", SearchOption.TopDirectoryOnly);
-
-                    foreach (string dllFile in dllFiles)
-                    {
-                        try
-                        {
-                            // 注意：这里为了向后兼容，暂时使用默认加载方式
-                            // 未来可以改为使用隔离上下文
-                            Assembly assembly = Assembly.LoadFrom(dllFile);
-                            Type[] types = assembly.GetTypes();
-                            foreach (Type type in types)
-                            {
-                                if (typeof(IMicroActionsProvider).IsAssignableFrom(type) && !type.IsAbstract && !type.IsInterface)
-                                {
-                                    object? instance = Activator.CreateInstance(type);
-                                    IMicroActionsProvider? provider = instance as IMicroActionsProvider;
-                                    if (provider != null)
-                                    {
-                                        foreach (MicroAction action in provider.GetActions())
-                                        {
-                                            actions.Add(action);
-                                            Log.Debug("加载插件动作: {ActionName}", action.Name);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            // 忽略单个 DLL 加载失败，但记录错误
-                            Log.Warning(ex, "加载插件动作失败: {PluginPath}", dllFile);
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    // 忽略单个插件文件夹加载失败，但记录错误
-                    Log.Warning(ex, "扫描插件文件夹失败: {PluginFolder}", pluginFolder);
-                }
-            }
-
-            Log.Information("成功加载 {Count} 个插件动作", actions.Count);
-            return actions;
-        }
-
-        /// <summary>
-        /// 卸载指定插件
-        /// </summary>
-        public bool UnloadPlugin(string pluginId)
-        {
-            PluginInfo? plugin = _loadedPlugins.FirstOrDefault(p => p.Id == pluginId);
-            if (plugin == null)
-            {
-                Log.Warning("尝试卸载不存在的插件: {PluginId}", pluginId);
-                return false;
-            }
-
-            try
-            {
-                Log.Information("卸载插件: {PluginName}", plugin.Name);
-                plugin.Dispose();
-                _loadedPlugins.Remove(plugin);
-                return true;
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "卸载插件失败: {PluginName}", plugin.Name);
-                return false;
-            }
-        }
-
-        /// <summary>
         /// 启用插件
         /// </summary>
         /// <param name="pluginName">插件唯一名称</param>
@@ -1068,7 +975,7 @@ namespace MicroDock.Services
             {
                 // 1. 查找已加载的插件
                 PluginInfo? plugin = _loadedPlugins.FirstOrDefault(p => p.UniqueName == pluginName);
-                
+
                 if (plugin != null)
                 {
                     // 插件已加载
@@ -1088,7 +995,7 @@ namespace MicroDock.Services
                 {
                     // 插件未加载，需要重新加载
                     Log.Information("插件 {PluginName} 未加载，尝试重新加载", pluginName);
-                    
+
                     // 从数据库获取插件信息
                     PluginInfoDB? dbInfo = DBContext.GetPluginInfo(pluginName);
                     if (dbInfo == null)
@@ -1098,8 +1005,7 @@ namespace MicroDock.Services
                     }
 
                     // 尝试从插件目录加载
-                    string appDirectory = System.AppContext.BaseDirectory;
-                    string pluginDirectory = Path.Combine(appDirectory, "Plugins");
+                    string pluginDirectory = Path.Combine(AppConfig.ROOT_PATH, "plugins");
                     string pluginFolder = Path.Combine(pluginDirectory, pluginName);
 
                     if (!Directory.Exists(pluginFolder))
@@ -1131,7 +1037,7 @@ namespace MicroDock.Services
 
                     loadedPlugin.IsEnabled = true;
                     _loadedPlugins.Add(loadedPlugin);
-                    
+
                     Log.Information("插件 {PluginName} 重新加载并启用成功", pluginName);
                 }
 
@@ -1139,10 +1045,10 @@ namespace MicroDock.Services
                 DBContext.SetPluginEnabled(pluginName, true);
 
                 // 5. 发布插件状态变更事件
-                Infrastructure.EventAggregator.Instance.Publish(new Infrastructure.PluginStateChangedMessage 
-                { 
-                    PluginName = pluginName, 
-                    IsEnabled = true 
+                Infrastructure.EventAggregator.Instance.Publish(new Infrastructure.PluginStateChangedMessage
+                {
+                    PluginName = pluginName,
+                    IsEnabled = true
                 });
 
                 return true;
@@ -1165,7 +1071,7 @@ namespace MicroDock.Services
             {
                 // 1. 查找已加载的插件
                 PluginInfo? plugin = _loadedPlugins.FirstOrDefault(p => p.UniqueName == pluginName);
-                
+
                 if (plugin == null)
                 {
                     Log.Warning("尝试禁用不存在的插件: {PluginName}", pluginName);
@@ -1188,10 +1094,10 @@ namespace MicroDock.Services
                 DBContext.SetPluginEnabled(pluginName, false);
 
                 // 4. 发布插件状态变更事件（从导航菜单移除标签页）
-                Infrastructure.EventAggregator.Instance.Publish(new Infrastructure.PluginStateChangedMessage 
-                { 
-                    PluginName = pluginName, 
-                    IsEnabled = false 
+                Infrastructure.EventAggregator.Instance.Publish(new Infrastructure.PluginStateChangedMessage
+                {
+                    PluginName = pluginName,
+                    IsEnabled = false
                 });
 
                 Log.Information("插件 {PluginName} 已禁用", pluginName);
@@ -1215,14 +1121,14 @@ namespace MicroDock.Services
             {
                 // 1. 禁用插件
                 DisablePlugin(pluginName);
-                
+
                 // 2. 标记为待删除
                 DBContext.MarkPluginForDeletion(pluginName, true);
-                
+
                 // 3. 发布插件删除事件（移除导航项）
                 Infrastructure.EventAggregator.Instance.Publish(
                     new Infrastructure.PluginDeletedMessage { PluginName = pluginName });
-                
+
                 Log.Information("插件 {PluginName} 已标记为待删除", pluginName);
                 return (true, "插件将在下次启动时删除");
             }
@@ -1243,7 +1149,7 @@ namespace MicroDock.Services
             try
             {
                 DBContext.MarkPluginForDeletion(pluginName, false);
-                
+
                 Log.Information("已取消删除插件: {PluginName}", pluginName);
                 return true;
             }
@@ -1265,12 +1171,11 @@ namespace MicroDock.Services
             {
                 // 1. 清除数据库中的待更新标记
                 DBContext.CancelPluginUpdate(pluginName);
-                
+
                 // 2. 删除 PluginTemp 目录中的临时文件
-                string appDirectory = System.AppContext.BaseDirectory;
-                string pluginTempDirectory = Path.Combine(appDirectory, "PluginTemp");
+                string pluginTempDirectory = Path.Combine(AppConfig.ROOT_PATH, "plugintemp");
                 string tempPluginDir = Path.Combine(pluginTempDirectory, pluginName);
-                
+
                 if (Directory.Exists(tempPluginDir))
                 {
                     await Task.Run(() =>
@@ -1286,7 +1191,7 @@ namespace MicroDock.Services
                         }
                     });
                 }
-                
+
                 Log.Information("已取消插件更新: {PluginName}", pluginName);
                 return (true, "已取消更新");
             }
@@ -1304,7 +1209,7 @@ namespace MicroDock.Services
         private void DeletePendingPlugins(string pluginDirectory)
         {
             var pendingPlugins = DBContext.GetPendingDeletePlugins();
-            
+
             if (pendingPlugins.Count == 0)
             {
                 return;
@@ -1315,7 +1220,7 @@ namespace MicroDock.Services
             foreach (var plugin in pendingPlugins)
             {
                 string pluginFolder = Path.Combine(pluginDirectory, plugin.PluginName);
-                
+
                 if (Directory.Exists(pluginFolder))
                 {
                     try

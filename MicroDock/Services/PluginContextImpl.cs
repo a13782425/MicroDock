@@ -31,8 +31,8 @@ internal class PluginContextImpl : IPluginContext
         {
             Directory.CreateDirectory(_pluginDirectory);
         }
-        _configDirectory = Path.Combine(_pluginDirectory, "Config");
-        _dataDirectory = Path.Combine(_pluginDirectory, "Data");
+        _configDirectory = Path.Combine(_pluginDirectory, "config");
+        _dataDirectory = Path.Combine(_pluginDirectory, "data");
         if (!Directory.Exists(_configDirectory))
         {
             Directory.CreateDirectory(_configDirectory);

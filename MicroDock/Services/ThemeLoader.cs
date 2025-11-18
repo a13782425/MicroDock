@@ -20,70 +20,14 @@ public class ThemeLoader
 
     public ThemeLoader()
     {
-        _themesDirectory = Path.Combine(AppConfig.CONFIG_FOLDER, "Themes");
+        _themesDirectory = Path.Combine(AppConfig.ROOT_PATH, "assets", "themes");
 
         // 确保主题目录存在
         if (!Directory.Exists(_themesDirectory))
         {
             Directory.CreateDirectory(_themesDirectory);
         }
-
-        // 复制内置主题文件到配置目录（如果不存在）
-        CopyBuiltInThemes();
     }
-
-    /// <summary>
-    /// 复制内置主题文件到配置目录
-    /// </summary>
-    private void CopyBuiltInThemes()
-    {
-        try
-        {
-            // 获取内置主题目录（相对于应用程序目录）
-            string appDirectory = System.AppContext.BaseDirectory;
-            string builtInThemesDirectory = Path.Combine(appDirectory, "Assets", "Themes");
-
-            // 如果内置主题目录不存在，尝试从项目目录复制
-            if (!Directory.Exists(builtInThemesDirectory))
-            {
-                // 尝试从项目源目录查找（开发环境）
-                var currentDir = Directory.GetCurrentDirectory();
-                var projectThemesDir = Path.Combine(currentDir, "MicroDock", "Assets", "Themes");
-                if (Directory.Exists(projectThemesDir))
-                {
-                    builtInThemesDirectory = projectThemesDir;
-                }
-                else
-                {
-                    // 如果都找不到，跳过复制
-                    return;
-                }
-            }
-
-            // 复制所有 XML 主题文件
-            if (Directory.Exists(builtInThemesDirectory))
-            {
-                var themeFiles = Directory.GetFiles(builtInThemesDirectory, "*.xml", SearchOption.TopDirectoryOnly);
-                foreach (var themeFile in themeFiles)
-                {
-                    string fileName = Path.GetFileName(themeFile);
-                    string targetPath = Path.Combine(_themesDirectory, fileName);
-
-                    // 如果目标文件不存在或源文件更新，则复制
-                    if (!File.Exists(targetPath) || File.GetLastWriteTime(themeFile) > File.GetLastWriteTime(targetPath))
-                    {
-                        File.Copy(themeFile, targetPath, overwrite: true);
-                        Log.Debug("复制内置主题文件: {FileName}", fileName);
-                    }
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Log.Warning(ex, "复制内置主题文件失败");
-        }
-    }
-
     /// <summary>
     /// 扫描并加载所有主题
     /// </summary>
@@ -328,7 +272,7 @@ public class ThemeLoader
             Category = "默认",
             Description = "FluentAvaloniaUI 默认浅色主题",
             Variant = ThemeVariant.Light,
-            AccentColor = Colors.Transparent, // 不设置自定义颜色，使用系统默认
+            AccentColor = new Color(255, 37, 99, 235), // 不设置自定义颜色，使用系统默认
             ColorResources = new Dictionary<string, Color>() // 空字典，使用系统默认
         };
         _cachedThemes.Add(defaultLight);
@@ -341,7 +285,7 @@ public class ThemeLoader
             Category = "默认",
             Description = "FluentAvaloniaUI 默认深色主题",
             Variant = ThemeVariant.Dark,
-            AccentColor = Colors.Transparent, // 不设置自定义颜色，使用系统默认
+            AccentColor = new Color(255, 59, 130, 246), // 不设置自定义颜色，使用系统默认
             ColorResources = new Dictionary<string, Color>() // 空字典，使用系统默认
         };
         _cachedThemes.Add(defaultDark);

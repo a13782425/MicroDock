@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  # 后端API服务
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: microdock-plugin-server-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONPATH=/app
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+    volumes:
+      # 数据持久化
+      - ./data:/app/data
+      # 配置文件（如果需要）
+      - ./.env:/app/.env:ro
+    networks:
+      - microdock-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # 前端Web服务
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: microdock-plugin-server-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - microdock-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+# 网络配置
+networks:
+  microdock-network:
+    driver: bridge
+    name: microdock-plugin-network
+
+# 数据卷（可选，如果需要外部数据卷）
+volumes:
+  plugin_data:
+    driver: local
+    name: microdock-plugin-data
+  plugin_backups:
+    driver: local
+    name: microdock-plugin-backups

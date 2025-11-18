@@ -273,7 +273,7 @@ namespace MicroDock.ViewModels
             RemovePluginNavigationItems(pluginUniqueName);
 
             // 从 PluginLoader 获取插件信息
-            var pluginLoader = Infrastructure.ServiceLocator.Get<PluginLoader>();
+            var pluginLoader = Infrastructure.ServiceLocator.Get<PluginService>();
             var pluginInfo = pluginLoader.LoadedPlugins
                 .FirstOrDefault(p => p.UniqueName == pluginUniqueName);
 
@@ -390,12 +390,8 @@ namespace MicroDock.ViewModels
         /// </summary>
         private void LoadPluginNavigationItems()
         {
-            // 获取插件目录路径（在应用程序目录下的Plugins文件夹）
-            string appDirectory = System.AppContext.BaseDirectory;
-            string pluginDirectory = Path.Combine(appDirectory, "Plugins");
-
             // 加载所有插件
-            List<PluginInfo> plugins = Infrastructure.ServiceLocator.Get<PluginLoader>().LoadPlugins(pluginDirectory);
+            List<PluginInfo> plugins = Infrastructure.ServiceLocator.Get<PluginService>().LoadedPlugins.ToList();
 
             // 为每个插件的每个标签页创建导航项
             foreach (PluginInfo pluginInfo in plugins)
@@ -449,7 +445,7 @@ namespace MicroDock.ViewModels
             if (_disposed)
                 return;
 
-            Infrastructure.ServiceLocator.GetService<PluginLoader>()?.Dispose();
+            Infrastructure.ServiceLocator.GetService<PluginService>()?.Dispose();
             _disposed = true;
         }
     }

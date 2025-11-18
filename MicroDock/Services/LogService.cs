@@ -109,7 +109,7 @@ public class LogService : ILogEventSink
     {
         try
         {
-            string logDirectory = Path.Combine(AppContext.BaseDirectory, "Log");
+            string logDirectory = Path.Combine(AppConfig.ROOT_PATH, "Log");
 
             // 确保日志目录存在
             if (!Directory.Exists(logDirectory))

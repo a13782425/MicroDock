@@ -307,11 +307,10 @@ public class SettingsTabViewModel : ViewModelBase
         PluginSettings.Clear();
 
         // 获取插件目录路径
-        string appDirectory = System.AppContext.BaseDirectory;
-        string pluginDirectory = Path.Combine(appDirectory, "Plugins");
+        string pluginDirectory = Path.Combine(AppConfig.ROOT_PATH, "plugins");
 
         // 加载所有插件
-        IReadOnlyList<PluginInfo> plugins = Infrastructure.ServiceLocator.Get<PluginLoader>().LoadedPlugins;
+        IReadOnlyList<PluginInfo> plugins = Infrastructure.ServiceLocator.Get<PluginService>().LoadedPlugins;
 
         // 为每个插件创建设置项
         foreach (PluginInfo pluginInfo in plugins)
@@ -396,11 +395,10 @@ public class SettingsTabViewModel : ViewModelBase
                     try
                     {
                         // 获取插件目录
-                        string appDirectory = System.AppContext.BaseDirectory;
-                        string pluginDirectory = Path.Combine(appDirectory, "Plugins");
+                        string pluginDirectory = Path.Combine(AppConfig.ROOT_PATH, "plugins");
 
                         // 调用 PluginLoader 导入插件
-                        PluginLoader pluginLoader = Infrastructure.ServiceLocator.Get<PluginLoader>();
+                        PluginService pluginLoader = Infrastructure.ServiceLocator.Get<PluginService>();
                         var (success, message, pluginName) = await pluginLoader.ImportPluginAsync(zipFilePath, pluginDirectory);
 
                         // 隐藏加载提示
@@ -949,7 +947,7 @@ public class PluginSettingItem : ViewModelBase
 
         try
         {
-            PluginLoader? pluginLoader = Infrastructure.ServiceLocator.Get<PluginLoader>();
+            PluginService? pluginLoader = Infrastructure.ServiceLocator.Get<PluginService>();
             if (pluginLoader == null)
             {
                 Serilog.Log.Error("无法获取 PluginLoader 服务");
@@ -1038,7 +1036,7 @@ public class PluginSettingItem : ViewModelBase
             EventAggregator.Instance.Publish(new ShowLoadingMessage("正在标记插件为待删除..."));
 
             // 调用 PluginLoader 标记插件为待删除
-            PluginLoader pluginLoader = Infrastructure.ServiceLocator.Get<PluginLoader>();
+            PluginService pluginLoader = Infrastructure.ServiceLocator.Get<PluginService>();
             var (success, message) = await pluginLoader.MarkPluginForDeletionAsync(UniqueName);
 
             // 隐藏加载提示
@@ -1071,7 +1069,7 @@ public class PluginSettingItem : ViewModelBase
     {
         try
         {
-            PluginLoader pluginLoader = Infrastructure.ServiceLocator.Get<PluginLoader>();
+            PluginService pluginLoader = Infrastructure.ServiceLocator.Get<PluginService>();
             bool success = pluginLoader.CancelPluginDeletion(UniqueName);
             
             if (success)
@@ -1101,7 +1099,7 @@ public class PluginSettingItem : ViewModelBase
     {
         try
         {
-            PluginLoader pluginLoader = Infrastructure.ServiceLocator.Get<PluginLoader>();
+            PluginService pluginLoader = Infrastructure.ServiceLocator.Get<PluginService>();
             var (success, message) = await pluginLoader.CancelPluginUpdateAsync(UniqueName);
             
             if (success)
