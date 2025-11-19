@@ -53,6 +53,11 @@
                       Margin="0,0,12,12"
                       Name="MessagesScrollViewer">
             <ItemsControl ItemsSource="{Binding Messages}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Spacing="12"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
                         <views:MessageBubble DataContext="{Binding}"/>

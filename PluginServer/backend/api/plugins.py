@@ -272,6 +272,12 @@ async def create_plugin(
 
     except HTTPException:
         raise
+    except ValueError as e:
+        # 处理业务逻辑错误（如重复插件）
+        if "已存在" in str(e):
+            raise HTTPException(status_code=409, detail=str(e))
+        else:
+            raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"创建插件失败: {str(e)}")
     finally:

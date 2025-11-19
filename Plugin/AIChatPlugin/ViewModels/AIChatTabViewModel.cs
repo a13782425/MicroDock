@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using AIChatPlugin.Models;
 using AIChatPlugin.Services;
 using ReactiveUI;
+using System.Text.RegularExpressions;
 
 namespace AIChatPlugin.ViewModels
 {
@@ -160,9 +161,10 @@ namespace AIChatPlugin.ViewModels
                 // 流式发送
                 Progress<string> progress = new Progress<string>(content =>
                 {
-                    aiMsg.Content = content;
-                    aiMsg.StreamedContent = content;
-                    this.RaisePropertyChanged(nameof(Messages));
+                    // 只更新原始内容，解析逻辑在 MessageViewModel 中自动执行
+                    aiMsg.RawContent = content;
+                    // StreamedContent 用于兼容旧代码
+                    aiMsg.StreamedContent = aiMsg.Content;
                 });
 
                 Services.StreamResponse streamResponse = await aiService.SendMessageStreamAsync(
@@ -213,8 +215,10 @@ namespace AIChatPlugin.ViewModels
                             if (Messages.Count > 0 && Messages[Messages.Count - 1].Role == MessageRole.Assistant)
                             {
                                 ChatMessage finalMsg = Messages[Messages.Count - 1];
-                                finalMsg.Content = content;
-                                finalMsg.StreamedContent = content;
+                                
+                                // 只更新原始内容，解析逻辑在 MessageViewModel 中自动执行
+                                finalMsg.RawContent = content;
+                                finalMsg.StreamedContent = finalMsg.Content;
                             }
                             else
                             {

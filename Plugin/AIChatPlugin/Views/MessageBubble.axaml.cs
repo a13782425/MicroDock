@@ -1,9 +1,16 @@
 using AIChatPlugin.Models;
+using AIChatPlugin.Services;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Markup.Xaml;
 using Avalonia.Media;
 using System;
+using System.Reactive.Linq;
+using ReactiveUI;
+using Avalonia.Input;
+using Avalonia.Platform.Storage;
+using System.Threading.Tasks;
+using System.IO;
 
 namespace AIChatPlugin.Views
 {
@@ -12,14 +19,122 @@ namespace AIChatPlugin.Views
     /// </summary>
     public partial class MessageBubble : UserControl
     {
+        private readonly MermaidToImageService _mermaidService;
+
         public MessageBubble()
         {
             InitializeComponent();
+            _mermaidService = new MermaidToImageService();
+
+            // 监听 DataContext 变化
+            this.WhenAnyValue(x => x.DataContext)
+               .Subscribe(OnDataContextChanged);
         }
 
         private void InitializeComponent()
         {
             AvaloniaXamlLoader.Load(this);
+        }
+
+        private async void OnDataContextChanged(object? dc)
+        {
+            if (dc is MessageViewModel msg)
+            {
+                // 监听 MermaidCode 变化
+                msg.WhenAnyValue(x => x.MermaidCode)
+                    .Subscribe(async code =>
+                    {
+                        if (!string.IsNullOrEmpty(code) && msg.MermaidImage == null)
+                        {
+                            await LoadMermaidImageAsync(msg, code);
+                        }
+                    });
+            }
+        }
+
+        /// <summary>
+        /// 加载 Mermaid 图片
+        /// </summary>
+        private async Task LoadMermaidImageAsync(MessageViewModel msg, string code)
+        {
+            if (string.IsNullOrWhiteSpace(code))
+            {
+                return;
+            }
+
+            try
+            {
+                msg.IsMermaidLoading = true;
+                var bitmap = await _mermaidService.ConvertToImageAsync(code);
+                if (bitmap != null)
+                {
+                    msg.MermaidImage = bitmap;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"加载 Mermaid 图片失败: {ex.Message}");
+            }
+            finally
+            {
+                msg.IsMermaidLoading = false;
+            }
+        }
+
+        /// <summary>
+        /// 复制 Mermaid 代码
+        /// </summary>
+        public async void OnCopyMermaidCode(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+        {
+            if (DataContext is MessageViewModel msg && !string.IsNullOrEmpty(msg.MermaidCode))
+            {
+                try
+                {
+                    var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
+                    if (clipboard != null)
+                    {
+                        await clipboard.SetTextAsync(msg.MermaidCode);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"复制失败: {ex.Message}");
+                }
+            }
+        }
+
+        /// <summary>
+        /// 查看大图
+        /// </summary>
+        public async void OnViewFullMermaid(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+        {
+            if (DataContext is MessageViewModel msg && msg.MermaidImage != null)
+            {
+                try
+                {
+                    // 创建一个新窗口显示大图
+                    var window = new Window
+                    {
+                        Title = "Mermaid 图表",
+                        Width = 800,
+                        Height = 600,
+                        Content = new ScrollViewer
+                        {
+                            Content = new Image
+                            {
+                                Source = msg.MermaidImage,
+                                Stretch = Avalonia.Media.Stretch.Uniform
+                            }
+                        }
+                    };
+
+                    await window.ShowDialog(TopLevel.GetTopLevel(this) as Window);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"显示大图失败: {ex.Message}");
+                }
+            }
         }
     }
 
@@ -35,7 +150,7 @@ namespace AIChatPlugin.Views
                 return role switch
                 {
                     MessageRole.User => new SolidColorBrush(Avalonia.Media.Color.FromRgb(0, 120, 215)), // 蓝色
-                    MessageRole.Assistant => new SolidColorBrush(Avalonia.Media.Color.FromRgb(100, 100, 100)), // 灰色
+                    MessageRole.Assistant => new SolidColorBrush(Avalonia.Media.Color.FromRgb(245, 245, 245)), // 浅灰色
                     _ => new SolidColorBrush(Avalonia.Media.Color.FromRgb(200, 200, 200))
                 };
             }
@@ -127,4 +242,3 @@ namespace AIChatPlugin.Views
         }
     }
 }
-

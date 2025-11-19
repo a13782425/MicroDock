@@ -14,6 +14,7 @@ from typing import List, Optional, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, and_
 from sqlalchemy.orm import selectinload
+from sqlalchemy.exc import IntegrityError
 
 from ..models.plugin import Plugin, PluginVersion, PluginCreate, PluginUpdate, PluginWithVersions
 from ..utils.database import get_session
@@ -137,10 +138,14 @@ class PluginService:
     async def create_plugin(self, plugin_data: PluginCreate) -> Plugin:
         """创建新插件"""
         async with get_session() as session:
-            # 检查插件是否已存在
+            # 检查插件是否已存在（包括名称和版本的组合检查）
             existing = await self.get_plugin_by_name(plugin_data.name)
             if existing:
-                raise ValueError(f"插件 '{plugin_data.name}' 已存在")
+                # 检查版本是否也相同
+                if existing.version == plugin_data.version:
+                    raise ValueError(f"插件 '{plugin_data.name}' 版本 '{plugin_data.version}' 已存在，请勿重复上传相同版本的插件")
+                else:
+                    raise ValueError(f"插件 '{plugin_data.name}' 已存在（当前版本：{existing.version}），如需上传新版本请先在插件管理中升级版本")
 
             # 验证文件存在
             plugin_file = Path(plugin_data.file_path)
@@ -166,11 +171,18 @@ class PluginService:
                 config=json.dumps(plugin_data.config) if plugin_data.config else None
             )
 
-            session.add(db_plugin)
-            await session.commit()
-            await session.refresh(db_plugin)
-
-            return db_plugin
+            try:
+                session.add(db_plugin)
+                await session.commit()
+                await session.refresh(db_plugin)
+                return db_plugin
+            except IntegrityError as e:
+                await session.rollback()
+                # 数据库唯一性约束违反
+                if "UNIQUE constraint failed" in str(e) and "name" in str(e):
+                    raise ValueError(f"插件名称 '{plugin_data.name}' 已存在，无法创建重复的插件")
+                else:
+                    raise ValueError(f"数据库约束错误: {str(e)}")
 
     async def update_plugin(self, plugin_id: int, plugin_data: PluginUpdate) -> Optional[Plugin]:
         """更新插件"""

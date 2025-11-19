@@ -1,47 +1,98 @@
 <UserControl xmlns="https://github.com/avaloniaui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:md="clr-namespace:Markdown.Avalonia;assembly=Markdown.Avalonia"
-             xmlns:views="clr-namespace:AIChatPlugin.Views"
-             xmlns:models="clr-namespace:AIChatPlugin.Models"
-             x:Class="AIChatPlugin.Views.MessageBubble">
-    <UserControl.Resources>
-        <views:RoleToBackgroundConverter x:Key="RoleToBackgroundConverter"/>
-        <views:RoleToAlignmentConverter x:Key="RoleToAlignmentConverter"/>
-        <views:RoleToNameConverter x:Key="RoleToNameConverter"/>
-        <views:IsAssistantRoleConverter x:Key="IsAssistantRoleConverter"/>
-        <views:IsUserRoleConverter x:Key="IsUserRoleConverter"/>
-    </UserControl.Resources>
-    
-    <Border CornerRadius="8" Padding="12" Margin="0,0,0,12"
-            Background="{Binding Role, Converter={StaticResource RoleToBackgroundConverter}}"
-            HorizontalAlignment="{Binding Role, Converter={StaticResource RoleToAlignmentConverter}}">
-        <StackPanel Spacing="8">
-            <!-- 角色标识 -->
-            <TextBlock Text="{Binding Role, Converter={StaticResource RoleToNameConverter}}"
-                       FontSize="12" FontWeight="Bold" Opacity="0.7"/>
-            
-            <!-- 消息内容：根据角色显示不同控件 -->
-            <Grid>
-                <!-- 用户消息：普通文本 -->
-                <TextBlock Text="{Binding Content}" 
-                           TextWrapping="Wrap"
-                           IsVisible="{Binding Role, Converter={StaticResource IsUserRoleConverter}}"/>
-                
-                <!-- AI 消息：Markdown 渲染 -->
-                <md:MarkdownScrollViewer Markdown="{Binding Content}" 
-                                         MaxHeight="600"
-                                         IsVisible="{Binding Role, Converter={StaticResource IsAssistantRoleConverter}}"/>
-            </Grid>
-            
-            <!-- 流式指示器 -->
-            <TextBlock Text="正在输入..." 
-                       IsVisible="{Binding IsStreaming}"
-                       FontSize="12" Opacity="0.6" FontStyle="Italic"/>
-            
-            <!-- 时间戳 -->
-            <TextBlock Text="{Binding Timestamp, StringFormat='{}{0:yyyy-MM-dd HH:mm:ss}'}"
-                       FontSize="10" Opacity="0.5"/>
-        </StackPanel>
-    </Border>
+			 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+			 xmlns:md="clr-namespace:Markdown.Avalonia;assembly=Markdown.Avalonia"
+			 xmlns:views="clr-namespace:AIChatPlugin.Views"
+			 xmlns:models="clr-namespace:AIChatPlugin.Models"
+			 x:Class="AIChatPlugin.Views.MessageBubble">
+	<UserControl.Styles>
+		<StyleInclude Source="/Styles/MarkdownStyles.axaml"/>
+	</UserControl.Styles>
+
+	<UserControl.Resources>
+		<views:RoleToBackgroundConverter x:Key="RoleToBackgroundConverter"/>
+		<views:RoleToAlignmentConverter x:Key="RoleToAlignmentConverter"/>
+		<views:RoleToNameConverter x:Key="RoleToNameConverter"/>
+		<views:IsAssistantRoleConverter x:Key="IsAssistantRoleConverter"/>
+		<views:IsUserRoleConverter x:Key="IsUserRoleConverter"/>
+		<views:StringToBoolConverter x:Key="StringToBoolConverter"/>
+	</UserControl.Resources>
+
+	<Border CornerRadius="8" Padding="12" Margin="0,0,0,12"
+			Background="{Binding Role, Converter={StaticResource RoleToBackgroundConverter}}"
+			HorizontalAlignment="{Binding Role, Converter={StaticResource RoleToAlignmentConverter}}">
+		<StackPanel Spacing="8">
+			<!-- 角色标识 -->
+			<TextBlock Text="{Binding Role, Converter={StaticResource RoleToNameConverter}}"
+					   FontSize="12" FontWeight="Bold" Opacity="0.7"/>
+
+			<!-- 消息内容：根据角色显示不同控件 -->
+<!--
+			<Grid>
+				
+			</Grid>-->
+
+			<!-- 用户消息：普通文本 -->
+				<TextBlock Text="{Binding Content}"
+						   TextWrapping="Wrap"
+						   IsVisible="{Binding Role, Converter={StaticResource IsUserRoleConverter}}"/>
+				<!-- Think Expander -->
+				<Expander Header="🧠 思考过程" IsExpanded="False"
+						  IsVisible="{Binding ThinkContent, Converter={StaticResource StringToBoolConverter}}"
+						  Margin="0,0,0,8">
+					<md:MarkdownScrollViewer Markdown="{Binding ThinkContent}"
+											 MaxHeight="400"/>
+				</Expander>
+				<!-- AI 消息：Markdown 渲染 -->
+				<md:MarkdownScrollViewer Markdown="{Binding Content}"
+										 MaxHeight="600"
+										 IsVisible="{Binding Role, Converter={StaticResource IsAssistantRoleConverter}}"/>
+
+			<!-- Mermaid 图片 -->
+			<Border CornerRadius="8" Padding="8" Margin="0,0,0,8"
+					Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
+					BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+					BorderThickness="1"
+					IsVisible="{Binding MermaidImage, Converter={x:Static ObjectConverters.IsNotNull}}">
+				<StackPanel Spacing="8">
+					<!-- 图片显示区域 -->
+					<Image Source="{Binding MermaidImage}"
+						   MaxHeight="400"
+						   Stretch="Uniform"
+						   HorizontalAlignment="Center"/>
+
+					<!-- 操作按钮 -->
+					<StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+						<Button Content="📋 复制代码"
+								Padding="8,4"
+								Click="OnCopyMermaidCode"
+								VerticalAlignment="Center"/>
+						<Button Content="🔍 查看大图"
+								Padding="8,4"
+								Click="OnViewFullMermaid"
+								VerticalAlignment="Center"/>
+					</StackPanel>
+				</StackPanel>
+			</Border>
+
+			<!-- Mermaid 加载中指示器 -->
+			<Border CornerRadius="8" Padding="12" Margin="0,0,0,8"
+					Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
+					IsVisible="{Binding IsMermaidLoading}">
+				<StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+					<TextBlock Text="⏳" FontSize="16"/>
+					<TextBlock Text="正在生成图表..." FontSize="12" Opacity="0.7"/>
+				</StackPanel>
+			</Border>
+
+			<!-- 流式指示器 -->
+			<TextBlock Text="正在输入..."
+					   IsVisible="{Binding IsStreaming}"
+					   FontSize="12" Opacity="0.6" FontStyle="Italic"/>
+
+			<!-- 时间戳 -->
+			<TextBlock Text="{Binding Timestamp, StringFormat='{}{0:yyyy-MM-dd HH:mm:ss}'}"
+					   FontSize="10" Opacity="0.5"/>
+		</StackPanel>
+	</Border>
 </UserControl>
 

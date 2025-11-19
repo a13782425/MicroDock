@@ -9,7 +9,7 @@ import sys
 import asyncio
 import tempfile
 from pathlib import Path
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
@@ -94,6 +94,18 @@ async def delete_plugin(plugin_id: int):
 @app.post("/api/plugins")
 async def upload_plugin(file: UploadFile = File(...)):
     """上传插件ZIP文件（简化版本）"""
+    import sys
+    print(f"🔍 upload_plugin函数被调用", file=sys.stderr)
+    sys.stderr.flush()
+    try:
+        print(f"🔍 文件名: {file.filename}", file=sys.stderr)
+        sys.stderr.flush()
+    except Exception as e:
+        print(f"🔍 获取文件名异常: {e}", file=sys.stderr)
+        sys.stderr.flush()
+    print(f"🔍 开始上传插件: {file.filename}", file=sys.stderr)
+    sys.stderr.flush()
+
     temp_file_path = None
     try:
         # 验证文件类型
@@ -116,13 +128,23 @@ async def upload_plugin(file: UploadFile = File(...)):
             temp_file.write(content)
 
         try:
-            # 验证ZIP文件
-            is_valid, message = validate_plugin_zip(str(temp_file_path))
-            if not is_valid:
-                return {"success": False, "error": message}, 400
+            # 验证ZIP文件 - 捕获所有可能的异常
+            try:
+                is_valid, message = validate_plugin_zip(str(temp_file_path))
+                if not is_valid:
+                    return {"success": False, "error": message}, 400
+            except Exception as e:
+                import traceback
+                print(f"🔍 ZIP验证异常: {traceback.format_exc()}")
+                return {"success": False, "error": f"ZIP文件验证失败: {str(e)}"}, 400
 
-            # 解析插件信息
-            metadata = parse_plugin_from_zip(str(temp_file_path))
+            # 解析插件信息 - 捕获所有可能的异常
+            try:
+                metadata = parse_plugin_from_zip(str(temp_file_path))
+            except Exception as e:
+                import traceback
+                print(f"🔍 插件解析异常: {traceback.format_exc()}")
+                return {"success": False, "error": f"插件信息解析失败: {str(e)}"}, 400
 
             # 检查插件名称和版本是否已存在
             plugin_name = metadata.get("name")
@@ -163,10 +185,16 @@ async def upload_plugin(file: UploadFile = File(...)):
             }
 
         except Exception as e:
-            return {"success": False, "error": f"解析失败: {str(e)}"}, 400
+            import traceback
+            error_detail = f"解析失败: {str(e)}"
+            print(f"🔍 插件解析异常详情: {traceback.format_exc()}")  # 添加详细错误日志
+            return {"success": False, "error": error_detail}, 400
 
     except Exception as e:
-        return {"success": False, "error": f"文件处理失败: {str(e)}"}, 500
+        import traceback
+        error_detail = f"文件处理失败: {str(e)}"
+        print(f"🔍 上传插件外层异常: {traceback.format_exc()}")  # 添加详细错误日志
+        raise HTTPException(status_code=500, detail={"success": False, "error": error_detail})
     finally:
         # 清理临时文件
         if temp_file_path and temp_file_path.exists():
@@ -174,6 +202,14 @@ async def upload_plugin(file: UploadFile = File(...)):
                 temp_file_path.unlink()
             except Exception as cleanup_error:
                 print(f"清理临时文件失败: {cleanup_error}")
+
+@app.post("/api/test")
+async def test_endpoint():
+    """测试端点"""
+    import sys
+    print("🔍 test_endpoint被调用", file=sys.stderr)
+    sys.stderr.flush()
+    return {"success": True, "message": "测试成功"}
 
 @app.post("/api/plugins/preview")
 async def preview_plugin(file: UploadFile = File(...)):
@@ -216,7 +252,10 @@ async def preview_plugin(file: UploadFile = File(...)):
             }
 
         except Exception as e:
-            return {"success": False, "error": f"解析失败: {str(e)}"}, 400
+            import traceback
+            error_detail = f"解析失败: {str(e)}"
+            print(f"🔍 预览插件异常详情: {traceback.format_exc()}")  # 添加详细错误日志
+            return {"success": False, "error": error_detail}, 400
 
     except Exception as e:
         return {"success": False, "error": f"文件处理失败: {str(e)}"}, 500

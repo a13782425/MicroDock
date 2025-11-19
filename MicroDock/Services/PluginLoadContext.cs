@@ -53,6 +53,13 @@ public class PluginLoadContext : AssemblyLoadContext
              assemblyName.Name, assemblyName.Version, assemblyPath);
             return LoadFromAssemblyPath(assemblyPath);
         }
+        assemblyPath = Path.Combine(_pluginPath, "dll", assemblyName.Name + ".dll");
+        if (File.Exists(assemblyPath))
+        {
+            Log.Debug("从插件目录加载程序集: {AssemblyName} (版本: {Version}) -> {Path}",
+             assemblyName.Name, assemblyName.Version, assemblyPath);
+            return LoadFromAssemblyPath(assemblyPath);
+        }
         return null;
     }
 

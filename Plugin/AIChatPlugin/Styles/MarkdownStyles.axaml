@@ -1,0 +1,148 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:md="clr-namespace:Markdown.Avalonia;assembly=Markdown.Avalonia">
+    
+    <!-- Markdown 自定义样式 -->
+    <!-- 注意：MarkdownScrollViewer 的样式由 Markdown.Avalonia 库控制 -->
+
+    <!-- 标题样式 -->
+    <Style Selector="md|MarkdownScrollViewer TextBlock.Heading1">
+        <Setter Property="FontSize" Value="24"/>
+        <Setter Property="FontWeight" Value="Bold"/>
+        <Setter Property="Margin" Value="0,16,0,8"/>
+        <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+    </Style>
+
+    <Style Selector="md|MarkdownScrollViewer TextBlock.Heading2">
+        <Setter Property="FontSize" Value="20"/>
+        <Setter Property="FontWeight" Value="Bold"/>
+        <Setter Property="Margin" Value="0,14,0,7"/>
+        <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+    </Style>
+
+    <Style Selector="md|MarkdownScrollViewer TextBlock.Heading3">
+        <Setter Property="FontSize" Value="18"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Margin" Value="0,12,0,6"/>
+        <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+    </Style>
+
+    <Style Selector="md|MarkdownScrollViewer TextBlock.Heading4">
+        <Setter Property="FontSize" Value="16"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Margin" Value="0,10,0,5"/>
+    </Style>
+
+    <!-- 代码块样式 -->
+    <Style Selector="md|MarkdownScrollViewer Border.CodeBlock">
+        <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseLowBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseLowBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="6"/>
+        <Setter Property="Padding" Value="12"/>
+        <Setter Property="Margin" Value="0,8,0,8"/>
+    </Style>
+
+    <Style Selector="md|MarkdownScrollViewer TextBlock.CodeBlock">
+        <Setter Property="FontFamily" Value="Consolas, Courier New, monospace"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+    </Style>
+
+    <!-- 行内代码样式 -->
+    <Style Selector="md|MarkdownScrollViewer TextBlock.InlineCode">
+        <Setter Property="FontFamily" Value="Consolas, Courier New, monospace"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseLowBrush}"/>
+        <Setter Property="Padding" Value="3,2"/>
+        <Setter Property="Foreground" Value="#D73A49"/>
+    </Style>
+
+    <!-- 引用块样式 -->
+    <Style Selector="md|MarkdownScrollViewer Border.Quote">
+        <Setter Property="BorderBrush" Value="#0078D4"/>
+        <Setter Property="BorderThickness" Value="4,0,0,0"/>
+        <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseLowBrush}"/>
+        <Setter Property="Padding" Value="12,8"/>
+        <Setter Property="Margin" Value="0,8,0,8"/>
+    </Style>
+
+    <Style Selector="md|MarkdownScrollViewer TextBlock.Quote">
+        <Setter Property="FontStyle" Value="Italic"/>
+        <Setter Property="Opacity" Value="0.9"/>
+    </Style>
+
+    <!-- 列表样式 -->
+    <Style Selector="md|MarkdownScrollViewer StackPanel.List">
+        <Setter Property="Margin" Value="0,4,0,4"/>
+    </Style>
+
+    <Style Selector="md|MarkdownScrollViewer TextBlock.ListItem">
+        <Setter Property="Margin" Value="0,2,0,2"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+    </Style>
+
+    <!-- 链接样式 -->
+    <Style Selector="md|MarkdownScrollViewer TextBlock.Hyperlink">
+        <Setter Property="Foreground" Value="#0078D4"/>
+        <Setter Property="TextDecorations" Value="Underline"/>
+        <Setter Property="Cursor" Value="Hand"/>
+    </Style>
+
+    <Style Selector="md|MarkdownScrollViewer TextBlock.Hyperlink:pointerover">
+        <Setter Property="Foreground" Value="#106EBE"/>
+    </Style>
+
+    <!-- 水平分隔线样式 -->
+    <Style Selector="md|MarkdownScrollViewer Border.ThematicBreak">
+        <Setter Property="Height" Value="1"/>
+        <Setter Property="Background" Value="{DynamicResource SystemControlForegroundBaseLowBrush}"/>
+        <Setter Property="Margin" Value="0,16,0,16"/>
+    </Style>
+
+    <!-- 表格样式 -->
+    <Style Selector="md|MarkdownScrollViewer Border.Table">
+        <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseLowBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="4"/>
+        <Setter Property="Margin" Value="0,8,0,8"/>
+    </Style>
+
+    <Style Selector="md|MarkdownScrollViewer Border.TableCell">
+        <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseLowBrush}"/>
+        <Setter Property="BorderThickness" Value="0,0,1,1"/>
+        <Setter Property="Padding" Value="8,4"/>
+    </Style>
+
+    <Style Selector="md|MarkdownScrollViewer Border.TableHeaderCell">
+        <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseLowBrush}"/>
+    </Style>
+    
+    <Style Selector="md|MarkdownScrollViewer Border.TableHeaderCell TextBlock">
+        <Setter Property="FontWeight" Value="Bold"/>
+    </Style>
+
+    <!-- 段落样式 -->
+    <Style Selector="md|MarkdownScrollViewer TextBlock.Paragraph">
+        <Setter Property="TextWrapping" Value="Wrap"/>
+        <Setter Property="Margin" Value="0,4,0,4"/>
+        <Setter Property="LineHeight" Value="24"/>
+    </Style>
+
+    <!-- 强调样式 -->
+    <Style Selector="md|MarkdownScrollViewer TextBlock.Emphasis">
+        <Setter Property="FontStyle" Value="Italic"/>
+    </Style>
+
+    <Style Selector="md|MarkdownScrollViewer TextBlock.Strong">
+        <Setter Property="FontWeight" Value="Bold"/>
+    </Style>
+
+    <!-- 删除线样式 -->
+    <Style Selector="md|MarkdownScrollViewer TextBlock.Strikethrough">
+        <Setter Property="TextDecorations" Value="Strikethrough"/>
+        <Setter Property="Opacity" Value="0.7"/>
+    </Style>
+</Styles>
+

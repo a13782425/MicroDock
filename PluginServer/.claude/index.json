@@ -1,0 +1,271 @@
+{
+  "scan_timestamp": "2025-11-18T20:35:38+08:00",
+  "project_name": "PluginServer",
+  "project_summary": "PluginServer - MicroDock插件管理服务器，基于FastAPI+Vue.js的现代化Web应用",
+  "scan_type": "initialization",
+  "total_modules": 3,
+  "modules": [
+    {
+      "name": "backend",
+      "path": "backend/",
+      "type": "service",
+      "description": "FastAPI 后端服务，提供插件管理 API",
+      "entry_point": "main.py",
+      "tech_stack": ["Python", "FastAPI", "SQLAlchemy", "SQLite"],
+      "coverage": 90,
+      "status": "scanned",
+      "key_files": [
+        "main.py",
+        "start_local.py",
+        "models/plugin.py",
+        "models/backup.py",
+        "api/plugins.py",
+        "api/versions.py",
+        "api/backups.py",
+        "services/plugin_service.py",
+        "services/version_service.py",
+        "services/backup_service.py",
+        "services/security_service.py",
+        "utils/database.py",
+        "utils/helpers.py",
+        "utils/plugin_parser.py"
+      ],
+      "missing_files": [],
+      "test_files": [],
+      "config_files": [
+        "requirements.txt"
+      ]
+    },
+    {
+      "name": "frontend",
+      "path": "frontend/",
+      "type": "webapp",
+      "description": "Vue3 前端应用，提供 Web 界面",
+      "entry_point": "src/main.js",
+      "tech_stack": ["Vue.js", "Vite", "TailwindCSS", "Pinia"],
+      "coverage": 85,
+      "status": "scanned",
+      "key_files": [
+        "src/main.js",
+        "src/App.vue",
+        "src/router/index.js",
+        "src/stores/plugins.js",
+        "src/views/Dashboard.vue",
+        "src/components/PluginCard.vue",
+        "src/components/Modal.vue",
+        "src/components/Loading.vue",
+        "src/components/Notifications.vue",
+        "package.json",
+        "vite.config.js",
+        "tailwind.config.js"
+      ],
+      "missing_files": [
+        "src/views/Plugins.vue",
+        "src/views/PluginDetail.vue",
+        "src/views/Versions.vue",
+        "src/views/Backups.vue",
+        "src/views/Settings.vue",
+        "src/views/NotFound.vue",
+        "src/services/",
+        "src/components/AppLayout.vue",
+        "src/components/Header.vue",
+        "src/components/Sidebar.vue",
+        "src/stores/notifications.js"
+      ],
+      "test_files": [],
+      "config_files": [
+        "package.json",
+        "vite.config.js",
+        "tailwind.config.js",
+        "postcss.config.js"
+      ]
+    },
+    {
+      "name": "deployment",
+      "path": "./",
+      "type": "infrastructure",
+      "description": "Docker 部署配置和脚本",
+      "entry_point": "docker-compose.yml",
+      "tech_stack": ["Docker", "Shell", "YAML"],
+      "coverage": 95,
+      "status": "scanned",
+      "key_files": [
+        "docker-compose.yml",
+        "Dockerfile.backend",
+        "Dockerfile.frontend",
+        "deploy.sh",
+        "README.md",
+        "DEVELOPMENT_GUIDELINES.md"
+      ],
+      "missing_files": [
+        ".env.example",
+        ".gitignore",
+        "nginx.conf"
+      ],
+      "test_files": [],
+      "config_files": [
+        "docker-compose.yml",
+        "Dockerfile.backend",
+        "Dockerfile.frontend"
+      ]
+    }
+  ],
+  "overall_coverage": 87,
+  "file_statistics": {
+    "total_files_scanned": 45,
+    "readable_files": 38,
+    "ignored_files": 7,
+    "binary_files": 0,
+    "large_files": 0,
+    "config_files": 8,
+    "test_files": 0,
+    "documentation_files": 4
+  },
+  "ignored_patterns": [
+    "node_modules/**/*",
+    "backend/venv/**/*",
+    "__pycache__/**/*",
+    "*.pyc",
+    ".git/**/*",
+    "dist/**/*",
+    "*.log",
+    "*.tmp"
+  ],
+  "scan_gaps": [
+    {
+      "module": "frontend",
+      "missing_views": [
+        "Plugins.vue",
+        "PluginDetail.vue",
+        "Versions.vue",
+        "Backups.vue",
+        "Settings.vue",
+        "NotFound.vue"
+      ],
+      "missing_components": [
+        "AppLayout.vue",
+        "Header.vue",
+        "Sidebar.vue"
+      ],
+      "missing_services": [
+        "API service modules",
+        "HTTP client configuration"
+      ],
+      "missing_stores": [
+        "notifications.js"
+      ]
+    },
+    {
+      "module": "backend",
+      "missing_apis": [
+        "plugins.py",
+        "backups.py"
+      ],
+      "missing_models": [
+        "backup.py"
+      ],
+      "missing_services": [
+        "plugin_service.py",
+        "security_service.py"
+      ]
+    },
+    {
+      "module": "testing",
+      "test_coverage": "No test files found",
+      "recommended_tests": [
+        "Unit tests for backend services",
+        "Integration tests for API endpoints",
+        "Component tests for frontend",
+        "E2E tests for user workflows"
+      ]
+    }
+  ],
+  "next_steps": [
+    {
+      "priority": "high",
+      "action": "Complete missing frontend views",
+      "description": "Implement the missing Vue components for plugin management, version control, and backup management",
+      "files": [
+        "frontend/src/views/Plugins.vue",
+        "frontend/src/views/Versions.vue",
+        "frontend/src/views/Backups.vue"
+      ]
+    },
+    {
+      "priority": "high",
+      "action": "Add API service layer",
+      "description": "Create frontend API service modules to handle HTTP requests",
+      "files": [
+        "frontend/src/services/api.js",
+        "frontend/src/services/pluginService.js",
+        "frontend/src/services/versionService.js",
+        "frontend/src/services/backupService.js"
+      ]
+    },
+    {
+      "priority": "medium",
+      "action": "Implement missing backend APIs",
+      "description": "Complete the missing API endpoint implementations",
+      "files": [
+        "backend/api/plugins.py",
+        "backend/api/backups.py"
+      ]
+    },
+    {
+      "priority": "medium",
+      "action": "Add test infrastructure",
+      "description": "Set up testing framework and write initial tests",
+      "files": [
+        "backend/tests/",
+        "frontend/tests/",
+        "pytest.ini",
+        "jest.config.js"
+      ]
+    },
+    {
+      "priority": "low",
+      "action": "Add deployment configuration",
+      "description": "Complete deployment environment configuration",
+      "files": [
+        ".env.example",
+        "frontend/nginx.conf",
+        ".gitignore"
+      ]
+    }
+  ],
+  "documentation_status": {
+    "root_claude_md": "created",
+    "module_claude_md": [
+      "backend/CLAUDE.md - created",
+      "frontend/CLAUDE.md - created"
+    ],
+    "navigation_breadcrumbs": [
+      "backend/CLAUDE.md - added",
+      "frontend/CLAUDE.md - added"
+    ],
+    "mermaid_diagrams": [
+      "Root module structure diagram - created"
+    ],
+    "coverage_report": "generated"
+  },
+  "risk_assessment": {
+    "security": [
+      "File upload validation needed",
+      "Input sanitization required",
+      "Access control implementation needed"
+    ],
+    "performance": [
+      "Large file handling optimization needed",
+      "Database query optimization for large datasets",
+      "Frontend bundle size optimization"
+    ],
+    "reliability": [
+      "Error handling enhancement needed",
+      "Logging system implementation required",
+      "Health monitoring setup"
+    ]
+  },
+  "completion_time": "2025-11-18T20:35:38+08:00",
+  "scan_duration_minutes": 15,
+  "truncated": false
+}
