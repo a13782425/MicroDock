@@ -1,6 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Input;
-using MicroDock.ViewModels;
+using MicroDock.ViewModel;
 using System.Collections.Generic;
 
 namespace MicroDock.Views;

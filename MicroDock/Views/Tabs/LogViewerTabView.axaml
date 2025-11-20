@@ -2,8 +2,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:vm="using:MicroDock.ViewModels"
-             xmlns:models="using:MicroDock.Models"
+             xmlns:vm="using:MicroDock.ViewModel"
+             xmlns:models="using:MicroDock.Model"
              mc:Ignorable="d"
              d:DesignWidth="480"
              d:DesignHeight="360"
@@ -17,7 +17,7 @@
         <!-- 筛选区域 -->
         <StackPanel Grid.Row="0" Spacing="8" Margin="0,0,0,12">
             <!-- 筛选控件行 -->
-            <Grid ColumnDefinitions="Auto,96,Auto,*,Auto,Auto">
+            <Grid ColumnDefinitions="Auto,96,Auto,120,Auto,*,Auto,Auto">
                 <!-- 日志级别筛选 -->
                 <TextBlock Grid.Column="0" 
                            Text="级别:" 
@@ -28,22 +28,32 @@
                           SelectedItem="{Binding SelectedLevel, Mode=TwoWay}"
                           HorizontalAlignment="Stretch"/>
 
-                <!-- 关键字搜索 -->
+                <!-- Tag 筛选 -->
                 <TextBlock Grid.Column="2" 
+                           Text="Tag:" 
+                           VerticalAlignment="Center"
+                           Margin="16,0,8,0"/>
+                <ComboBox Grid.Column="3" 
+                          ItemsSource="{Binding AvailableTags}"
+                          SelectedItem="{Binding SelectedTag, Mode=TwoWay}"
+                          HorizontalAlignment="Stretch"/>
+
+                <!-- 关键字搜索 -->
+                <TextBlock Grid.Column="4" 
                            Text="关键字:" 
                            VerticalAlignment="Center"
                            Margin="16,0,8,0"/>
-                <TextBox Grid.Column="3" 
+                <TextBox Grid.Column="5" 
                          Text="{Binding SearchKeyword, Mode=TwoWay}"
                          Watermark="输入关键字搜索..."
                          HorizontalAlignment="Stretch"/>
 
                 <!-- 操作按钮 -->
-                <Button Grid.Column="4" 
+                <Button Grid.Column="6" 
                         Content="文件夹"
                         Command="{Binding OpenLogFolderCommand}"
                         Margin="8,0,0,0"/>
-                <Button Grid.Column="5" 
+                <Button Grid.Column="7" 
                         Content="清空"
                         Command="{Binding ClearLogsCommand}"
                         Margin="8,0,0,0"/>
@@ -67,7 +77,7 @@
                                 <Border Padding="8,4" 
                                         BorderThickness="0,0,0,1"
                                         BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}">
-                                    <Grid ColumnDefinitions="Auto,Auto,*">
+                                    <Grid ColumnDefinitions="Auto,Auto,Auto,*">
                                         <!-- 时间戳 -->
                                         <SelectableTextBlock Grid.Column="0" 
                                                              Text="{Binding FormattedTimestamp}"
@@ -88,8 +98,24 @@
                                                              MinWidth="80"
                                                              Margin="0,0,12,0"/>
 
+                                        <!-- Tag -->
+                                        <Border Grid.Column="2"
+                                                Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                                                BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}"
+                                                BorderThickness="1"
+                                                CornerRadius="4"
+                                                Padding="6,2"
+                                                Margin="0,0,12,0"
+                                                VerticalAlignment="Top"
+                                                IsVisible="{Binding Tag, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                            <TextBlock Text="{Binding Tag}"
+                                                       FontFamily="Consolas"
+                                                       FontSize="11"
+                                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                        </Border>
+
                                         <!-- 日志消息 -->
-                                        <SelectableTextBlock Grid.Column="2" 
+                                        <SelectableTextBlock Grid.Column="3" 
                                                              Text="{Binding Message}"
                                                              FontFamily="Consolas"
                                                              FontSize="12"

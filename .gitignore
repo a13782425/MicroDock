@@ -56,3 +56,5 @@ nunit-*.xml
 # Custom
 .vshistory
 .vs
+.idea
+.claude

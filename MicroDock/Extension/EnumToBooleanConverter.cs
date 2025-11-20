@@ -1,7 +1,7 @@
 using System;
 using System.Globalization;
 using Avalonia.Data.Converters;
-using MicroDock.Models;
+using MicroDock.Model;
 
 namespace MicroDock.Extension
 {

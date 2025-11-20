@@ -10,22 +10,41 @@ public interface IPluginContext
     /// <summary>
     /// 输出调试日志
     /// </summary>
-    void LogDebug(string message);
+    /// <param name="message">日志内容</param>
+    /// <param name="tag">日志标签（可选，默认使用插件名称）</param>
+    void LogDebug(string message, string? tag = null);
     
     /// <summary>
     /// 输出信息日志
     /// </summary>
-    void LogInfo(string message);
+    /// <param name="message">日志内容</param>
+    /// <param name="tag">日志标签（可选，默认使用插件名称）</param>
+    void LogInfo(string message, string? tag = null);
     
     /// <summary>
     /// 输出警告日志
     /// </summary>
-    void LogWarning(string message);
-    
+    /// <param name="message">日志内容</param>
+    /// <param name="tag">日志标签（可选，默认使用插件名称）</param>
+    void LogWarning(string message, string? tag = null);
     /// <summary>
     /// 输出错误日志
     /// </summary>
+    /// <param name="message">日志内容</param>
+    void LogError(string message);
+    /// <summary>
+    /// 输出错误日志
+    /// </summary>
+    /// <param name="message">日志内容</param>
+    /// <param name="exception">异常信息（可选）</param>
     void LogError(string message, Exception? exception = null);
+    /// <summary>
+    /// 输出错误日志
+    /// </summary>
+    /// <param name="message">日志内容</param>
+    /// <param name="tag">日志标签（可选，默认使用插件名称）</param>
+    /// <param name="exception">异常信息（可选）</param>
+    void LogError(string message, string? tag = null, Exception? exception = null);
     
     #endregion
     

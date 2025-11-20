@@ -3,7 +3,7 @@ using System.Globalization;
 using Avalonia.Data.Converters;
 using Avalonia.Media;
 using MicroDock.Database;
-using MicroDock.Services;
+using MicroDock.Service;
 
 namespace MicroDock.Extension;
 

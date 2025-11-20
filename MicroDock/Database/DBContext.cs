@@ -5,7 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using MicroDock.Services;
+using MicroDock.Service;
 
 namespace MicroDock.Database;
 
@@ -17,8 +17,6 @@ internal static class DBContext
         string dbPath = Path.Combine(AppConfig.CONFIG_FOLDER, "microdock");
         _database = new SQLiteConnection(dbPath);
         // 自动创建表，如果表结构有变化会自动更新
-        //_database.CreateTable<ProjectDB>();
-
         // 使用 MigrateTable 来支持添加新列
         try
         {
@@ -29,28 +27,20 @@ internal static class DBContext
             _database.CreateTable<PluginSettingsDB>();
             _database.CreateTable<PluginToolStatisticsDB>();
             _database.CreateTable<PluginInfoDB>();
-
-            // 尝试迁移表结构以支持新增字段
-            TableMapping mapping = _database.GetMapping<SettingDB>();
-            foreach (TableMapping.Column column in mapping.Columns)
-            {
-                // 检查并添加缺失的列
-                try
-                {
-                    _database.Execute($"ALTER TABLE SettingDB ADD COLUMN {column.Name} {column.ColumnType}");
-                }
-                catch
-                {
-                    // 列已存在，忽略错误
-                }
-            }
+            _database.CreateTable<NavigationTabDB>();
         }
         catch
         {
             // 表创建失败时的处理
         }
 
-        //_database.CreateTable<UnityVersionDB>();
+    }
+
+    public static void RunInTransaction(Action action)
+    {
+        if (action == null)
+            return;
+        _database.RunInTransaction(action);
     }
 
     // 获取全局唯一设置
@@ -832,6 +822,49 @@ internal static class DBContext
         return _database.Table<PluginInfoDB>()
             .Where(p => p.PendingUpdate == true)
             .ToList();
+    }
+
+    #endregion
+
+    #region 导航页签配置
+
+    /// <summary>
+    /// 获取或创建导航页签配置
+    /// </summary>
+    public static NavigationTabDB GetNavigationTab(string uniqueId)
+    {
+        if (NavigationTabDB.Cache.ContainsKey(uniqueId))
+            return NavigationTabDB.Cache[uniqueId];
+
+        var tab = _database.Table<NavigationTabDB>().FirstOrDefault(t => t.Id == uniqueId);
+        if (tab == null)
+        {
+            tab = new NavigationTabDB
+            {
+                Id = uniqueId,
+                OrderIndex = 0,
+                IsVisible = true
+            };
+            _database.Insert(tab);
+        }
+        NavigationTabDB.Cache.Add(uniqueId, tab);
+        return tab;
+    }
+
+    /// <summary>
+    /// 获取所有导航页签配置
+    /// </summary>
+    public static List<NavigationTabDB> GetAllNavigationTabs()
+    {
+        return _database.Table<NavigationTabDB>().ToList();
+    }
+
+    /// <summary>
+    /// 更新导航页签配置
+    /// </summary>
+    public static void UpdateNavigationTab(NavigationTabDB tab)
+    {
+        _database.Update(tab);
     }
 
     #endregion

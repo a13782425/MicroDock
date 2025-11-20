@@ -3,7 +3,8 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using MicroDock.Database;
-using MicroDock.ViewModels;
+using MicroDock.Service;
+using MicroDock.ViewModel;
 using MicroDock.Views;
 
 namespace MicroDock
@@ -20,14 +21,14 @@ namespace MicroDock
             if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             {
                 // 1. 初始化所有服务（应用程序启动时）
-                Infrastructure.ServiceLocator.InitializeServices();
+                ServiceLocator.InitializeServices();
                 // 设置 LogService 的 IsInit 标志
-                var logService = Infrastructure.ServiceLocator.GetService<Services.LogService>();
+                var logService = ServiceLocator.GetService<Service.LogService>();
                 if (logService != null)
                 {
                     logService.IsInit = true;
                 }
-                Infrastructure.ServiceLocator.GetService<Services.PluginService>()?.LoadPlugins();
+                ServiceLocator.GetService<Service.PluginService>()?.LoadPlugins();
                 // 2. 应用主题（在创建窗口之前）
                 ApplyThemeOnStartup();
 
@@ -38,9 +39,12 @@ namespace MicroDock
                 };
 
                 // 4. 初始化需要窗口的服务
-                Infrastructure.ServiceLocator.Get<Services.AutoHideService>().Initialize(mainWindow);
-                Infrastructure.ServiceLocator.Get<Services.TopMostService>().Initialize(mainWindow);
-                Infrastructure.ServiceLocator.Get<Services.TrayService>().Initialize();
+                ServiceLocator.Get<Service.AutoHideService>().Initialize(mainWindow);
+                ServiceLocator.Get<Service.TopMostService>().Initialize(mainWindow);
+                ServiceLocator.Get<Service.TrayService>().Initialize();
+                
+                // 初始化平台服务 (Windows Hook)
+                ServiceLocator.GetService<Service.Platform.IPlatformService>()?.Initialize(mainWindow);
 
                 desktop.MainWindow = mainWindow;
 
@@ -82,8 +86,10 @@ namespace MicroDock
 #if !DEBUG
                     Services.SingleInstanceService.StopPipeServer();
 #endif
+                    ServiceLocator.GetService<DelayStorageService>()?.Dispose();
+                    ServiceLocator.GetService<PluginService>()?.Dispose();
                     DBContext.Close();
-                    Infrastructure.ServiceLocator.Clear();
+                    ServiceLocator.Clear();
                 };
             }
 
@@ -98,7 +104,7 @@ namespace MicroDock
             try
             {
                 var settings = DBContext.GetSetting();
-                var themeService = Infrastructure.ServiceLocator.Get<Services.ThemeService>();
+                var themeService = ServiceLocator.Get<Service.ThemeService>();
 
                 // 如果数据库中有保存的主题名称，应用该主题
                 if (!string.IsNullOrEmpty(settings.SelectedTheme))

@@ -1,15 +1,14 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Notifications;
+using Avalonia.Data;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using DesktopNotifications;
 using FluentAvalonia.UI.Controls;
 using MicroDock.Database;
-using MicroDock.Infrastructure;
-using MicroDock.Models;
-using MicroDock.Services;
-using MicroDock.ViewModels;
+using MicroDock.Service;
+using MicroDock.ViewModel;
 using Serilog;
 using System;
 using System.Collections.Generic;
@@ -132,9 +131,11 @@ namespace MicroDock.Views
             var menuItem = new NavigationViewItem
             {
                 Content = navItem.Title,
+                DataContext = navItem,
                 Tag = navItem
             };
-
+            menuItem.IsVisible = navItem.IsVisible;
+            menuItem.Bind(Visual.IsVisibleProperty, new Binding(nameof(NavigationItemModel.IsVisible)));
             // 设置图标
             if (!string.IsNullOrEmpty(navItem.Icon))
             {
@@ -209,6 +210,35 @@ namespace MicroDock.Views
                     }
                 }
             }
+            else if (e.Action == NotifyCollectionChangedAction.Move)
+            {
+                // 移动项
+                // 由于我们将 LogViewer 也改为了普通 Application 类型，
+                // NavigationItems 现在应该与 navView.MenuItems 一一对应（忽略 SettingsNavItem，它不包含在 NavigationItems 中）
+                
+                // 使用 AvaloniaList 的 Move 方法
+                // 注意：e.OldStartingIndex 和 e.NewStartingIndex 对应 NavigationItems 的索引
+                
+                if (e.OldStartingIndex >= 0 && e.OldStartingIndex < navView.MenuItems.Count &&
+                    e.NewStartingIndex >= 0 && e.NewStartingIndex < navView.MenuItems.Count)
+                {
+                    // 如果 MenuItems 是 AvaloniaList，可以直接 Move
+                    // FluentAvalonia 的 NavigationView.MenuItems 实际上是 IList，底层通常是 AvaloniaList<object>
+                    // 我们尝试转换或者手动移除插入
+                    
+                    if (navView.MenuItems is Avalonia.Collections.AvaloniaList<object> avaloniaList)
+                    {
+                        avaloniaList.Move(e.OldStartingIndex, e.NewStartingIndex);
+                    }
+                    else
+                    {
+                        // 通用 IList 处理
+                        var item = navView.MenuItems[e.OldStartingIndex];
+                        navView.MenuItems.RemoveAt(e.OldStartingIndex);
+                        navView.MenuItems.Insert(e.NewStartingIndex, item);
+                    }
+                }
+            }
             else if (e.Action == NotifyCollectionChangedAction.Reset)
             {
                 // 重置，清空并重新加载
@@ -244,11 +274,11 @@ namespace MicroDock.Views
         /// </summary>
         private void SubscribeToMessages()
         {
-            EventAggregator.Instance.Subscribe<WindowShowRequestMessage>(OnWindowShowRequest);
-            EventAggregator.Instance.Subscribe<WindowHideRequestMessage>(OnWindowHideRequest);
-            EventAggregator.Instance.Subscribe<AutoHideChangeRequestMessage>(OnAutoHideChangeRequest);
-            EventAggregator.Instance.Subscribe<AutoStartupChangeRequestMessage>(OnAutoStartupChangeRequest);
-            EventAggregator.Instance.Subscribe<WindowTopmostChangeRequestMessage>(OnTopmostChangeRequest);
+            ServiceLocator.Get<EventService>().Subscribe<WindowShowRequestMessage>(OnWindowShowRequest);
+            ServiceLocator.Get<EventService>().Subscribe<WindowHideRequestMessage>(OnWindowHideRequest);
+            ServiceLocator.Get<EventService>().Subscribe<AutoHideChangeRequestMessage>(OnAutoHideChangeRequest);
+            ServiceLocator.Get<EventService>().Subscribe<AutoStartupChangeRequestMessage>(OnAutoStartupChangeRequest);
+            ServiceLocator.Get<EventService>().Subscribe<WindowTopmostChangeRequestMessage>(OnTopmostChangeRequest);
         }
 
         /// <summary>
@@ -289,7 +319,7 @@ namespace MicroDock.Views
                 autoHideService.Disable();
             }
 
-            EventAggregator.Instance.Publish(new ServiceStateChangedMessage("AutoHide", message.Enable));
+            ServiceLocator.Get<EventService>().Publish(new ServiceStateChangedMessage("AutoHide", message.Enable));
         }
 
         /// <summary>
@@ -307,7 +337,7 @@ namespace MicroDock.Views
                 autoStartupService.Disable();
             }
 
-            EventAggregator.Instance.Publish(new ServiceStateChangedMessage("AutoStartup", message.Enable));
+            ServiceLocator.Get<EventService>().Publish(new ServiceStateChangedMessage("AutoStartup", message.Enable));
         }
 
         /// <summary>
@@ -327,7 +357,7 @@ namespace MicroDock.Views
                 topMostService.Disable();
             }
 
-            EventAggregator.Instance.Publish(new ServiceStateChangedMessage("AlwaysOnTop", this.Topmost));
+            ServiceLocator.Get<EventService>().Publish(new ServiceStateChangedMessage("AlwaysOnTop", this.Topmost));
         }
 
         /// <summary>

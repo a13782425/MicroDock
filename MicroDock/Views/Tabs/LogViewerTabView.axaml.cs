@@ -1,6 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Threading;
-using MicroDock.ViewModels;
+using MicroDock.ViewModel;
 using System;
 
 namespace MicroDock.Views;

@@ -5,8 +5,8 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.VisualTree;
 using MicroDock.Database;
-using MicroDock.Services;
-using MicroDock.ViewModels;
+using MicroDock.Service;
+using MicroDock.ViewModel;
 
 namespace MicroDock.Views.Controls;
 

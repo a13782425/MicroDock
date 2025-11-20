@@ -2,8 +2,8 @@
 			 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
 			 xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
 			 xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-			 xmlns:vm="using:MicroDock.ViewModels"
-			 xmlns:models="using:MicroDock.Models"
+			 xmlns:vm="using:MicroDock.ViewModel"
+			 xmlns:models="using:MicroDock.Model"
 			 xmlns:plugin="using:MicroDock.Plugin"
 			 xmlns:db="using:MicroDock.Database"
 			 xmlns:fa="clr-namespace:FluentAvalonia.UI.Controls;assembly=FluentAvalonia"
@@ -12,7 +12,8 @@
 			 d:DesignWidth="500"
 			 d:DesignHeight="350"
 			 x:Class="MicroDock.Views.SettingsTabView"
-			 x:DataType="vm:SettingsTabViewModel">
+			 x:DataType="vm:SettingsTabViewModel"
+             x:Name="Root">
 	<Design.DataContext>
 		<vm:SettingsTabViewModel />
 	</Design.DataContext>
@@ -99,20 +100,51 @@
 			<!-- 页签管理分组 -->
 			<fa:SettingsExpander Header="页签管理"
 								 IconSource="Library"
-								 IsVisible="False">
-				<StackPanel Margin="10,10,0,10">
-					<TextBlock Text="自定义页签"
-							   FontSize="13"
-							   FontWeight="SemiBold"
-							   Margin="0,0,0,8"
-							   Foreground="#666"/>
-					<Button Content="+ 添加自定义页签"
-							Click="AddCustomTab_OnClick"
-							HorizontalAlignment="Left"/>
-					<TextBlock Text="您可以添加自定义页签来扩展功能"
-							   Foreground="Gray"
-							   FontSize="11"
-							   Margin="0,8,0,0"/>
+								 IsExpanded="True">
+				<StackPanel Margin="10">
+                    <TextBlock Text="导航栏顺序与快捷键" FontWeight="SemiBold" Margin="0,0,0,8"/>
+					<ItemsControl ItemsSource="{Binding NavigationTabs}">
+						<ItemsControl.ItemsPanel>
+							<ItemsPanelTemplate>
+								<StackPanel />
+							</ItemsPanelTemplate>
+						</ItemsControl.ItemsPanel>
+						<ItemsControl.ItemTemplate>
+							<DataTemplate DataType="vm:NavigationTabSettingItem">
+								<Border Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+										BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+										BorderThickness="1"
+										CornerRadius="4"
+										Padding="8"
+										Margin="0,4"
+										DragDrop.AllowDrop="True"
+										PointerPressed="NavigationItem_PointerPressed"
+										DragDrop.DragOver="NavigationItem_DragOver"
+										DragDrop.Drop="NavigationItem_Drop">
+									<Grid Background="Transparent">
+										<Grid.ColumnDefinitions>
+											<ColumnDefinition Width="Auto"/> <!-- IsVisible -->
+											<ColumnDefinition Width="*"/>    <!-- Name -->
+											<ColumnDefinition Width="Auto"/> <!-- Drag Handle -->
+										</Grid.ColumnDefinitions>
+										
+										<CheckBox IsChecked="{Binding IsVisible}" Grid.Column="0" Margin="0,0,12,0" ToolTip.Tip="是否显示"/>
+										
+										<StackPanel Grid.Column="1" VerticalAlignment="Center">
+											 <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
+											 <TextBlock Text="{Binding UniqueId}" FontSize="10" Foreground="Gray" TextTrimming="CharacterEllipsis"/>
+										</StackPanel>
+										
+										<TextBlock Grid.Column="3" Text="≡" FontSize="16" VerticalAlignment="Center" Margin="8,0" 
+												   Cursor="SizeAll" ToolTip.Tip="拖拽排序"/>
+									</Grid>
+								</Border>
+							</DataTemplate>
+						</ItemsControl.ItemTemplate>
+					</ItemsControl>
+                    
+                    <TextBlock Text="提示: 设置全局快捷键后，按下组合键可快速打开对应标签页。" 
+                               FontSize="11" Foreground="Gray" Margin="0,8,0,0" TextWrapping="Wrap"/>
 				</StackPanel>
 			</fa:SettingsExpander>
 

@@ -16,12 +16,12 @@ namespace MicroDock
         /// 系统托盘通知管理器
         /// </summary>
         public static DesktopNotifications.INotificationManager NotificationManager = null!;
-        
+
         /// <summary>
         /// 应用内窗口通知管理器（Toast通知）
         /// </summary>
         public static WindowNotificationManager? WindowNotificationManager { get; set; }
-        
+
         // Initialization code. Don't use any Avalonia, third-party APIs or any
         // SynchronizationContext-reliant code before AppMain is called: things aren't initialized
         // yet and stuff might break.
@@ -30,7 +30,7 @@ namespace MicroDock
         {
             // 初始化日志系统
             InitializeLogger();
-            
+
             try
             {
                 Log.Information("MicroDock 启动中...");
@@ -48,7 +48,7 @@ namespace MicroDock
                     return; // 退出程序
                 }
 #endif
-                
+
                 BuildAvaloniaApp()
                     .StartWithClassicDesktopLifetime(args);
                 //MicroDock.Infrastructure.ServiceLocator.Get<MicroDock.Services.LogService>().IsInit = true;
@@ -67,7 +67,7 @@ namespace MicroDock
                 Log.CloseAndFlush();
             }
         }
-        
+
         /// <summary>
         /// 初始化Serilog日志系统
         /// </summary>
@@ -75,19 +75,19 @@ namespace MicroDock
         {
             // 日志保存在软件目录下的Log文件夹
             string logDirectory = Path.Combine(AppConfig.ROOT_PATH, "log");
-            
+
             // 确保日志目录存在
             if (!Directory.Exists(logDirectory))
             {
                 Directory.CreateDirectory(logDirectory);
             }
-            
+
             string logFilePath = Path.Combine(logDirectory, "log-.txt");
-            
+
             // 提前创建 LogService 并注册到 ServiceLocator
-            var logService = new MicroDock.Services.LogService();
-            MicroDock.Infrastructure.ServiceLocator.Register(logService);
-            
+            var logService = new Service.LogService();
+            Service.ServiceLocator.Register(logService);
+
             Log.Logger = new LoggerConfiguration()
 #if DEBUG
                 .MinimumLevel.Debug()
@@ -107,10 +107,10 @@ namespace MicroDock
                     rollOnFileSizeLimit: true)
                 .WriteTo.Sink(logService)
                 .CreateLogger();
-            
+
             Log.Information("日志系统初始化完成，日志目录: {LogDirectory}", logDirectory);
         }
-        
+
         // Avalonia configuration, don't remove; also used by visual designer.
         public static AppBuilder BuildAvaloniaApp()
             => AppBuilder.Configure<App>()
