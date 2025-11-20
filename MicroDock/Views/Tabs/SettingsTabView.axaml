@@ -103,29 +103,20 @@
 								 IsExpanded="True">
 				<StackPanel Margin="10">
                     <TextBlock Text="导航栏顺序与快捷键" FontWeight="SemiBold" Margin="0,0,0,8"/>
-					<ItemsControl ItemsSource="{Binding NavigationTabs}">
-						<ItemsControl.ItemsPanel>
-							<ItemsPanelTemplate>
-								<StackPanel />
-							</ItemsPanelTemplate>
-						</ItemsControl.ItemsPanel>
-						<ItemsControl.ItemTemplate>
+					<controls:ReorderableListBox ItemsSource="{Binding NavigationTabs}"
+												 OrderChangedCommand="{Binding SaveTabOrderCommand}">
+						<controls:ReorderableListBox.ItemTemplate>
 							<DataTemplate DataType="vm:NavigationTabSettingItem">
 								<Border Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
 										BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
 										BorderThickness="1"
 										CornerRadius="4"
 										Padding="8"
-										Margin="0,4"
-										DragDrop.AllowDrop="True"
-										PointerPressed="NavigationItem_PointerPressed"
-										DragDrop.DragOver="NavigationItem_DragOver"
-										DragDrop.Drop="NavigationItem_Drop">
+										Margin="0,4">
 									<Grid Background="Transparent">
 										<Grid.ColumnDefinitions>
 											<ColumnDefinition Width="Auto"/> <!-- IsVisible -->
 											<ColumnDefinition Width="*"/>    <!-- Name -->
-											<ColumnDefinition Width="Auto"/> <!-- Drag Handle -->
 										</Grid.ColumnDefinitions>
 										
 										<CheckBox IsChecked="{Binding IsVisible}" Grid.Column="0" Margin="0,0,12,0" ToolTip.Tip="是否显示"/>
@@ -134,14 +125,11 @@
 											 <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
 											 <TextBlock Text="{Binding UniqueId}" FontSize="10" Foreground="Gray" TextTrimming="CharacterEllipsis"/>
 										</StackPanel>
-										
-										<TextBlock Grid.Column="3" Text="≡" FontSize="16" VerticalAlignment="Center" Margin="8,0" 
-												   Cursor="SizeAll" ToolTip.Tip="拖拽排序"/>
 									</Grid>
 								</Border>
 							</DataTemplate>
-						</ItemsControl.ItemTemplate>
-					</ItemsControl>
+						</controls:ReorderableListBox.ItemTemplate>
+					</controls:ReorderableListBox>
                     
                     <TextBlock Text="提示: 设置全局快捷键后，按下组合键可快速打开对应标签页。" 
                                FontSize="11" Foreground="Gray" Margin="0,8,0,0" TextWrapping="Wrap"/>

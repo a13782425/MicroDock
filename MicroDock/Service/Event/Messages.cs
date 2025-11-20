@@ -99,17 +99,17 @@ public class NavigateToTabMessage : IEventMessage
         UniqueId = uniqueId;
     }
 }
-
 /// <summary>
 /// 日志查看器可见性变更消息
 /// </summary>
-public class LogViewerVisibilityChangedMessage : IEventMessage
+public class NavigationTabVisibilityChangedMessage : IEventMessage
 {
     public bool IsVisible { get; }
-
-    public LogViewerVisibilityChangedMessage(bool isVisible)
+    public string TabUniqueId { get; }
+    public NavigationTabVisibilityChangedMessage(string tabUniqueId, bool isVisible)
     {
         IsVisible = isVisible;
+        TabUniqueId = tabUniqueId;
     }
 }
 

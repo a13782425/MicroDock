@@ -27,7 +27,7 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
 
         // 订阅事件消息
         ServiceLocator.Get<EventService>().Subscribe<NavigateToTabMessage>(OnNavigateToTab);
-        ServiceLocator.Get<EventService>().Subscribe<LogViewerVisibilityChangedMessage>(OnLogViewerVisibilityChanged);
+        ServiceLocator.Get<EventService>().Subscribe<NavigationTabVisibilityChangedMessage>(OnLogViewerVisibilityChanged);
         ServiceLocator.Get<EventService>().Subscribe<ShowLoadingMessage>(OnShowLoading);
         ServiceLocator.Get<EventService>().Subscribe<HideLoadingMessage>(OnHideLoading);
         ServiceLocator.Get<EventService>().Subscribe<PluginStateChangedMessage>(OnPluginStateChanged);
@@ -122,7 +122,7 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
             NavType = NavigationType.Settings,
             IsVisible = settings.ShowLogViewer
         };
-
+        NavigationItems.Add(logNavItem);
         // 创建设置导航项（单独管理，不加入NavigationItems）
         SettingsNavItem = new NavigationItemModel(null)
         {
@@ -169,42 +169,45 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
     /// <summary>
     /// 处理日志查看器可见性变更消息
     /// </summary>
-    private void OnLogViewerVisibilityChanged(LogViewerVisibilityChangedMessage message)
+    private void OnLogViewerVisibilityChanged(NavigationTabVisibilityChangedMessage message)
     {
-        if (message.IsVisible)
-        {
-            // 添加日志标签页（如果不存在）
-            var existingLog = NavigationItems.FirstOrDefault(n => n.Title == "日志");
-            if (existingLog == null)
-            {
-                var logNavItem = new NavigationItemModel(null)
-                {
-                    Title = "日志",
-                    Icon = "Document",
-                    Content = new LogViewerTabView(),
-                    NavType = NavigationType.Settings,
-                };
-                //SetupNavigationItem(logNavItem, "microdock:LogViewerTabView", 998);
+        var logItem = NavigationItems.FirstOrDefault(n => n.Title == "日志");
+        if (logItem != null)
+            logItem.IsVisible = message.IsVisible;
+        //if (message.IsVisible)
+        //{
+        //    // 添加日志标签页（如果不存在）
+        //    var existingLog = NavigationItems.FirstOrDefault(n => n.Title == "日志");
+        //    if (existingLog == null)
+        //    {
+        //        var logNavItem = new NavigationItemModel(null)
+        //        {
+        //            Title = "日志",
+        //            Icon = "Document",
+        //            Content = new LogViewerTabView(),
+        //            NavType = NavigationType.Settings,
+        //        };
+        //        //SetupNavigationItem(logNavItem, "microdock:LogViewerTabView", 998);
 
-                // Insert based on OrderIndex? Or just add.
-                // For simplicity, add to end (before settings if settings was in list, but settings is separate)
-                NavigationItems.Add(logNavItem);
-            }
-        }
-        else
-        {
-            // 移除日志标签页
-            var logItem = NavigationItems.FirstOrDefault(n => n.Title == "日志");
-            if (logItem != null)
-            {
-                // 如果当前选中的是日志页，先切换到其他页
-                if (SelectedNavItem == logItem)
-                {
-                    SelectedNavItem = NavigationItems.FirstOrDefault();
-                }
-                NavigationItems.Remove(logItem);
-            }
-        }
+        //        // Insert based on OrderIndex? Or just add.
+        //        // For simplicity, add to end (before settings if settings was in list, but settings is separate)
+        //        NavigationItems.Add(logNavItem);
+        //    }
+        //}
+        //else
+        //{
+        //    // 移除日志标签页
+            
+        //    if (logItem != null)
+        //    {
+        //        // 如果当前选中的是日志页，先切换到其他页
+        //        if (SelectedNavItem == logItem)
+        //        {
+        //            SelectedNavItem = NavigationItems.FirstOrDefault();
+        //        }
+        //        NavigationItems.Remove(logItem);
+        //    }
+        //}
     }
 
     /// <summary>

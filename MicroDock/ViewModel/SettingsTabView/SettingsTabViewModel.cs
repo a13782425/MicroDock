@@ -29,8 +29,12 @@ public class SettingsTabViewModel : ViewModelBase
     private bool _showLogViewer;
     private string _selectedTheme = string.Empty;
 
+    // Command to save order after reordering
+    public ReactiveCommand<Unit, Unit> SaveTabOrderCommand { get; }
+
     public SettingsTabViewModel()
     {
+        SaveTabOrderCommand = ReactiveCommand.Create(SaveTabOrder);
         ImportPluginCommand = ReactiveCommand.CreateFromTask(ImportPlugin);
         PluginSettings = new ObservableCollection<PluginSettingItem>();
         AvailableThemes = new ObservableCollection<MicroDock.Model.ThemeModel>();
@@ -145,7 +149,7 @@ public class SettingsTabViewModel : ViewModelBase
             this.RaiseAndSetIfChanged(ref _showLogViewer, value);
             SaveSetting(nameof(ShowLogViewer), value);
             // 通过事件请求改变日志查看器可见性
-            ServiceLocator.Get<EventService>().Publish(new LogViewerVisibilityChangedMessage(value));
+            ServiceLocator.Get<EventService>().Publish(new NavigationTabVisibilityChangedMessage(NAVIGATION_LOG_ID, value));
         }
     }
 
@@ -315,6 +319,29 @@ public class SettingsTabViewModel : ViewModelBase
             }
         }
         NavigationTabs.Sort((a, b) => a.OrderIndex.CompareTo(b.OrderIndex));
+    }
+
+    public void SaveTabOrder()
+    {
+        // Re-assign OrderIndex for all items to ensure consistency
+        for (int i = 0; i < NavigationTabs.Count; i++)
+        {
+            var item = NavigationTabs[i];
+            if (item.OrderIndex != i)
+            {
+                item.OrderIndex = i;
+
+                // Update DB
+                var itemDB = DBContext.GetNavigationTab(item.UniqueId);
+                if (itemDB != null)
+                {
+                    itemDB.OrderIndex = i;
+                    DBContext.UpdateNavigationTab(itemDB);
+                }
+            }
+        }
+
+        ServiceLocator.Get<EventService>().Publish(new NavigationTabsConfigurationChangedMessage());
     }
 
     public void MoveTab(NavigationTabSettingItem source, NavigationTabSettingItem target)

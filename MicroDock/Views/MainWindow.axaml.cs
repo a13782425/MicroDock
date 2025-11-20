@@ -9,11 +9,13 @@ using FluentAvalonia.UI.Controls;
 using MicroDock.Database;
 using MicroDock.Service;
 using MicroDock.ViewModel;
+using ReactiveUI;
 using Serilog;
 using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Linq;
+using System.Reactive.Linq;
 
 namespace MicroDock.Views
 {
@@ -136,6 +138,13 @@ namespace MicroDock.Views
             };
             menuItem.IsVisible = navItem.IsVisible;
             menuItem.Bind(Visual.IsVisibleProperty, new Binding(nameof(NavigationItemModel.IsVisible)));
+            menuItem.PropertyChanged += (s, e) =>
+            {
+                if (e.Property.Name == nameof(NavigationItemModel.IsVisible))
+                {
+                    navView.UpdateLayout();
+                }
+            };
             // 设置图标
             if (!string.IsNullOrEmpty(navItem.Icon))
             {
@@ -215,17 +224,17 @@ namespace MicroDock.Views
                 // 移动项
                 // 由于我们将 LogViewer 也改为了普通 Application 类型，
                 // NavigationItems 现在应该与 navView.MenuItems 一一对应（忽略 SettingsNavItem，它不包含在 NavigationItems 中）
-                
+
                 // 使用 AvaloniaList 的 Move 方法
                 // 注意：e.OldStartingIndex 和 e.NewStartingIndex 对应 NavigationItems 的索引
-                
+
                 if (e.OldStartingIndex >= 0 && e.OldStartingIndex < navView.MenuItems.Count &&
                     e.NewStartingIndex >= 0 && e.NewStartingIndex < navView.MenuItems.Count)
                 {
                     // 如果 MenuItems 是 AvaloniaList，可以直接 Move
                     // FluentAvalonia 的 NavigationView.MenuItems 实际上是 IList，底层通常是 AvaloniaList<object>
                     // 我们尝试转换或者手动移除插入
-                    
+
                     if (navView.MenuItems is Avalonia.Collections.AvaloniaList<object> avaloniaList)
                     {
                         avaloniaList.Move(e.OldStartingIndex, e.NewStartingIndex);
@@ -262,11 +271,6 @@ namespace MicroDock.Views
             {
                 // 更新ViewModel的选中项
                 viewModel.SelectedNavItem = navItem;
-            }
-            else if (e.SelectedItem is NavigationViewItem settingsItem && settingsItem.Tag as string == "设置")
-            {
-                // 选中了设置项
-                viewModel.SelectedNavItem = viewModel.SettingsNavItem;
             }
         }
         /// <summary>
@@ -416,7 +420,7 @@ namespace MicroDock.Views
         private void CloseButton_OnClick(object? sender, RoutedEventArgs e)
         {
             SaveWindowState();
-            this.Hide(); 
+            this.Hide();
             Program.NotificationManager.ShowNotification(new DesktopNotifications.Notification() { Title = "MicroDock 已最小化到托盘", Body = "您可以通过系统托盘图标重新打开主窗口。" });
         }
 
@@ -477,7 +481,7 @@ namespace MicroDock.Views
                     settings.WindowWidth = (int)this.Width;
                     settings.WindowHeight = (int)this.Height;
                 });
-                Log.Debug("窗口状态已保存: X={X}, Y={Y}, Width={Width}, Height={Height}", 
+                Log.Debug("窗口状态已保存: X={X}, Y={Y}, Width={Width}, Height={Height}",
                     position.X, position.Y, this.Width, this.Height);
             }
             catch (Exception ex)
@@ -494,7 +498,7 @@ namespace MicroDock.Views
             try
             {
                 var settings = DBContext.GetSetting();
-                
+
                 // 检查是否有保存的窗口状态
                 if (settings.WindowWidth > 0 && settings.WindowHeight > 0)
                 {
@@ -513,7 +517,7 @@ namespace MicroDock.Views
                         // 设置窗口位置
                         this.Position = new PixelPoint(x, y);
 
-                        Log.Debug("窗口状态已恢复: X={X}, Y={Y}, Width={Width}, Height={Height}", 
+                        Log.Debug("窗口状态已恢复: X={X}, Y={Y}, Width={Width}, Height={Height}",
                             x, y, width, height);
                     }
                     else
@@ -560,23 +564,23 @@ namespace MicroDock.Views
                 foreach (var screen in screens)
                 {
                     var workingArea = screen.WorkingArea;
-                    
+
                     // 计算窗口矩形
                     var windowRect = new PixelRect(x, y, width, height);
-                    
+
                     // 检查窗口是否与工作区有交集（允许窗口部分在屏幕外，但至少有一部分可见）
                     if (windowRect.Intersects(workingArea))
                     {
                         isValid = true;
-                        
+
                         // 计算窗口中心到屏幕中心的距离，选择最近的屏幕
                         int windowCenterX = x + width / 2;
                         int windowCenterY = y + height / 2;
                         int screenCenterX = workingArea.X + workingArea.Width / 2;
                         int screenCenterY = workingArea.Y + workingArea.Height / 2;
-                        
+
                         int distance = Math.Abs(windowCenterX - screenCenterX) + Math.Abs(windowCenterY - screenCenterY);
-                        
+
                         if (distance < minDistance)
                         {
                             minDistance = distance;
@@ -604,7 +608,7 @@ namespace MicroDock.Views
                 if (bestScreen.HasValue)
                 {
                     var workingArea = bestScreen.Value;
-                    
+
                     // 确保窗口至少有一部分在可见区域内
                     if (x < workingArea.X)
                         x = workingArea.X;

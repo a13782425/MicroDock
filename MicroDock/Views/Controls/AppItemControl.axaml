@@ -4,6 +4,7 @@
 			 xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
 			 xmlns:db="clr-namespace:MicroDock.Database"
 			 xmlns:controls="clr-namespace:MicroDock.Views.Controls"
+			 xmlns:extension="clr-namespace:MicroDock.Extension"
 			 mc:Ignorable="d" d:DesignWidth="64" d:DesignHeight="64"
 			 x:Class="MicroDock.Views.Controls.AppItemControl"
 			 x:DataType="db:ApplicationDB"
@@ -23,7 +24,7 @@
 		</Border.Styles>
 		<StackPanel HorizontalAlignment="Center"
 					VerticalAlignment="Center">
-			<Image Source="{Binding ., Converter={x:Static controls:IconConverter.Instance}}"
+			<Image Source="{Binding ., Converter={x:Static extension:IconConverter.Instance}}"
 				   Width="48"
 				   Height="48"
 				   HorizontalAlignment="Center"/>
