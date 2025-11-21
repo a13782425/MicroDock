@@ -41,7 +41,7 @@ namespace MicroDock.Views.Controls;
 /// </controls:ReorderableListBox>
 /// </code>
 /// </example>
-public partial class ReorderableListBox : UserControl
+public partial class ReorderableListBox : UserControl, IDisposable
 {
     /// <summary>
     /// 数据源集合 (System.Collections.IEnumerable)
@@ -212,6 +212,14 @@ public partial class ReorderableListBox : UserControl
         return _containerCache.TryGetValue(item, out var container) ? container : null;
     }
 
+    /// <summary>
+    /// 检查指定的 DataContext 是否为当前正在拖拽的项
+    /// </summary>
+    private bool IsDraggedItem(object? dataContext)
+    {
+        return _draggedItem != null && ReferenceEquals(dataContext, _draggedItem);
+    }
+
     private void OnItemPointerPressed(object? sender, PointerPressedEventArgs e)
     {
         if (sender is not Border border || border.DataContext == null) return;
@@ -348,22 +356,27 @@ public partial class ReorderableListBox : UserControl
         StopDragging();
     }
 
+    /// <summary>
+    /// 根据指针位置检测是否需要与相邻项交换位置。
+    /// 采用中心点检测策略：当指针跨越相邻项的中心点时触发交换。
+    /// </summary>
+    /// <param name="pointerY">指针在控件内的 Y 坐标</param>
     private void CheckSwap(double pointerY)
     {
         if (ItemsSource == null || _draggedItem == null) return;
 
-        // Find index of dragged item in current list
+        // 需要 IList 才能支持索引操作
         var list = ItemsSource as IList;
         if (list == null) return; // Can't reorder non-IList
         
         int currentIndex = list.IndexOf(_draggedItem);
         if (currentIndex < 0) return;
 
-        // Find target index
+        // 获取项容器面板
         var panel = PART_ItemsControl.ItemsPanelRoot;
         if (panel == null) return;
         
-        // Check Prev
+        // 检查是否应该向上移动（与前一项交换）
         if (currentIndex > 0)
         {
             if (currentIndex - 1 < panel.Children.Count)
@@ -372,7 +385,10 @@ public partial class ReorderableListBox : UserControl
                 var prevPos = prevContainer.TranslatePoint(new Point(0,0), this);
                 if (prevPos.HasValue)
                 {
+                    // 计算前一项的垂直中心点
                     double prevCenterY = prevPos.Value.Y + prevContainer.Bounds.Height / 2;
+                    
+                    // 如果指针移到前一项中心点之上，触发向上交换
                     if (pointerY < prevCenterY)
                     {
                         MoveItem(currentIndex, currentIndex - 1);
@@ -382,7 +398,7 @@ public partial class ReorderableListBox : UserControl
             }
         }
         
-        // Check Next
+        // 检查是否应该向下移动（与后一项交换）
         if (currentIndex < list.Count - 1)
         {
             if (currentIndex + 1 < panel.Children.Count)
@@ -391,7 +407,10 @@ public partial class ReorderableListBox : UserControl
                 var nextPos = nextContainer.TranslatePoint(new Point(0,0), this);
                 if (nextPos.HasValue)
                 {
+                    // 计算后一项的垂直中心点
                     double nextCenterY = nextPos.Value.Y + nextContainer.Bounds.Height / 2;
+                    
+                    // 如果指针移到后一项中心点之下，触发向下交换
                     if (pointerY > nextCenterY)
                     {
                         MoveItem(currentIndex, currentIndex + 1);
@@ -489,7 +508,7 @@ public partial class ReorderableListBox : UserControl
             if (child is Control c && c.DataContext != null)
             {
                 // Skip the dragged item itself, it's hidden and represented by ghost
-                if (ReferenceEquals(c.DataContext, _draggedItem)) continue;
+                if (IsDraggedItem(c.DataContext)) continue;
 
                 if (oldPositions.TryGetValue(c.DataContext, out double oldY))
                 {
@@ -578,28 +597,21 @@ public partial class ReorderableListBox : UserControl
             _ghostContainer = null;
         }
 
-        // Show Original
-        if (_originalContainer != null)
+        // Use cache to restore all items' Opacity
+        foreach (var kvp in _containerCache)
         {
-            _originalContainer.Opacity = 1.0;
+            kvp.Value.Opacity = 1.0;
         }
         
-        // Ensure all Opacity restored
+        // Clear leftover transforms (skip animating controls)
         var panel = PART_ItemsControl.ItemsPanelRoot;
         if (panel != null)
         {
              foreach(var child in panel.Children)
              {
-                 var border = child.GetVisualDescendants().OfType<Border>().FirstOrDefault();
-                 if(border != null) border.Opacity = 1.0;
-                 
-                 // Also clear any leftover transforms (skip animating controls)
-                 if (child is Control c)
+                 if (child is Control c && !_animatingControls.Contains(c))
                  {
-                     if (!_animatingControls.Contains(c))
-                     {
-                         c.RenderTransform = null;
-                     }
+                     c.RenderTransform = null;
                  }
              }
         }
@@ -611,6 +623,43 @@ public partial class ReorderableListBox : UserControl
         if (OrderChangedCommand?.CanExecute(null) == true)
         {
             OrderChangedCommand.Execute(null);
+        }
+    }
+
+    /// <summary>
+    /// 释放控件使用的资源
+    /// </summary>
+    public void Dispose()
+    {
+        // Unsubscribe from collection changes
+        if (ItemsSource is INotifyCollectionChanged collection)
+        {
+            collection.CollectionChanged -= OnCollectionChanged;
+        }
+
+        // Clear caches
+        _containerCache.Clear();
+        _animatingControls.Clear();
+
+        // Release pointer capture
+        if (_capturedPointer != null)
+        {
+            _capturedPointer.Capture(null);
+            _capturedPointer = null;
+        }
+
+        // Remove layout update handler
+        if (_pendingLayoutHandler != null)
+        {
+            PART_ItemsControl.LayoutUpdated -= _pendingLayoutHandler;
+            _pendingLayoutHandler = null;
+        }
+
+        // Clean up ghost
+        if (_ghostContainer != null)
+        {
+            PART_DragLayer.Children.Remove(_ghostContainer);
+            _ghostContainer = null;
         }
     }
 }
