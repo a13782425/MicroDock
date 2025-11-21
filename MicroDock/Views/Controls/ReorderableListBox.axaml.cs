@@ -8,6 +8,8 @@ using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using Avalonia.Animation;
+using Avalonia.Animation.Easings;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -15,6 +17,7 @@ using System.Collections.Specialized;
 using System.Linq;
 using System.Reflection;
 using System.Windows.Input;
+using Avalonia.Styling;
 
 namespace MicroDock.Views.Controls;
 
@@ -23,7 +26,7 @@ namespace MicroDock.Views.Controls;
 /// 实现了类似 Unity ReorderableList 的交互体验：
 /// 1. 实时排序：拖拽过程中列表会实时重排。
 /// 2. 替身机制：拖拽时使用悬浮的替身（Ghost），解决传统拖拽的中断问题。
-/// 3. 平滑过渡：通过 RenderTransform 和 Transitions 提供丝滑的视觉反馈。
+/// 3. 平滑过渡：通过 RenderTransform 和 FLIP 动画提供丝滑的视觉反馈。
 /// </summary>
 /// <example>
 /// <code>
@@ -123,7 +126,19 @@ public partial class ReorderableListBox : UserControl
     private Border? _ghostContainer;
     private object? _draggedItem;
     private Point _dragOffset; // Offset from pointer to top-left of ghost
-    private IDisposable? _captureSubscription;
+    private IPointer? _capturedPointer;
+    private HashSet<Control> _animatingControls = new();
+    
+    // Container Cache
+    private Dictionary<object, Border> _containerCache = new();
+    private bool _cacheNeedsUpdate = true;
+    
+    // Throttle for CheckSwap
+    private DateTime _lastSwapCheck = DateTime.MinValue;
+    private const int SwapCheckThrottleMs = 16; // ~60fps
+    
+    // Layout Update Handler
+    private EventHandler? _pendingLayoutHandler;
 
     public ReorderableListBox()
     {
@@ -133,6 +148,68 @@ public partial class ReorderableListBox : UserControl
         // We attach these to the UserControl itself to ensure we catch moves even if we drift off the item
         AddHandler(PointerMovedEvent, OnRootPointerMoved, RoutingStrategies.Tunnel);
         AddHandler(PointerReleasedEvent, OnRootPointerReleased, RoutingStrategies.Tunnel);
+    }
+
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+        if (change.Property == ItemsSourceProperty)
+        {
+            _cacheNeedsUpdate = true;
+            
+            // Subscribe to collection changes if INotifyCollectionChanged
+            if (change.OldValue is INotifyCollectionChanged oldCollection)
+            {
+                oldCollection.CollectionChanged -= OnCollectionChanged;
+            }
+            if (change.NewValue is INotifyCollectionChanged newCollection)
+            {
+                newCollection.CollectionChanged += OnCollectionChanged;
+            }
+        }
+    }
+
+    private void OnCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        _cacheNeedsUpdate = true;
+    }
+
+    private void RebuildContainerCache()
+    {
+        _containerCache.Clear();
+        var panel = PART_ItemsControl.ItemsPanelRoot;
+        if (panel == null) return;
+
+        foreach (var child in panel.Children)
+        {
+            if (child is Control c && c.DataContext != null)
+            {
+                Border? border = null;
+                if (child is ContentPresenter cp)
+                {
+                    border = cp.GetVisualDescendants().OfType<Border>().FirstOrDefault();
+                }
+                else if (child is Border b)
+                {
+                    border = b;
+                }
+
+                if (border != null)
+                {
+                    _containerCache[c.DataContext] = border;
+                }
+            }
+        }
+        _cacheNeedsUpdate = false;
+    }
+
+    private Border? GetContainerForItem(object item)
+    {
+        if (_cacheNeedsUpdate)
+        {
+            RebuildContainerCache();
+        }
+        return _containerCache.TryGetValue(item, out var container) ? container : null;
     }
 
     private void OnItemPointerPressed(object? sender, PointerPressedEventArgs e)
@@ -158,7 +235,8 @@ public partial class ReorderableListBox : UserControl
             StartDragging();
             
             // Capture pointer on the Root Control to handle events even if ItemsControl rebuilds
-            e.Pointer.Capture(this);
+            _capturedPointer = e.Pointer;
+            _capturedPointer.Capture(this);
             
             e.Handled = true;
         }
@@ -178,65 +256,33 @@ public partial class ReorderableListBox : UserControl
 
     private void CreateGhost(Border original)
     {
-        // Create a visual clone for the ghost
-        // Since we can't easily clone the visual tree deep copy, we can:
-        // 1. Use a VisualBrush (Efficient, but interaction issues? Ghost doesn't need interaction)
-        // 2. Re-instantiate the ItemTemplate (Cleanest)
+        // Use RenderTargetBitmap to capture visual screenshot
+        var bounds = original.Bounds;
+        var renderTarget = new RenderTargetBitmap(
+            new PixelSize((int)bounds.Width, (int)bounds.Height), 
+            new Vector(96, 96));
         
-        // Let's try recreating the template
-        var ghostContent = new ContentPresenter
+        renderTarget.Render(original);
+
+        var image = new Image
         {
-            Content = _draggedItem,
-            ContentTemplate = ItemTemplate
+            Source = renderTarget,
+            Width = bounds.Width,
+            Height = bounds.Height
         };
 
         _ghostContainer = new Border
         {
-            Background = original.Background,
-            BorderBrush = original.BorderBrush,
-            BorderThickness = original.BorderThickness,
-            CornerRadius = original.CornerRadius,
-            Padding = original.Padding,
-            Width = original.Bounds.Width,
-            Height = original.Bounds.Height,
-            // Ghost styling
+            Child = image,
             Opacity = 0.8,
             BoxShadow = new BoxShadows(new BoxShadow
             {
-                Blur = 10, Color = Color.Parse("#40000000"), OffsetY = 4
+                Blur = 10, 
+                Color = Color.Parse("#40000000"), 
+                OffsetY = 4
             }),
             IsHitTestVisible = false // Important: Ghost must pass clicks through
         };
-        
-        // Reconstruct the layout inside ghost to look like the item
-        // Since our ItemTemplate is simple, we can just mimic the Grid structure if needed.
-        // But simpler: just use the content. 
-        // Note: The Handle is part of our Control's template, NOT the user's ItemTemplate.
-        // So we need to recreate that structure too if we want the ghost to look identical.
-        
-        var grid = new Grid();
-        grid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
-        grid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
-        grid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
-        
-        // Handle Start
-        if (IsDragHandleAtStart)
-        {
-             grid.Children.Add(CreateHandleBorder(0));
-        }
-        
-        // Content
-        Grid.SetColumn(ghostContent, 1);
-        ghostContent.VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center;
-        grid.Children.Add(ghostContent);
-        
-        // Handle End
-        if (!IsDragHandleAtStart)
-        {
-             grid.Children.Add(CreateHandleBorder(2));
-        }
-        
-        _ghostContainer.Child = grid;
 
         // Add to Canvas
         PART_DragLayer.Children.Add(_ghostContainer);
@@ -267,13 +313,6 @@ public partial class ReorderableListBox : UserControl
     
     private Point GetPointerPosOnRoot()
     {
-        // We need current pointer position. Since we are in a UserControl,
-        // we can track it via OnRootPointerMoved, or just rely on the event args passed there.
-        // For CreateGhost, we assume we are called from Pressed, so we have position.
-        // But wait, StartDragging is called from Pressed which calculated _dragOffset.
-        // We need to know WHERE to put the ghost.
-        // We'll use the position of the OriginalContainer relative to Root.
-        
         return _originalContainer!.TranslatePoint(new Point(0,0), this) ?? new Point(0,0);
     }
     
@@ -296,7 +335,12 @@ public partial class ReorderableListBox : UserControl
         var pointerPos = e.GetPosition(this);
         UpdateGhostPosition(pointerPos);
         
-        CheckSwap(pointerPos.Y);
+        // Throttle: Check swap at most every 16ms (~60fps)
+        if ((DateTime.Now - _lastSwapCheck).TotalMilliseconds >= SwapCheckThrottleMs)
+        {
+            CheckSwap(pointerPos.Y);
+            _lastSwapCheck = DateTime.Now;
+        }
     }
 
     private void OnRootPointerReleased(object? sender, PointerReleasedEventArgs e)
@@ -309,8 +353,6 @@ public partial class ReorderableListBox : UserControl
         if (ItemsSource == null || _draggedItem == null) return;
 
         // Find index of dragged item in current list
-        // Using Reflection because ItemsSource is IEnumerable
-        // For ObservableCollection, we cast to IList usually works
         var list = ItemsSource as IList;
         if (list == null) return; // Can't reorder non-IList
         
@@ -321,18 +363,12 @@ public partial class ReorderableListBox : UserControl
         var panel = PART_ItemsControl.ItemsPanelRoot;
         if (panel == null) return;
         
-        // Simple hit testing on the Y axis
-        // We check immediate neighbors for stability
-        
         // Check Prev
         if (currentIndex > 0)
         {
-            // Note: Panel.Children might not map 1:1 to Indices if virtualization is on.
-            // But assuming StackPanel without virtualization for settings tab.
             if (currentIndex - 1 < panel.Children.Count)
             {
                 var prevContainer = panel.Children[currentIndex - 1];
-                // Get center Y of prev container relative to Root
                 var prevPos = prevContainer.TranslatePoint(new Point(0,0), this);
                 if (prevPos.HasValue)
                 {
@@ -366,17 +402,39 @@ public partial class ReorderableListBox : UserControl
         }
     }
 
+    // Snapshot helper - only records positions in affected range
+    private Dictionary<object, double> GetItemPositionsInRange(int startIndex, int endIndex)
+    {
+        var positions = new Dictionary<object, double>();
+        var panel = PART_ItemsControl.ItemsPanelRoot;
+        if (panel == null) return positions;
+
+        // Expand range to include neighboring items
+        int start = Math.Max(0, Math.Min(startIndex, endIndex) - 1);
+        int end = Math.Min(panel.Children.Count - 1, Math.Max(startIndex, endIndex) + 1);
+
+        for (int i = start; i <= end; i++)
+        {
+            if (panel.Children[i] is Control c && c.DataContext != null)
+            {
+                var pos = c.TranslatePoint(new Point(0,0), this);
+                if (pos.HasValue)
+                {
+                    positions[c.DataContext] = pos.Value.Y;
+                }
+            }
+        }
+        return positions;
+    }
+
     private void MoveItem(int oldIndex, int newIndex)
     {
         if (ItemsSource == null) return;
         
-        // Perform Move
-        // NOTE: When we move, ItemsControl will refresh.
-        // _originalContainer might be detached! 
-        // But _ghostContainer is in Overlay, so it persists.
-        // We need to find the NEW container for the dragged item to set it as hidden placeholder.
-        
-        // 1. Move Data
+        // 1. FLIP First: Record positions in affected range
+        var oldPositions = GetItemPositionsInRange(oldIndex, newIndex);
+
+        // 2. Move Data
         var listType = ItemsSource.GetType();
         var moveMethod = listType.GetMethod("Move", new[] { typeof(int), typeof(int) });
         if (moveMethod != null)
@@ -396,68 +454,108 @@ public partial class ReorderableListBox : UserControl
             ItemMovedCommand.Execute(null);
         }
 
-        // 2. Update Placeholder Reference
-        // We need to wait for layout update to find the new container
-        Dispatcher.UIThread.Post(() =>
+        // 3. Wait for Layout, then FLIP Invert & Play
+        // Remove previous handler if exists to prevent accumulation
+        if (_pendingLayoutHandler != null)
         {
+            PART_ItemsControl.LayoutUpdated -= _pendingLayoutHandler;
+            _pendingLayoutHandler = null;
+        }
+
+        // We use LayoutUpdated to ensure the visual tree has been arranged
+        // This eliminates the "flash" where the item appears at new pos before animating
+        _pendingLayoutHandler = (s, e) =>
+        {
+            PART_ItemsControl.LayoutUpdated -= _pendingLayoutHandler;
+            _pendingLayoutHandler = null;
+            
             UpdatePlaceholder(newIndex);
-        }, DispatcherPriority.Render);
+            ApplyLayoutAnimation(oldPositions);
+        };
+        
+        PART_ItemsControl.LayoutUpdated += _pendingLayoutHandler;
+        
+        // Force layout invalidation to ensure event fires
+        PART_ItemsControl.InvalidateMeasure();
+    }
+    
+    private void ApplyLayoutAnimation(Dictionary<object, double> oldPositions)
+    {
+        var panel = PART_ItemsControl.ItemsPanelRoot;
+        if (panel == null) return;
+
+        foreach (var child in panel.Children)
+        {
+            if (child is Control c && c.DataContext != null)
+            {
+                // Skip the dragged item itself, it's hidden and represented by ghost
+                if (ReferenceEquals(c.DataContext, _draggedItem)) continue;
+
+                if (oldPositions.TryGetValue(c.DataContext, out double oldY))
+                {
+                    var newPos = c.TranslatePoint(new Point(0,0), this);
+                    if (newPos.HasValue)
+                    {
+                        double newY = newPos.Value.Y;
+                        double delta = oldY - newY;
+                        
+                        if (Math.Abs(delta) > 0.1)
+                        {
+                            // FLIP Invert: Snap to old position
+                            var transform = new TranslateTransform(0, delta);
+                            c.RenderTransform = transform;
+
+                            // Mark as animating
+                            _animatingControls.Add(c);
+
+                            // FLIP Play: Animate to 0
+                            // We use a simple animation since Transitions on RenderTransform 
+                            // might conflict if not managed carefully, but here we want explicit control.
+                            var animation = new Animation
+                            {
+                                Duration = TimeSpan.FromSeconds(0.3),
+                                Easing = new CubicEaseOut(),
+                                FillMode = FillMode.Forward, 
+                                Children = 
+                                {
+                                    new KeyFrame
+                                    {
+                                        Cue = new Cue(0.0),
+                                        Setters = { new Setter(TranslateTransform.YProperty, delta) }
+                                    },
+                                    new KeyFrame
+                                    {
+                                        Cue = new Cue(1.0),
+                                        Setters = { new Setter(TranslateTransform.YProperty, 0.0) }
+                                    }
+                                }
+                            };
+                            
+                            var task = animation.RunAsync(c);
+                            task.ContinueWith(_ => 
+                            {
+                                Dispatcher.UIThread.Post(() =>
+                                {
+                                    c.RenderTransform = null;
+                                    _animatingControls.Remove(c);
+                                });
+                            });
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private void UpdatePlaceholder(int index)
     {
-        var panel = PART_ItemsControl.ItemsPanelRoot;
-        if (panel == null || index >= panel.Children.Count) return;
-
-        // Find the new container at the index
-        // Since we just moved data, the container at 'index' should be our item
-        // (assuming no virtualization recycling messing things up instantly)
+        if (_draggedItem == null) return;
         
-        // Reset opacity of OLD container (if it still exists / is reused)
-        // Actually, safer to iterate and ensure only OUR item is hidden
-        
-        // But since we don't track "our item" perfectly across rebuilds without binding...
-        // Wait, the DataContext of the container at 'index' should be _draggedItem!
-        
-        for(int i=0; i<panel.Children.Count; i++)
+        var border = GetContainerForItem(_draggedItem);
+        if (border != null)
         {
-            var child = panel.Children[i] as Control;
-            if(child == null) continue;
-            
-            // Find the wrapper Border inside the ItemTemplate if ItemsControl generated ContentPresenters
-            // ItemsControl creates ContentPresenter usually.
-            // Our ItemTemplate has a Border.
-            // So child is ContentPresenter -> Child is Border.
-            
-            Border? border = null;
-            if (child is ContentPresenter cp)
-            {
-                 // Check DataContext
-                 if (ReferenceEquals(cp.DataContext, _draggedItem))
-                 {
-                      // This is our guy
-                      // Dig down to find our Border
-                      border = cp.GetVisualDescendants().OfType<Border>().FirstOrDefault(); // The root border
-                 }
-            }
-            else if (ReferenceEquals(child.DataContext, _draggedItem))
-            {
-                 // In case panel children are direct
-                 border = child as Border;
-            }
-            
-            if (border != null)
-            {
-                if (ReferenceEquals(child.DataContext, _draggedItem))
-                {
-                    border.Opacity = 0.0;
-                    _originalContainer = border; // Update reference
-                }
-                else
-                {
-                    border.Opacity = 1.0; // Ensure others are visible
-                }
-            }
+            border.Opacity = 0.0;
+            _originalContainer = border;
         }
     }
 
@@ -466,11 +564,12 @@ public partial class ReorderableListBox : UserControl
         if (!_isDragging) return;
         _isDragging = false;
 
-        // Release Capture
-        // e.Pointer.Capture(null) is implicit if we don't hold it? 
-        // We should explicitly release if we captured on Root.
-        // But we don't have the pointer instance here easily without args.
-        // Usually release happens on Up automatically.
+        // Release pointer capture
+        if (_capturedPointer != null)
+        {
+            _capturedPointer.Capture(null);
+            _capturedPointer = null;
+        }
 
         // Destroy Ghost
         if (_ghostContainer != null)
@@ -485,7 +584,7 @@ public partial class ReorderableListBox : UserControl
             _originalContainer.Opacity = 1.0;
         }
         
-        // Iterate all to be safe (in case UpdatePlaceholder missed one)
+        // Ensure all Opacity restored
         var panel = PART_ItemsControl.ItemsPanelRoot;
         if (panel != null)
         {
@@ -493,6 +592,15 @@ public partial class ReorderableListBox : UserControl
              {
                  var border = child.GetVisualDescendants().OfType<Border>().FirstOrDefault();
                  if(border != null) border.Opacity = 1.0;
+                 
+                 // Also clear any leftover transforms (skip animating controls)
+                 if (child is Control c)
+                 {
+                     if (!_animatingControls.Contains(c))
+                     {
+                         c.RenderTransform = null;
+                     }
+                 }
              }
         }
 

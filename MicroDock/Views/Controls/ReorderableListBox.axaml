@@ -26,24 +26,6 @@
                             Margin="0,2"
                             CornerRadius="4">
                         
-                        <!-- Enable smooth layout transitions when reordering occurs -->
-                        <Border.Transitions>
-                            <Transitions>
-                                <!-- Not all layout changes can be animated automatically by Transitions 
-                                     in an ItemsControl without LayoutTransformControl, but standard
-                                     RenderTransform or Opacity transitions help.
-                                     
-                                     Actually, Avalonia 11+ doesn't animate auto-layout position changes 
-                                     via standard Transitions on the container itself unless we use 
-                                     something like MoveBehavior or specific LayoutTransitions.
-                                     
-                                     However, adding a default transition here provides a hook for future
-                                     enhancements or custom behaviors.
-                                -->
-                                <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.3" Easing="CubicEaseOut" />
-                            </Transitions>
-                        </Border.Transitions>
-
                         <!-- Layout with Built-in Handle -->
                         <Grid>
                             <Grid.ColumnDefinitions>
