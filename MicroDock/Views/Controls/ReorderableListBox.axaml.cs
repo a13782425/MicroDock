@@ -120,14 +120,44 @@ public partial class ReorderableListBox : UserControl, IDisposable
         set => SetValue(IsDragHandleAtStartProperty, value);
     }
 
+    /// <summary>
+    /// 列表的最大高度 (double)
+    /// </summary>
+    public static readonly StyledProperty<double> MaxListBoxHeightProperty =
+        AvaloniaProperty.Register<ReorderableListBox, double>(nameof(MaxListBoxHeight), defaultValue: double.PositiveInfinity);
+
+    /// <summary>
+    /// 获取或设置列表的最大高度。
+    /// 当内容超过此高度时会自动显示垂直滚动条。
+    /// 默认值为 double.PositiveInfinity (无限制)。
+    /// </summary>
+    public double MaxListBoxHeight
+    {
+        get => GetValue(MaxListBoxHeightProperty);
+        set => SetValue(MaxListBoxHeightProperty, value);
+    }
+
+
+    // Constants
+    private const double GHOST_OPACITY = 0.8;
+    private const double GHOST_SHADOW_BLUR = 10.0;
+    private const int SWAP_CHECK_THROTTLE_MS = 16; // ~60fps
+    private const double ANIMATION_DURATION_SECONDS = 0.3;
+    private const double PLACEHOLDER_OPACITY = 0.0;
+    private const double VISIBLE_OPACITY = 1.0;
+    private const int MIN_BITMAP_SIZE = 1;
+    
     // Drag State
     private bool _isDragging;
     private Border? _originalContainer;
     private Border? _ghostContainer;
+    private ContentPresenter? _cachedGhostContentPresenter; // Cached for reuse
+    private Border? _cachedGhostInnerBorder; // Cached for reuse
     private object? _draggedItem;
     private Point _dragOffset; // Offset from pointer to top-left of ghost
     private IPointer? _capturedPointer;
     private HashSet<Control> _animatingControls = new();
+    private Dictionary<Control, System.Threading.CancellationTokenSource> _animationCancellations = new();
     
     // Container Cache
     private Dictionary<object, Border> _containerCache = new();
@@ -135,7 +165,6 @@ public partial class ReorderableListBox : UserControl, IDisposable
     
     // Throttle for CheckSwap
     private DateTime _lastSwapCheck = DateTime.MinValue;
-    private const int SwapCheckThrottleMs = 16; // ~60fps
     
     // Layout Update Handler
     private EventHandler? _pendingLayoutHandler;
@@ -259,69 +288,91 @@ public partial class ReorderableListBox : UserControl, IDisposable
         CreateGhost(_originalContainer);
 
         // Hide original (Placeholder effect)
-        _originalContainer.Opacity = 0.0;
+        _originalContainer.Opacity = PLACEHOLDER_OPACITY;
     }
 
     private void CreateGhost(Border original)
     {
-        // Use RenderTargetBitmap to capture visual screenshot
+        // Validate bounds to prevent crashes with invalid dimensions
         var bounds = original.Bounds;
-        var renderTarget = new RenderTargetBitmap(
-            new PixelSize((int)bounds.Width, (int)bounds.Height), 
-            new Vector(96, 96));
+        if (bounds.Width < MIN_BITMAP_SIZE || bounds.Height < MIN_BITMAP_SIZE)
+        {
+            return; // Cannot create ghost for items with invalid size
+        }
         
-        renderTarget.Render(original);
-
-        var image = new Image
+        // Reuse cached visual elements for better performance
+        // Only create new elements if they don't exist yet
+        if (_cachedGhostContentPresenter == null)
         {
-            Source = renderTarget,
-            Width = bounds.Width,
-            Height = bounds.Height
-        };
-
-        _ghostContainer = new Border
-        {
-            Child = image,
-            Opacity = 0.8,
-            BoxShadow = new BoxShadows(new BoxShadow
+            _cachedGhostContentPresenter = new ContentPresenter
             {
-                Blur = 10, 
-                Color = Color.Parse("#40000000"), 
-                OffsetY = 4
-            }),
-            IsHitTestVisible = false // Important: Ghost must pass clicks through
-        };
+                ContentTemplate = ItemTemplate
+            };
+        }
+        
+        if (_cachedGhostInnerBorder == null)
+        {
+            _cachedGhostInnerBorder = new Border
+            {
+                Background = Brushes.Transparent,
+                Child = _cachedGhostContentPresenter
+            };
+        }
+        
+        // Update the content and dimensions for current drag
+        _cachedGhostContentPresenter.Content = _draggedItem;
+        _cachedGhostContentPresenter.Width = bounds.Width;
+        _cachedGhostContentPresenter.Height = bounds.Height;
+        
+        _cachedGhostInnerBorder.CornerRadius = original.CornerRadius;
+        _cachedGhostInnerBorder.Width = bounds.Width;
+        _cachedGhostInnerBorder.Height = bounds.Height;
 
-        // Add to Canvas
-        PART_DragLayer.Children.Add(_ghostContainer);
+        // Create or reuse the outer ghost container
+        if (_ghostContainer == null)
+        {
+            _ghostContainer = new Border
+            {
+                Child = _cachedGhostInnerBorder,
+                Opacity = GHOST_OPACITY,
+                BoxShadow = new BoxShadows(new BoxShadow
+                {
+                    Blur = GHOST_SHADOW_BLUR, 
+                    Color = Color.Parse("#40000000"), 
+                    OffsetY = 4
+                }),
+                IsHitTestVisible = false // Important: Ghost must pass clicks through
+            };
+        }
+        else
+        {
+            // If ghost container exists, just ensure it has the right child
+            _ghostContainer.Child = _cachedGhostInnerBorder;
+        }
+
+        // Add to Canvas only if not already present
+        if (!PART_DragLayer.Children.Contains(_ghostContainer))
+        {
+            PART_DragLayer.Children.Add(_ghostContainer);
+        }
         
         // Position it initially matching the original
-        UpdateGhostPosition(GetPointerPosOnRoot());
+        var pointerPos = GetPointerPosOnRoot();
+        if (pointerPos.HasValue)
+        {
+            UpdateGhostPosition(pointerPos.Value);
+        }
     }
 
-    private Border CreateHandleBorder(int col)
-    {
-        var b = new Border
-        {
-            Background = Brushes.Transparent,
-            Padding = new Thickness(8, 0)
-        };
-        var t = new TextBlock
-        {
-            Text = "≡",
-            FontSize = 16,
-            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
-            Foreground = Application.Current?.FindResource("TextFillColorSecondaryBrush") as IBrush 
-                         ?? Brushes.Gray
-        };
-        b.Child = t;
-        Grid.SetColumn(b, col);
-        return b;
-    }
+
     
-    private Point GetPointerPosOnRoot()
+    private Point? GetPointerPosOnRoot()
     {
-        return _originalContainer!.TranslatePoint(new Point(0,0), this) ?? new Point(0,0);
+        if (_originalContainer == null)
+        {
+            return null;
+        }
+        return _originalContainer.TranslatePoint(new Point(0,0), this);
     }
     
     // Update ghost position based on pointer
@@ -344,7 +395,7 @@ public partial class ReorderableListBox : UserControl, IDisposable
         UpdateGhostPosition(pointerPos);
         
         // Throttle: Check swap at most every 16ms (~60fps)
-        if ((DateTime.Now - _lastSwapCheck).TotalMilliseconds >= SwapCheckThrottleMs)
+        if ((DateTime.Now - _lastSwapCheck).TotalMilliseconds >= SWAP_CHECK_THROTTLE_MS)
         {
             CheckSwap(pointerPos.Y);
             _lastSwapCheck = DateTime.Now;
@@ -379,7 +430,7 @@ public partial class ReorderableListBox : UserControl, IDisposable
         // 检查是否应该向上移动（与前一项交换）
         if (currentIndex > 0)
         {
-            if (currentIndex - 1 < panel.Children.Count)
+            if (currentIndex - 1 >= 0 && currentIndex - 1 < panel.Children.Count)
             {
                 var prevContainer = panel.Children[currentIndex - 1];
                 var prevPos = prevContainer.TranslatePoint(new Point(0,0), this);
@@ -401,7 +452,7 @@ public partial class ReorderableListBox : UserControl, IDisposable
         // 检查是否应该向下移动（与后一项交换）
         if (currentIndex < list.Count - 1)
         {
-            if (currentIndex + 1 < panel.Children.Count)
+            if (currentIndex + 1 >= 0 && currentIndex + 1 < panel.Children.Count)
             {
                 var nextContainer = panel.Children[currentIndex + 1];
                 var nextPos = nextContainer.TranslatePoint(new Point(0,0), this);
@@ -453,18 +504,36 @@ public partial class ReorderableListBox : UserControl, IDisposable
         // 1. FLIP First: Record positions in affected range
         var oldPositions = GetItemPositionsInRange(oldIndex, newIndex);
 
-        // 2. Move Data
-        var listType = ItemsSource.GetType();
-        var moveMethod = listType.GetMethod("Move", new[] { typeof(int), typeof(int) });
-        if (moveMethod != null)
+        // 2. Move Data with exception handling
+        try
         {
-            moveMethod.Invoke(ItemsSource, new object[] { oldIndex, newIndex });
+            var listType = ItemsSource.GetType();
+            var moveMethod = listType.GetMethod("Move", new[] { typeof(int), typeof(int) });
+            if (moveMethod != null)
+            {
+                moveMethod.Invoke(ItemsSource, new object[] { oldIndex, newIndex });
+            }
+            else if (ItemsSource is IList list)
+            {
+                // Check if collection is read-only
+                if (list.IsReadOnly)
+                {
+                    return; // Cannot modify read-only collection
+                }
+                
+                var item = list[oldIndex];
+                list.RemoveAt(oldIndex);
+                list.Insert(newIndex, item);
+            }
+            else
+            {
+                return; // Collection type doesn't support reordering
+            }
         }
-        else if (ItemsSource is IList list)
+        catch (Exception)
         {
-             var item = list[oldIndex];
-             list.RemoveAt(oldIndex);
-             list.Insert(newIndex, item);
+            // Silently fail - don't crash on collection operation errors
+            return;
         }
 
         // Trigger ItemMoved Command (Real-time feedback)
@@ -530,9 +599,19 @@ public partial class ReorderableListBox : UserControl, IDisposable
                             // FLIP Play: Animate to 0
                             // We use a simple animation since Transitions on RenderTransform 
                             // might conflict if not managed carefully, but here we want explicit control.
+                            // Cancel previous animation if exists
+                            if (_animationCancellations.TryGetValue(c, out var oldCts))
+                            {
+                                oldCts.Cancel();
+                                oldCts.Dispose();
+                            }
+                            
+                            var cts = new System.Threading.CancellationTokenSource();
+                            _animationCancellations[c] = cts;
+                            
                             var animation = new Animation
                             {
-                                Duration = TimeSpan.FromSeconds(0.3),
+                                Duration = TimeSpan.FromSeconds(ANIMATION_DURATION_SECONDS),
                                 Easing = new CubicEaseOut(),
                                 FillMode = FillMode.Forward, 
                                 Children = 
@@ -550,15 +629,28 @@ public partial class ReorderableListBox : UserControl, IDisposable
                                 }
                             };
                             
-                            var task = animation.RunAsync(c);
+                            var task = animation.RunAsync(c, cts.Token);
                             task.ContinueWith(_ => 
                             {
                                 Dispatcher.UIThread.Post(() =>
                                 {
-                                    c.RenderTransform = null;
+                                    // Capture the cancelled state before accessing cts
+                                    // to avoid ObjectDisposedException if cts was disposed
+                                    bool wasCancelled = _.IsCanceled || _.IsFaulted;
+                                    
+                                    if (!wasCancelled)
+                                    {
+                                        c.RenderTransform = null;
+                                    }
                                     _animatingControls.Remove(c);
+                                    
+                                    if (_animationCancellations.TryGetValue(c, out var currentCts) && currentCts == cts)
+                                    {
+                                        _animationCancellations.Remove(c);
+                                        cts.Dispose();
+                                    }
                                 });
-                            });
+                            });                
                         }
                     }
                 }
@@ -573,7 +665,7 @@ public partial class ReorderableListBox : UserControl, IDisposable
         var border = GetContainerForItem(_draggedItem);
         if (border != null)
         {
-            border.Opacity = 0.0;
+            border.Opacity = PLACEHOLDER_OPACITY;
             _originalContainer = border;
         }
     }
@@ -590,18 +682,25 @@ public partial class ReorderableListBox : UserControl, IDisposable
             _capturedPointer = null;
         }
 
-        // Destroy Ghost
+        // Remove Ghost from Canvas (but keep reference for caching)
         if (_ghostContainer != null)
         {
             PART_DragLayer.Children.Remove(_ghostContainer);
-            _ghostContainer = null;
+            // Don't set to null - we reuse it for better performance
         }
 
         // Use cache to restore all items' Opacity
         foreach (var kvp in _containerCache)
         {
-            kvp.Value.Opacity = 1.0;
+            kvp.Value.Opacity = VISIBLE_OPACITY;
         }
+        
+        // Fallback: Ensure original container is restored even if cache is stale
+        if (_originalContainer != null)
+        {
+            _originalContainer.Opacity = VISIBLE_OPACITY;
+        }
+
         
         // Clear leftover transforms (skip animating controls)
         var panel = PART_ItemsControl.ItemsPanelRoot;
@@ -636,10 +735,22 @@ public partial class ReorderableListBox : UserControl, IDisposable
         {
             collection.CollectionChanged -= OnCollectionChanged;
         }
+        
+        // Remove pointer event handlers added in constructor
+        RemoveHandler(PointerMovedEvent, OnRootPointerMoved);
+        RemoveHandler(PointerReleasedEvent, OnRootPointerReleased);
 
         // Clear caches
         _containerCache.Clear();
         _animatingControls.Clear();
+        
+        // Cancel all pending animations
+        foreach (var cts in _animationCancellations.Values)
+        {
+            cts.Cancel();
+            cts.Dispose();
+        }
+        _animationCancellations.Clear();
 
         // Release pointer capture
         if (_capturedPointer != null)

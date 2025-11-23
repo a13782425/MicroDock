@@ -8,66 +8,70 @@
              x:Name="Root">
     
     <Grid>
-        <ItemsControl Name="PART_ItemsControl" 
-                      ItemsSource="{Binding ItemsSource, ElementName=Root}">
-            <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate>
-                    <StackPanel />
-                </ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
+        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled"
+                      MaxHeight="{Binding MaxListBoxHeight, ElementName=Root}">
+            <ItemsControl Name="PART_ItemsControl" 
+                          ItemsSource="{Binding ItemsSource, ElementName=Root}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
             
-            <ItemsControl.ItemTemplate>
-                <DataTemplate>
-                    <!-- Root Border handles the Drag Events -->
-                    <!-- Note: We use PointerPressed on the item to start drag, 
-                         but capture will be handled by the control logic. -->
-                    <Border Background="Transparent"
-                            PointerPressed="OnItemPointerPressed"
-                            Margin="0,2"
-                            CornerRadius="4">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <!-- Root Border handles the Drag Events -->
+                        <!-- Note: We use PointerPressed on the item to start drag, 
+                             but capture will be handled by the control logic. -->
+                        <Border Background="Transparent"
+                                PointerPressed="OnItemPointerPressed"
+                                Margin="0,2"
+                                CornerRadius="4">
                         
-                        <!-- Layout with Built-in Handle -->
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
+                            <!-- Layout with Built-in Handle -->
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
 
-                            <!-- Handle at Start -->
-                            <Border Grid.Column="0" 
-                                    Background="Transparent"
-                                    Padding="8,0"
-                                    Cursor="SizeAll"
-                                    IsVisible="{Binding IsDragHandleAtStart, ElementName=Root}">
-                                <TextBlock Text="≡" 
-                                           FontSize="16" 
-                                           VerticalAlignment="Center" 
-                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                            </Border>
+                                <!-- Handle at Start -->
+                                <Border Grid.Column="0" 
+                                        Background="Transparent"
+                                        Padding="8,0"
+                                        Cursor="SizeAll"
+                                        IsVisible="{Binding IsDragHandleAtStart, ElementName=Root}">
+                                    <TextBlock Text="≡" 
+                                               FontSize="16" 
+                                               VerticalAlignment="Center" 
+                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                </Border>
 
-                            <!-- User Content -->
-                            <ContentPresenter Grid.Column="1"
-                                              Content="{Binding}" 
-                                              ContentTemplate="{Binding ItemTemplate, ElementName=Root}"
-                                              VerticalAlignment="Center"/>
+                                <!-- User Content -->
+                                <ContentPresenter Grid.Column="1"
+                                                  Content="{Binding}" 
+                                                  ContentTemplate="{Binding ItemTemplate, ElementName=Root}"
+                                                  VerticalAlignment="Center"/>
 
-                            <!-- Handle at End -->
-                            <Border Grid.Column="2" 
-                                    Background="Transparent"
-                                    Padding="8,0"
-                                    Cursor="SizeAll"
-                                    IsVisible="{Binding !IsDragHandleAtStart, ElementName=Root}">
-                                <TextBlock Text="≡" 
-                                           FontSize="16" 
-                                           VerticalAlignment="Center" 
-                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                            </Border>
-                        </Grid>
-                    </Border>
-                </DataTemplate>
-            </ItemsControl.ItemTemplate>
-        </ItemsControl>
+                                <!-- Handle at End -->
+                                <Border Grid.Column="2" 
+                                        Background="Transparent"
+                                        Padding="8,0"
+                                        Cursor="SizeAll"
+                                        IsVisible="{Binding !IsDragHandleAtStart, ElementName=Root}">
+                                    <TextBlock Text="≡" 
+                                               FontSize="16" 
+                                               VerticalAlignment="Center" 
+                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                </Border>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
 
         <!-- Ghost Overlay Layer -->
         <!-- ZIndex > 0 to be on top -->
