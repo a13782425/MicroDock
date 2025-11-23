@@ -137,6 +137,40 @@ public partial class ReorderableListBox : UserControl, IDisposable
         set => SetValue(MaxListBoxHeightProperty, value);
     }
 
+    /// <summary>
+    /// 自动滚动边缘触发区域大小(像素) (double)
+    /// </summary>
+    public static readonly StyledProperty<double> AutoScrollEdgeSizeProperty =
+        AvaloniaProperty.Register<ReorderableListBox, double>(nameof(AutoScrollEdgeSize), defaultValue: 50.0);
+
+    /// <summary>
+    /// 获取或设置拖拽时触发自动滚动的边缘区域大小(单位：像素)。
+    /// 当鼠标进入距离 ScrollViewer 上下边缘此距离内时,会触发自动滚动。
+    /// 默认值为 50 像素。
+    /// </summary>
+    public double AutoScrollEdgeSize
+    {
+        get => GetValue(AutoScrollEdgeSizeProperty);
+        set => SetValue(AutoScrollEdgeSizeProperty, value);
+    }
+
+    /// <summary>
+    /// 自动滚动速度(像素/帧) (double)
+    /// </summary>
+    public static readonly StyledProperty<double> AutoScrollSpeedProperty =
+        AvaloniaProperty.Register<ReorderableListBox, double>(nameof(AutoScrollSpeed), defaultValue: 5.0);
+
+    /// <summary>
+    /// 获取或设置自动滚动的基础速度(单位：像素/帧)。
+    /// 实际滚动速度会根据鼠标距离边缘的远近动态调整(0 到此值之间)。
+    /// 默认值为 5.0 像素/帧。
+    /// </summary>
+    public double AutoScrollSpeed
+    {
+        get => GetValue(AutoScrollSpeedProperty);
+        set => SetValue(AutoScrollSpeedProperty, value);
+    }
+
 
     // Constants
     private const double GHOST_OPACITY = 0.8;
@@ -165,6 +199,10 @@ public partial class ReorderableListBox : UserControl, IDisposable
     
     // Throttle for CheckSwap
     private DateTime _lastSwapCheck = DateTime.MinValue;
+    
+    // Auto-scroll State
+    private DispatcherTimer? _autoScrollTimer;
+    private double _autoScrollVelocity = 0; // Positive = scroll down, Negative = scroll up
     
     // Layout Update Handler
     private EventHandler? _pendingLayoutHandler;
@@ -394,12 +432,104 @@ public partial class ReorderableListBox : UserControl, IDisposable
         var pointerPos = e.GetPosition(this);
         UpdateGhostPosition(pointerPos);
         
+        // Check and update auto-scroll based on pointer position
+        UpdateAutoScroll(pointerPos);
+        
         // Throttle: Check swap at most every 16ms (~60fps)
         if ((DateTime.Now - _lastSwapCheck).TotalMilliseconds >= SWAP_CHECK_THROTTLE_MS)
         {
             CheckSwap(pointerPos.Y);
             _lastSwapCheck = DateTime.Now;
         }
+    }
+
+    /// <summary>
+    /// 检测指针是否接近 ScrollViewer 边缘，并启动/停止自动滚动
+    /// </summary>
+    private void UpdateAutoScroll(Point pointerPos)
+    {
+        // Find the ScrollViewer
+        var scrollViewer = this.FindDescendantOfType<ScrollViewer>();
+        if (scrollViewer == null || double.IsInfinity(MaxListBoxHeight))
+        {
+            // No ScrollViewer or no height limit, stop auto-scroll
+            StopAutoScroll();
+            return;
+        }
+
+        // Get ScrollViewer bounds relative to this control
+        var scrollViewerPos = scrollViewer.TranslatePoint(new Point(0, 0), this);
+        if (!scrollViewerPos.HasValue) return;
+
+        double scrollViewerTop = scrollViewerPos.Value.Y;
+        double scrollViewerBottom = scrollViewerTop + scrollViewer.Bounds.Height;
+
+        // Check if pointer is near top edge
+        if (pointerPos.Y < scrollViewerTop + AutoScrollEdgeSize && scrollViewer.Offset.Y > 0)
+        {
+            // Scroll up
+            double distanceFromEdge = pointerPos.Y - scrollViewerTop;
+            double intensity = 1.0 - (distanceFromEdge / AutoScrollEdgeSize); // 0-1
+            _autoScrollVelocity = -AutoScrollSpeed * intensity;
+            StartAutoScroll();
+        }
+        // Check if pointer is near bottom edge
+        else if (pointerPos.Y > scrollViewerBottom - AutoScrollEdgeSize)
+        {
+            // Check if we can scroll down
+            var maxOffset = scrollViewer.Extent.Height - scrollViewer.Viewport.Height;
+            if (scrollViewer.Offset.Y < maxOffset)
+            {
+                // Scroll down
+                double distanceFromEdge = scrollViewerBottom - pointerPos.Y;
+                double intensity = 1.0 - (distanceFromEdge / AutoScrollEdgeSize); // 0-1
+                _autoScrollVelocity = AutoScrollSpeed * intensity;
+                StartAutoScroll();
+            }
+            else
+            {
+                StopAutoScroll();
+            }
+        }
+        else
+        {
+            // Pointer is not in edge zone
+            StopAutoScroll();
+        }
+    }
+
+    private void StartAutoScroll()
+    {
+        if (_autoScrollTimer == null)
+        {
+            _autoScrollTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(16) // ~60fps
+            };
+            _autoScrollTimer.Tick += (s, e) => PerformAutoScroll();
+            _autoScrollTimer.Start();
+        }
+    }
+
+    private void StopAutoScroll()
+    {
+        if (_autoScrollTimer != null)
+        {
+            _autoScrollTimer.Stop();
+            _autoScrollTimer = null;
+        }
+        _autoScrollVelocity = 0;
+    }
+
+    private void PerformAutoScroll()
+    {
+        if (Math.Abs(_autoScrollVelocity) < 0.01) return;
+
+        var scrollViewer = this.FindDescendantOfType<ScrollViewer>();
+        if (scrollViewer == null) return;
+
+        double newOffset = scrollViewer.Offset.Y + _autoScrollVelocity;
+        scrollViewer.Offset = scrollViewer.Offset.WithY(newOffset);
     }
 
     private void OnRootPointerReleased(object? sender, PointerReleasedEventArgs e)
@@ -674,6 +804,9 @@ public partial class ReorderableListBox : UserControl, IDisposable
     {
         if (!_isDragging) return;
         _isDragging = false;
+
+        // Stop auto-scroll if active
+        StopAutoScroll();
 
         // Release pointer capture
         if (_capturedPointer != null)
