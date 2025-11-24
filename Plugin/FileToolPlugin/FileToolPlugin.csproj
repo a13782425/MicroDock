@@ -6,4 +6,22 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\MicroDock.Plugin\MicroDock.Plugin.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="plugin.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <Target Name="BuildConsoleApp" AfterTargets="Build">
+    <Exec Command="dotnet build ..\FileToolPlugin.Console\FileToolPlugin.Console.csproj -c $(Configuration)" />
+    <ItemGroup>
+      <ConsoleAppFiles Include="..\FileToolPlugin.Console\bin\$(Configuration)\net8.0\**\*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(ConsoleAppFiles)" DestinationFolder="$(OutputPath)" />
+  </Target>
+
 </Project>

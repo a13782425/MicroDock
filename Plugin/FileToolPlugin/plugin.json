@@ -1,0 +1,13 @@
+{
+    "name": "com.microdock.filetool",
+    "displayName": "File Tool",
+    "version": "1.0.0",
+    "description": "Provides file read/write capabilities via a console tool.",
+    "author": "MicroDock",
+    "license": "MIT",
+    "main": "FileToolPlugin.dll",
+    "entryClass": "FileToolPlugin.FileToolPlugin",
+    "engines": {
+        "microdock": ">=0.0.3.0"
+    }
+}
