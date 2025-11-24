@@ -1,0 +1,11 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="https://github.com/avaloniaui"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:local="clr-namespace:MicroNotePlugin.Views.Controls"
+             mc:Ignorable="d"
+             x:Class="MicroNotePlugin.Views.Controls.FileTreeView">
+  <TreeView x:Name="FileTree"
+            Items="{Binding RootNodes}"
+            SelectedItem="{Binding SelectedNode, Mode=TwoWay}" />
+</UserControl>

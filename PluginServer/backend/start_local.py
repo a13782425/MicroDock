@@ -3,6 +3,7 @@
 """
 import subprocess
 import sys
+sys.stdout.reconfigure(encoding='utf-8')
 import os
 from pathlib import Path
 
@@ -12,7 +13,7 @@ def check_python_version():
         print("❌ 错误: 需要 Python 3.11 或更高版本")
         print(f"   当前版本: {sys.version}")
         sys.exit(1)
-    print(f"✓ Python 版本: {sys.version_info.major}.{sys.version_info.minor}")
+    print(f"[OK] Python 版本: {sys.version_info.major}.{sys.version_info.minor}")
 
 def install_dependencies():
     """安装依赖"""
@@ -21,7 +22,7 @@ def install_dependencies():
         subprocess.check_call([
             sys.executable, "-m", "pip", "install", "-r", "requirements.txt", "-q"
         ])
-        print("✓ 依赖安装完成")
+        print("[OK] 依赖安装完成")
         return True
     except subprocess.CalledProcessError as e:
         print(f"❌ 依赖安装失败: {e}")
@@ -33,7 +34,7 @@ def create_directories():
     directories = ["./data", "./data/uploads", "./data/temp"]
     for dir_path in directories:
         Path(dir_path).mkdir(parents=True, exist_ok=True)
-    print("✓ 目录创建完成")
+    print("[OK] 目录创建完成")
 
 def start_server():
     """启动服务器"""
@@ -55,7 +56,7 @@ def start_server():
             "--reload"
         ])
     except KeyboardInterrupt:
-        print("\n\n✓ 服务器已停止")
+        print("\n\n[OK] 服务器已停止")
     except Exception as e:
         print(f"\n❌ 启动失败: {e}")
         sys.exit(1)

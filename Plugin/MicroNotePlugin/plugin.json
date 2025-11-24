@@ -1,0 +1,10 @@
+{
+  "name": "com.microdock.note",
+  "displayName": "随手记",
+  "version": "1.0.0",
+  "description": "随手记插件，提供文件列表和 Markdown 编辑预览",
+  "author": "MicroDock",
+  "license": "MIT",
+  "main": "MicroNotePlugin.dll",
+  "entryClass": "MicroNotePlugin.MicroNotePlugin"
+}

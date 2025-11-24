@@ -10,6 +10,10 @@ import threading
 from pathlib import Path
 import signal
 
+def get_npm_command():
+    """获取 npm 命令"""
+    return "npm.cmd" if os.name == 'nt' else "npm"
+
 def check_environment():
     """检查环境"""
     print("🔍 检查环境...")
@@ -19,14 +23,15 @@ def check_environment():
         print("❌ 错误: 需要 Python 3.11 或更高版本")
         sys.exit(1)
         
-    # 检查 Node.js (简单检查)
+    # 检查 Node.js
+    npm_cmd = get_npm_command()
     try:
-        subprocess.run(["npm", "--version"], capture_output=True, check=True)
+        # 使用 shell=True 在 Windows 上通常能更好地找到路径中的命令
+        subprocess.run([npm_cmd, "--version"], capture_output=True, check=True, shell=True)
+        print(f"✓ Node.js 环境检查通过 ({npm_cmd})")
     except (subprocess.CalledProcessError, FileNotFoundError):
-        print("❌ 错误: 未找到 npm，请安装 Node.js")
+        print(f"❌ 错误: 未找到 {npm_cmd}，请确保已安装 Node.js 并添加到环境变量")
         sys.exit(1)
-        
-    print("✓ 环境检查通过")
 
 def install_dependencies():
     """安装依赖"""
@@ -40,8 +45,9 @@ def install_dependencies():
     
     # 前端依赖
     print("  - 安装前端依赖...")
+    npm_cmd = get_npm_command()
     subprocess.check_call(
-        ["npm", "install"], 
+        [npm_cmd, "install"], 
         cwd="frontend",
         shell=True
     )
@@ -63,8 +69,9 @@ def start_backend():
 def start_frontend():
     """启动前端服务"""
     print("🎨 启动前端服务 (Port 3000)...")
+    npm_cmd = get_npm_command()
     return subprocess.Popen(
-        ["npm", "run", "dev"],
+        [npm_cmd, "run", "dev"],
         cwd="frontend",
         shell=True
     )

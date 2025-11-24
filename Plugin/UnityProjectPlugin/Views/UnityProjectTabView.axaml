@@ -26,7 +26,7 @@
                           Padding="12,8"
                           Margin="0,0,12,0">
                 <StackPanel Orientation="Horizontal" Spacing="4">
-                    <fa:SymbolIcon Symbol="GlobalNavigationButton" FontSize="16"/>
+                    <fa:SymbolIcon Symbol="Navigation" FontSize="16"/>
                     <TextBlock Text="分组" VerticalAlignment="Center"/>
                 </StackPanel>
             </ToggleButton>

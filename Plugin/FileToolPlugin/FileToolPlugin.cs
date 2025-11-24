@@ -18,17 +18,17 @@ namespace FileToolPlugin
             return Path.Combine(directory, "Tools.exe");
         }
 
-        [MicroTool("file.read", Description = "Read a file and return its content as Base64 string", ReturnDescription = "Base64 encoded file content")]
+        [MicroTool("file.read", Description = "读取一个文件并将其内容以 Base64 字符串形式返回", ReturnDescription = "Base64 编码的文件内容")]
         public async Task<string> ReadFile(
-            [ToolParameter("path", Description = "Absolute path to the file")] string path)
+            [ToolParameter("path", Description = "文件的绝对路径")] string path)
         {
             return await RunConsoleCommand("read", path);
         }
 
-        [MicroTool("file.write", Description = "Write Base64 content to a file", ReturnDescription = "Success message or error")]
+        [MicroTool("file.write", Description = "将 Base64 格式的内容写入文件中", ReturnDescription = "成功消息或错误信息")]
         public async Task<string> WriteFile(
-            [ToolParameter("path", Description = "Absolute path to the file")] string path,
-            [ToolParameter("content", Description = "Base64 encoded content")] string content)
+            [ToolParameter("path", Description = "文件的绝对路径")] string path,
+            [ToolParameter("content", Description = "Base64 编码的文件内容")] string content)
         {
             return await RunConsoleCommand("write", path, content);
         }

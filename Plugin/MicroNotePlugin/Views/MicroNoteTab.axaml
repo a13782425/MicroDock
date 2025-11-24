@@ -1,0 +1,14 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="https://github.com/avaloniaui"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:local="clr-namespace:MicroNotePlugin.Views.Controls"
+             mc:Ignorable="d"
+             x:Class="MicroNotePlugin.Views.MicroNoteTab">
+  <Grid RowDefinitions="Auto,*" ColumnDefinitions="200,*">
+    <!-- 左侧文件树 -->
+    <local:FileTreeView Grid.Row="0" Grid.RowSpan="2" Grid.Column="0" />
+    <!-- 右侧编辑区 -->
+    <local:MarkdownEditor Grid.Row="0" Grid.Column="1" />
+  </Grid>
+</UserControl>

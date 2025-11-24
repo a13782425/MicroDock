@@ -1,9 +1,28 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-  </PropertyGroup>
-
+	<PropertyGroup>
+		<TargetFramework>net8.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+	</PropertyGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\..\MicroDock.Plugin\MicroDock.Plugin.csproj" />
+	</ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="Avalonia" Version="11.3.8" />
+		<PackageReference Include="Avalonia.AvaloniaEdit" Version="11.3.0" />
+		<PackageReference Include="DynamicData" Version="9.4.1" />
+		<PackageReference Include="ReactiveUI.Avalonia" Version="11.3.8" />
+		<PackageReference Include="FluentAvaloniaUI" Version="2.4.0" />
+		<PackageReference Include="Markdig" Version="0.43.0" />
+	</ItemGroup>
+	<!-- 自动复制 plugin.json 到输出目录 -->
+	<ItemGroup>
+		<None Update="plugin.json">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</None>
+	</ItemGroup>
+	<Target Name="PostBuild" AfterTargets="PostBuildEvent">
+		<Exec Command="copy /Y $(TargetPath) $(SolutionDir)MicroDock\bin\Debug\net8.0-windows10.0.17763.0\Plugins\com.microdock.note\$(TargetName)$(TargetExt)" />
+	</Target>
 </Project>

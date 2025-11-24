@@ -1,0 +1,20 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="https://github.com/avaloniaui"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:local="clr-namespace:MicroNotePlugin.Views.Controls"
+             xmlns:avaloniaEdit="clr-namespace:AvaloniaEdit;assembly=AvaloniaEdit"
+             mc:Ignorable="d"
+             x:Class="MicroNotePlugin.Views.Controls.MarkdownEditor">
+
+  <Grid RowDefinitions="*,Auto" ColumnDefinitions="*" Spacing="5">
+    <!-- 编辑器 -->
+    <avaloniaEdit:TextEditor x:Name="Editor"
+                           Grid.Row="0"
+                           Text="{Binding MarkdownText, Mode=TwoWay}" />
+    <!-- 预览 -->
+    <ScrollViewer Grid.Row="1" Height="200">
+      <TextBlock Text="{Binding HtmlPreview}" TextWrapping="Wrap" />
+    </ScrollViewer>
+  </Grid>
+</UserControl>
