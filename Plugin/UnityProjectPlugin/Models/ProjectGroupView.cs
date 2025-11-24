@@ -16,6 +16,10 @@ namespace UnityProjectPlugin.Models
         /// 该分组下的项目列表
         /// </summary>
         public System.Collections.ObjectModel.ObservableCollection<UnityProject> Projects { get; set; } = new();
+
+        /// <summary>
+        /// 项目计数描述（用于 SettingsExpander.Description）
+        /// </summary>
+        public string ProjectCountDescription => $"{Projects.Count} 个项目";
     }
 }
-

@@ -4,6 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:models="clr-namespace:UnityProjectPlugin.Models"
              xmlns:views="clr-namespace:UnityProjectPlugin.Views"
+             xmlns:fa="clr-namespace:FluentAvalonia.UI.Controls;assembly=FluentAvalonia"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
              x:Class="UnityProjectPlugin.Views.UnityProjectTabView">
 
@@ -25,12 +26,7 @@
                           Padding="12,8"
                           Margin="0,0,12,0">
                 <StackPanel Orientation="Horizontal" Spacing="4">
-                    <PathIcon Width="16" Height="16">
-                        <PathIcon.Data>
-                            <!-- 分组图标 -->
-                            M 4,4 H 20 V 6 H 4 Z M 4,11 H 20 V 13 H 4 Z M 4,18 H 20 V 20 H 4 Z
-                        </PathIcon.Data>
-                    </PathIcon>
+                    <fa:SymbolIcon Symbol="GlobalNavigationButton" FontSize="16"/>
                     <TextBlock Text="分组" VerticalAlignment="Center"/>
                 </StackPanel>
             </ToggleButton>
@@ -64,25 +60,22 @@
                               IsVisible="{Binding IsGroupViewEnabled}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="models:ProjectGroupView">
-                            <StackPanel Spacing="8" Margin="0,0,0,24">
-                                <!-- 分组标题 -->
-                                <Border BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}"
-                                        BorderThickness="0,0,0,2"
-                                        Padding="0,0,0,8">
-                                    <TextBlock Text="{Binding GroupName}" 
-                                               FontSize="18" 
-                                               FontWeight="SemiBold"/>
-                                </Border>
+                            <fa:SettingsExpander Header="{Binding GroupName}"
+                                                 IconSource="Folder"
+                                                 IsExpanded="True"
+                                                 Description="{Binding ProjectCountDescription}"
+                                                 Margin="0,0,0,8">
                                 
-                                <!-- 该分组的项目列表 -->
-                                <ItemsControl ItemsSource="{Binding Projects}">
+                                <!-- 项目列表 -->
+                                <ItemsControl ItemsSource="{Binding Projects}"
+                                              Margin="0,8,0,0">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate DataType="models:UnityProject">
                                             <views:ProjectCard DataContext="{Binding}"/>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
-                            </StackPanel>
+                            </fa:SettingsExpander>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>

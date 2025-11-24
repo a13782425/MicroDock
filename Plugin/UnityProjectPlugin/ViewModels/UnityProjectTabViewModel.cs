@@ -150,6 +150,9 @@ namespace UnityProjectPlugin.ViewModels
                 }).ToList();
             }
 
+            // 按最后打开时间降序排序
+            filtered = filtered.OrderByDescending(p => p.LastOpened).ToList();
+
             // 更新平铺视图
             _filteredProjects.Clear();
             foreach (UnityProject project in filtered)
@@ -168,11 +171,10 @@ namespace UnityProjectPlugin.ViewModels
         {
             _groupedProjects.Clear();
 
-            // 按分组名分组
+            // 按分组名分组，组内按最后打开时间降序排序
             IEnumerable<IGrouping<string, UnityProject>> groups = projects
-                .OrderBy(p => p.GroupName ?? string.Empty)
-                .ThenBy(p => p.Name)
-                .GroupBy(p => p.GroupName ?? string.Empty);
+                .GroupBy(p => p.GroupName ?? string.Empty)
+                .OrderBy(g => g.Key); // 分组按名称排序
 
             foreach (IGrouping<string, UnityProject> group in groups)
             {
@@ -181,7 +183,8 @@ namespace UnityProjectPlugin.ViewModels
                     GroupName = string.IsNullOrEmpty(group.Key) ? "未分组" : group.Key
                 };
 
-                foreach (UnityProject project in group)
+                // 分组内按最后打开时间降序排序
+                foreach (UnityProject project in group.OrderByDescending(p => p.LastOpened))
                 {
                     groupView.Projects.Add(project);
                 }
