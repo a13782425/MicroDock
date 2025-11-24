@@ -69,16 +69,6 @@ namespace UnityProjectPlugin.Views
 
         private void AttachEventHandlers()
         {
-            if (_openSplitButton != null)
-            {
-                _openSplitButton.Click += OnOpenClick;
-            }
-
-            if (_deleteMenuItem != null)
-            {
-                _deleteMenuItem.Click += OnDeleteClick;
-            }
-
             if (_openDirectoryMenuItem != null)
             {
                 _openDirectoryMenuItem.Click += OnOpenDirectoryClick;
@@ -263,7 +253,7 @@ namespace UnityProjectPlugin.Views
             _projectNameEditor.SelectAll();
         }
 
-        private void ExitNameEditMode(bool save)
+        private async Task ExitNameEditModeAsync(bool save)
         {
             if (_projectNameDisplay == null || _projectNameEditor == null || !_isEditingName) return;
             if (DataContext is not UnityProject project) return;
@@ -276,7 +266,7 @@ namespace UnityProjectPlugin.Views
                 if (!string.IsNullOrEmpty(newName) && newName != _originalName && _plugin != null)
                 {
                     // 保存新名称
-                    _plugin.UpdateProject(project.Path, newName, project.GroupName);
+                    await _plugin.UpdateProjectAsync(project.Path, newName, project.GroupName);
                     project.Name = newName;
 
                     // 刷新列表
@@ -293,22 +283,22 @@ namespace UnityProjectPlugin.Views
             _projectNameEditor.IsVisible = false;
         }
 
-        private void OnNameEditorLostFocus(object? sender, RoutedEventArgs e)
+        private async void OnNameEditorLostFocus(object? sender, RoutedEventArgs e)
         {
             // 支持失去焦点时保存
-            ExitNameEditMode(true);
+            await ExitNameEditModeAsync(true);
         }
 
-        private void OnNameEditorKeyDown(object? sender, KeyEventArgs e)
+        private async void OnNameEditorKeyDown(object? sender, KeyEventArgs e)
         {
             if (e.Key == Key.Enter)
             {
-                ExitNameEditMode(true);
+                await ExitNameEditModeAsync(true);
                 e.Handled = true;
             }
             else if (e.Key == Key.Escape)
             {
-                ExitNameEditMode(false);
+                await ExitNameEditModeAsync(false);
                 e.Handled = true;
             }
         }
@@ -316,7 +306,7 @@ namespace UnityProjectPlugin.Views
         /// <summary>
         /// 分组选择变化事件
         /// </summary>
-        private void OnGroupSelectionChanged(object? sender, SelectionChangedEventArgs e)
+        private async void OnGroupSelectionChanged(object? sender, SelectionChangedEventArgs e)
         {
             if (_groupComboBox == null || _plugin == null) return;
             if (DataContext is not UnityProject project) return;
@@ -327,7 +317,7 @@ namespace UnityProjectPlugin.Views
             // 如果分组变化了，保存
             if (newGroupName != project.GroupName)
             {
-                _plugin.UpdateProject(project.Path, project.Name, newGroupName);
+                await _plugin.UpdateProjectAsync(project.Path, project.Name, newGroupName);
                 project.GroupName = newGroupName;
                 UpdateGroupDisplay(project);
 
@@ -339,21 +329,21 @@ namespace UnityProjectPlugin.Views
         /// <summary>
         /// 添加新分组
         /// </summary>
-        private void OnAddGroupButtonClick(object? sender, RoutedEventArgs e)
+        private async void OnAddGroupButtonClick(object? sender, RoutedEventArgs e)
         {
-            AddNewGroup();
+            await AddNewGroupAsync();
         }
 
-        private void OnNewGroupNameKeyDown(object? sender, KeyEventArgs e)
+        private async void OnNewGroupNameKeyDown(object? sender, KeyEventArgs e)
         {
             if (e.Key == Key.Enter)
             {
-                AddNewGroup();
+                await AddNewGroupAsync();
                 e.Handled = true;
             }
         }
 
-        private void AddNewGroup()
+        private async Task AddNewGroupAsync()
         {
             if (_newGroupNameTextBox == null || _plugin == null) return;
 
@@ -368,7 +358,7 @@ namespace UnityProjectPlugin.Views
             }
 
             // 添加新分组
-            _plugin.AddGroup(newGroupName);
+            await _plugin.AddGroupAsync(newGroupName);
             _newGroupNameTextBox.Text = string.Empty;
 
             // 重新加载分组列表
@@ -378,7 +368,7 @@ namespace UnityProjectPlugin.Views
         /// <summary>
         /// 删除分组按钮点击
         /// </summary>
-        public void DeleteGroupButton_Click(object? sender, RoutedEventArgs e)
+        public async void DeleteGroupButton_Click(object? sender, RoutedEventArgs e)
         {
             if (sender is Button button && button.Tag is ProjectGroup group && _plugin != null)
             {
@@ -391,7 +381,7 @@ namespace UnityProjectPlugin.Views
                 }
 
                 // 删除分组
-                _plugin.DeleteGroup(group.Id);
+                await _plugin.DeleteGroupAsync(group.Id);
 
                 // 重新加载分组列表
                 LoadGroupsData();
@@ -401,42 +391,7 @@ namespace UnityProjectPlugin.Views
             }
         }
 
-        private void OnOpenClick(object? sender, RoutedEventArgs e)
-        {
-            if (DataContext is UnityProject project && _plugin != null)
-            {
-                try
-                {
-                    System.Threading.Tasks.Task.Run(async () => await _plugin.OpenUnityProject(project.Path));
 
-                    // 刷新列表
-                    RefreshParentList();
-                }
-                catch
-                {
-                    // TODO: 显示错误消息
-                }
-            }
-        }
-
-        private void OnDeleteClick(object? sender, RoutedEventArgs e)
-        {
-            if (DataContext is UnityProject project && _plugin != null)
-            {
-                try
-                {
-                    // TODO: 显示确认对话框
-                    _plugin.RemoveProject(project.Path);
-
-                    // 刷新列表
-                    RefreshParentList();
-                }
-                catch
-                {
-                    // TODO: 显示错误消息
-                }
-            }
-        }
 
         /// <summary>
         /// 打开目录菜单项点击事件

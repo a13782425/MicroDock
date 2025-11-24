@@ -35,6 +35,7 @@
             <Button Grid.Column="2" 
                     Content="添加项目"
                     Name="AddProjectButton"
+                    Command="{Binding AddProjectCommand}"
                     Padding="16,8"/>
         </Grid>
 
@@ -82,6 +83,7 @@
 
                 <!-- 空状态提示 -->
                 <StackPanel Name="EmptyState"
+                            IsVisible="{Binding !HasProjects}"
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center"
                             Spacing="16">
@@ -97,6 +99,7 @@
                                HorizontalAlignment="Center"/>
                     <Button Content="添加第一个项目"
                             Name="EmptyAddButton"
+                            Command="{Binding AddProjectCommand}"
                             HorizontalAlignment="Center"
                             Padding="16,8"/>
                 </StackPanel>

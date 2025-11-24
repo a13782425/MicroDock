@@ -55,11 +55,11 @@ namespace UnityProjectPlugin.ViewModels
         /// <summary>
         /// 添加分组
         /// </summary>
-        public void AddGroup(string name)
+        public async System.Threading.Tasks.Task AddGroupAsync(string name)
         {
             try
             {
-                _plugin.AddGroup(name);
+                await _plugin.AddGroupAsync(name);
                 LoadGroups();
             }
             catch (Exception ex)
@@ -71,11 +71,11 @@ namespace UnityProjectPlugin.ViewModels
         /// <summary>
         /// 更新分组
         /// </summary>
-        public void UpdateGroup(string id, string newName)
+        public async System.Threading.Tasks.Task UpdateGroupAsync(string id, string newName)
         {
             try
             {
-                _plugin.UpdateGroup(id, newName);
+                await _plugin.UpdateGroupAsync(id, newName);
                 LoadGroups();
             }
             catch (Exception ex)
@@ -87,11 +87,11 @@ namespace UnityProjectPlugin.ViewModels
         /// <summary>
         /// 删除分组
         /// </summary>
-        public void DeleteGroup(string id)
+        public async System.Threading.Tasks.Task DeleteGroupAsync(string id)
         {
             try
             {
-                _plugin.DeleteGroup(id);
+                await _plugin.DeleteGroupAsync(id);
                 LoadGroups();
             }
             catch (Exception ex)

@@ -139,7 +139,7 @@ namespace UnityProjectPlugin.Views
                         version = $"Unity-{DateTime.Now:yyyyMMdd}";
                     }
 
-                    _plugin.AddVersion(version, editorPath);
+                    await _plugin.AddVersionAsync(version, editorPath);
                     _viewModel.Refresh();
 
                     // 重新附加删除按钮事件

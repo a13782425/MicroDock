@@ -3,13 +3,9 @@ using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
-using Avalonia.Platform.Storage;
-using Avalonia.VisualTree;
 using MicroDock.Plugin;
 using System;
-using System.IO;
-using System.Linq;
-using UnityProjectPlugin.Models;
+using UnityProjectPlugin.Services;
 using UnityProjectPlugin.ViewModels;
 
 namespace UnityProjectPlugin.Views
@@ -34,17 +30,17 @@ namespace UnityProjectPlugin.Views
         private Button? _emptyAddButton;
         private ItemsControl? _tileView;
         private ItemsControl? _groupView;
-        private StackPanel? _emptyState;
 
         public UnityProjectTabView(UnityProjectPlugin plugin)
         {
             _plugin = plugin;
-            _viewModel = new UnityProjectTabViewModel(plugin);
+            
+            // 创建文件选择服务
+            var filePickerService = new FilePickerService(this);
+            _viewModel = new UnityProjectTabViewModel(plugin, filePickerService);
 
             InitializeComponent();
             InitializeControls();
-            AttachEventHandlers();
-            UpdateEmptyState();
         }
 
         public string TabName => "Unity项目";
@@ -64,32 +60,9 @@ namespace UnityProjectPlugin.Views
             _emptyAddButton = this.FindControl<Button>("EmptyAddButton");
             _tileView = this.FindControl<ItemsControl>("TileView");
             _groupView = this.FindControl<ItemsControl>("GroupView");
-            _emptyState = this.FindControl<StackPanel>("EmptyState");
 
             // 设置 DataContext
             DataContext = _viewModel;
-        }
-
-        private void AttachEventHandlers()
-        {
-            if (_addProjectButton != null)
-            {
-                _addProjectButton.Click += OnAddProjectClick;
-            }
-
-            if (_emptyAddButton != null)
-            {
-                _emptyAddButton.Click += OnAddProjectClick;
-            }
-
-            // 监听项目列表变化以更新空状态
-            _viewModel.PropertyChanged += (s, e) =>
-            {
-                if (e.PropertyName == nameof(_viewModel.FilteredProjects))
-                {
-                    UpdateEmptyState();
-                }
-            };
         }
 
         /// <summary>
@@ -98,56 +71,6 @@ namespace UnityProjectPlugin.Views
         public void RefreshProjects()
         {
             _viewModel.LoadProjects();
-        }
-
-        private void UpdateEmptyState()
-        {
-            if (_emptyState != null)
-            {
-                _emptyState.IsVisible = _viewModel.FilteredProjects.Count == 0;
-            }
-        }
-
-        private async void OnAddProjectClick(object? sender, RoutedEventArgs e)
-        {
-            await AddProjectAsync();
-        }
-
-        private async System.Threading.Tasks.Task AddProjectAsync()
-        {
-            try
-            {
-                TopLevel? topLevel = TopLevel.GetTopLevel(this);
-                if (topLevel == null) return;
-
-                System.Collections.Generic.IReadOnlyList<IStorageFolder> folders = 
-                    await topLevel.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
-                    {
-                        Title = "选择 Unity 项目文件夹",
-                        AllowMultiple = false
-                    });
-
-                if (folders.Count > 0)
-                {
-                    string folderPath = folders[0].Path.LocalPath;
-
-                    // 验证是否是 Unity 项目
-                    string assetsPath = Path.Combine(folderPath, "Assets");
-                    string projectSettingsPath = Path.Combine(folderPath, "ProjectSettings");
-
-                    if (!Directory.Exists(assetsPath) || !Directory.Exists(projectSettingsPath))
-                    {
-                        // TODO: 显示错误消息对话框
-                        return;
-                    }
-
-                    _viewModel.AddProject(folderPath);
-                }
-            }
-            catch (Exception ex)
-            {
-                // TODO: 显示错误消息对话框
-            }
         }
     }
 }

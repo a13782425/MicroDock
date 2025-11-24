@@ -1,105 +1,119 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
-MicroDock 插件管理服务器启动脚本
+MicroDock 插件服务器一键启动脚本
 """
-
-import os
-import sys
 import subprocess
-import threading
+import sys
+import os
 import time
 import webbrowser
+import threading
 from pathlib import Path
+import signal
 
-def check_python_version():
-    """检查Python版本"""
-    if sys.version_info < (3, 7):
-        print("错误: 需要Python 3.7或更高版本")
+def check_environment():
+    """检查环境"""
+    print("🔍 检查环境...")
+    
+    # 检查 Python
+    if sys.version_info < (3, 11):
+        print("❌ 错误: 需要 Python 3.11 或更高版本")
         sys.exit(1)
-    print(f"✓ Python版本: {sys.version}")
+        
+    # 检查 Node.js (简单检查)
+    try:
+        subprocess.run(["npm", "--version"], capture_output=True, check=True)
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        print("❌ 错误: 未找到 npm，请安装 Node.js")
+        sys.exit(1)
+        
+    print("✓ 环境检查通过")
 
 def install_dependencies():
-    """安装依赖包"""
-    requirements_file = Path(__file__).parent / "requirements.txt"
+    """安装依赖"""
+    print("\n📦 安装依赖...")
+    
+    # 后端依赖
+    print("  - 安装后端依赖...")
+    subprocess.check_call([
+        sys.executable, "-m", "pip", "install", "-r", "backend/requirements.txt", "-q"
+    ])
+    
+    # 前端依赖
+    print("  - 安装前端依赖...")
+    subprocess.check_call(
+        ["npm", "install"], 
+        cwd="frontend",
+        shell=True
+    )
+    
+    print("✓ 依赖安装完成")
 
-    if not requirements_file.exists():
-        print("警告: requirements.txt 文件不存在")
-        return False
+def start_backend():
+    """启动后端服务"""
+    print("🚀 启动后端服务 (Port 8000)...")
+    # 确保数据目录存在
+    Path("backend/data/uploads").mkdir(parents=True, exist_ok=True)
+    Path("backend/data/temp").mkdir(parents=True, exist_ok=True)
+    
+    return subprocess.Popen(
+        [sys.executable, "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"],
+        cwd="backend"
+    )
 
-    print("正在检查和安装依赖包...")
-    try:
-        subprocess.check_call([
-            sys.executable, "-m", "pip", "install", "-r", str(requirements_file)
-        ])
-        print("✓ 依赖包安装完成")
-        return True
-    except subprocess.CalledProcessError as e:
-        print(f"错误: 依赖包安装失败 - {e}")
-        return False
-
-def check_flask():
-    """检查Flask是否已安装"""
-    try:
-        import flask
-        print(f"✓ Flask已安装: {flask.__version__}")
-        return True
-    except ImportError:
-        return False
-
-def create_directories():
-    """创建必要的目录"""
-    directories = ["Plugins", "backups", "temp"]
-    for dir_name in directories:
-        dir_path = Path(dir_name)
-        dir_path.mkdir(exist_ok=True)
-        print(f"✓ 目录已创建: {dir_path}")
+def start_frontend():
+    """启动前端服务"""
+    print("🎨 启动前端服务 (Port 3000)...")
+    return subprocess.Popen(
+        ["npm", "run", "dev"],
+        cwd="frontend",
+        shell=True
+    )
 
 def open_browser():
-    """延迟打开浏览器"""
-    time.sleep(2)  # 等待服务器启动
-    try:
-        webbrowser.open("http://localhost:5000")
-        print("✓ 浏览器已打开")
-    except Exception as e:
-        print(f"警告: 无法自动打开浏览器 - {e}")
+    """打开浏览器"""
+    time.sleep(3)  # 等待服务启动
+    print("\n🌐 打开浏览器...")
+    webbrowser.open("http://localhost:3000")
 
 def main():
-    """主函数"""
     print("=" * 60)
-    print("MicroDock 插件管理服务器启动器")
+    print("MicroDock 插件管理系统 - 一键启动")
     print("=" * 60)
-
-    # 检查Python版本
-    check_python_version()
-
-    # 创建必要目录
-    create_directories()
-
-    # 检查Flask
-    if not check_flask():
-        print("正在安装Flask...")
-        if not install_dependencies():
-            print("Flask安装失败，请手动运行: pip install flask")
-            sys.exit(1)
-
-    print("\n正在启动插件管理服务器...")
-    print("访问地址: http://localhost:5000")
-    print("按 Ctrl+C 停止服务器")
-    print("-" * 60)
-
-    # 在后台线程中打开浏览器
-    browser_thread = threading.Thread(target=open_browser, daemon=True)
-    browser_thread.start()
-
+    
     try:
-        # 导入并运行Flask应用
-        from app import app
-        app.run(host='0.0.0.0', port=5000, debug=False)
+        check_environment()
+        install_dependencies()
+        
+        # 启动服务
+        backend_process = start_backend()
+        frontend_process = start_frontend()
+        
+        # 打开浏览器
+        threading.Thread(target=open_browser, daemon=True).start()
+        
+        print("\n✅ 服务已启动！")
+        print("   后端 API: http://localhost:8000/docs")
+        print("   前端界面: http://localhost:3000")
+        print("\n按 Ctrl+C 停止所有服务...")
+        
+        # 等待进程结束
+        backend_process.wait()
+        frontend_process.wait()
+        
     except KeyboardInterrupt:
-        print("\n服务器已停止")
+        print("\n\n🛑 正在停止服务...")
+        if 'backend_process' in locals():
+            backend_process.terminate()
+        if 'frontend_process' in locals():
+            # Windows下终止shell启动的子进程比较麻烦，这里简单处理
+            if os.name == 'nt':
+                subprocess.run(["taskkill", "/F", "/T", "/PID", str(frontend_process.pid)])
+            else:
+                frontend_process.terminate()
+        print("✓ 服务已停止")
+        sys.exit(0)
     except Exception as e:
-        print(f"启动失败: {e}")
+        print(f"\n❌ 发生错误: {e}")
         sys.exit(1)
 
 if __name__ == "__main__":

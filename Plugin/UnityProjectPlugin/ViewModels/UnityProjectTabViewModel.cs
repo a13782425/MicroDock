@@ -2,9 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
+using System.Windows.Input;
+using UnityProjectPlugin.Helpers;
 using UnityProjectPlugin.Models;
+using UnityProjectPlugin.Services;
 
 namespace UnityProjectPlugin.ViewModels
 {
@@ -14,6 +19,7 @@ namespace UnityProjectPlugin.ViewModels
     public class UnityProjectTabViewModel : INotifyPropertyChanged
     {
         private readonly UnityProjectPlugin _plugin;
+        private readonly IFilePickerService _filePickerService;
         private ObservableCollection<UnityProject> _projects = new();
         private ObservableCollection<UnityProject> _filteredProjects = new();
         private ObservableCollection<ProjectGroupView> _groupedProjects = new();
@@ -22,9 +28,21 @@ namespace UnityProjectPlugin.ViewModels
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
-        public UnityProjectTabViewModel(UnityProjectPlugin plugin)
+        public ICommand AddProjectCommand { get; }
+        public ICommand OpenProjectCommand { get; }
+        public ICommand DeleteProjectCommand { get; }
+        public ICommand ToggleGroupViewCommand { get; }
+
+        public UnityProjectTabViewModel(UnityProjectPlugin plugin, IFilePickerService filePickerService)
         {
-            _plugin = plugin;
+            _plugin = plugin ?? throw new ArgumentNullException(nameof(plugin));
+            _filePickerService = filePickerService ?? throw new ArgumentNullException(nameof(filePickerService));
+
+            AddProjectCommand = new AsyncRelayCommand(AddProjectAsync);
+            OpenProjectCommand = new AsyncRelayCommand(OpenProjectAsync);
+            DeleteProjectCommand = new AsyncRelayCommand(DeleteProjectAsync);
+            ToggleGroupViewCommand = new RelayCommand(_ => ToggleGroupView());
+
             LoadProjects();
         }
 
@@ -111,18 +129,44 @@ namespace UnityProjectPlugin.ViewModels
             }
         }
 
+        private bool _hasProjects;
+
+        /// <summary>
+        /// 是否有项目（用于控制空状态显示）
+        /// </summary>
+        public bool HasProjects
+        {
+            get => _hasProjects;
+            private set
+            {
+                if (_hasProjects != value)
+                {
+                    _hasProjects = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
         /// <summary>
         /// 加载项目列表
         /// </summary>
         public void LoadProjects()
         {
-            List<UnityProject> projects = _plugin.GetProjects();
-            _projects.Clear();
-            foreach (UnityProject project in projects)
+            try
             {
-                _projects.Add(project);
+                _plugin.Context?.ShowLoading("加载项目中...");
+                List<UnityProject> projects = _plugin.GetProjects();
+                _projects.Clear();
+                foreach (UnityProject project in projects)
+                {
+                    _projects.Add(project);
+                }
+                FilterProjects();
             }
-            FilterProjects();
+            finally
+            {
+                _plugin.Context?.HideLoading();
+            }
         }
 
         /// <summary>
@@ -159,6 +203,9 @@ namespace UnityProjectPlugin.ViewModels
             {
                 _filteredProjects.Add(project);
             }
+
+            // 更新 HasProjects 属性
+            HasProjects = _projects.Count > 0;
 
             // 更新分组视图
             UpdateGroupedProjects(filtered);
@@ -204,50 +251,177 @@ namespace UnityProjectPlugin.ViewModels
         /// <summary>
         /// 添加项目
         /// </summary>
-        public void AddProject(string path, string? name = null)
+        private async Task AddProjectAsync(object? parameter)
         {
             try
             {
-                _plugin.AddProject(path, name);
-                LoadProjects();
+                _plugin.Context?.ShowLoading("选择项目文件夹...");
+                var folderPath = await _filePickerService.PickSingleFolderAsync("选择 Unity 项目文件夹");
+                if (folderPath != null)
+                {
+                    _plugin.Context?.ShowLoading("添加项目中...");
+                    // 检查是否为 Unity 项目
+                    var assetsPath = System.IO.Path.Combine(folderPath, "Assets");
+                    var projectSettingsPath = System.IO.Path.Combine(folderPath, "ProjectSettings");
+                    if (!System.IO.Directory.Exists(assetsPath) || !System.IO.Directory.Exists(projectSettingsPath))
+                    {
+                        _plugin.Context?.ShowInAppNotification(
+                            "添加失败",
+                            "这不是一个有效的 Unity 项目",
+                            MicroDock.Plugin.NotificationType.Warning
+                        );
+                        return;
+                    }
+
+                    await _plugin.AddProjectAsync(folderPath);
+                    LoadProjects();
+                    
+                    _plugin.Context?.ShowInAppNotification(
+                        "添加成功",
+                        $"已添加项目: {System.IO.Path.GetFileName(folderPath)}",
+                        MicroDock.Plugin.NotificationType.Success
+                    );
+                }
             }
             catch (Exception ex)
             {
-                throw new Exception($"添加项目失败: {ex.Message}", ex);
+                _plugin.Context?.ShowInAppNotification(
+                    "添加失败",
+                    ex.Message,
+                    MicroDock.Plugin.NotificationType.Error
+                );
+                _plugin.Context?.LogError("添加项目失败", ex);
+            }
+            finally
+            {
+                _plugin.Context?.HideLoading();
             }
         }
 
         /// <summary>
         /// 删除项目
         /// </summary>
-        public void DeleteProject(UnityProject project)
+        private async Task DeleteProjectAsync(object? parameter)
         {
-            try
+            if (parameter is UnityProject project)
             {
-                _plugin.RemoveProject(project.Path);
-                LoadProjects();
-            }
-            catch (Exception ex)
-            {
-                throw new Exception($"删除项目失败: {ex.Message}", ex);
+                try
+                {
+                    await _plugin.RemoveProjectAsync(project.Path);
+                    LoadProjects();
+                    
+                    _plugin.Context?.ShowInAppNotification(
+                        "删除成功",
+                        $"已删除项目: {project.Name}",
+                        MicroDock.Plugin.NotificationType.Success
+                    );
+                }
+                catch (Exception ex)
+                {
+                    _plugin.Context?.ShowInAppNotification(
+                        "删除失败",
+                        ex.Message,
+                        MicroDock.Plugin.NotificationType.Error
+                    );
+                    _plugin.Context?.LogError("删除项目失败", ex);
+                }
             }
         }
 
         /// <summary>
         /// 打开项目
         /// </summary>
-        public async void OpenProject(UnityProject project)
+        private async Task OpenProjectAsync(object? parameter)
+        {
+            if (parameter is UnityProject project)
+            {
+                try
+                {
+                    _plugin.Context?.ShowLoading($"正在打开 {project.Name}...");
+                    await _plugin.OpenUnityProject(project.Path);
+                    // 刷新列表以更新最后打开时间
+                    LoadProjects();
+                }
+                catch (Exception ex)
+                {
+                    _plugin.Context?.ShowInAppNotification(
+                        "打开失败",
+                        ex.Message,
+                        MicroDock.Plugin.NotificationType.Error
+                    );
+                    _plugin.Context?.LogError("打开项目失败", ex);
+                }
+                finally
+                {
+                    _plugin.Context?.HideLoading();
+                }
+            }
+        }
+
+        /// <summary>
+        /// 更新项目
+        /// </summary>
+        public async Task UpdateProjectAsync(UnityProject project, string newName, string? newGroup)
         {
             try
             {
-                string result = await _plugin.OpenUnityProject(project.Path);
-                // 刷新列表以更新最后打开时间
+                await _plugin.UpdateProjectAsync(project.Path, newName, newGroup);
+                project.Name = newName;
+                project.GroupName = newGroup;
                 LoadProjects();
             }
             catch (Exception ex)
             {
-                throw new Exception($"打开项目失败: {ex.Message}", ex);
+                _plugin.Context?.LogError("更新项目失败", ex);
             }
+        }
+
+        /// <summary>
+        /// 添加分组
+        /// </summary>
+        public async Task AddGroupAsync(string name)
+        {
+            try
+            {
+                await _plugin.AddGroupAsync(name);
+                // 刷新可能需要的状态
+            }
+            catch (Exception ex)
+            {
+                _plugin.Context?.LogError("添加分组失败", ex);
+            }
+        }
+
+        /// <summary>
+        /// 删除分组
+        /// </summary>
+        public async Task DeleteGroupAsync(ProjectGroup group)
+        {
+            try
+            {
+                await _plugin.DeleteGroupAsync(group.Id);
+                LoadProjects();
+            }
+            catch (Exception ex)
+            {
+                _plugin.Context?.LogError("删除分组失败", ex);
+            }
+        }
+
+        /// <summary>
+        /// 获取所有分组
+        /// </summary>
+        public List<ProjectGroup> GetGroups()
+        {
+            return _plugin.GetGroups();
+        }
+
+        /// <summary>
+        /// 获取分组使用计数
+        /// </summary>
+        public int GetGroupUsageCount(string groupName)
+        {
+            return _plugin.GetGroupUsageCount(groupName);
         }
 
         protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)

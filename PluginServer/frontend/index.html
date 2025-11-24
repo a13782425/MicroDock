@@ -1,80 +1,12 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8" />
-  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MicroDock 插件管理服务器</title>
-  <meta name="description" content="现代化的插件管理和备份系统" />
-
-  <!-- Preconnect to Google Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-
-  <!-- Theme color -->
-  <meta name="theme-color" content="#3b82f6">
-
-  <!-- Prevent FOUC -->
-  <style>
-    /* Prevent flash of unstyled content */
-    body {
-      font-family: 'Inter', system-ui, sans-serif;
-      margin: 0;
-      padding: 0;
-      background-color: #f9fafb;
-    }
-
-    /* Loading spinner */
-    .loading-spinner {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 9999;
-    }
-
-    .spinner {
-      width: 40px;
-      height: 40px;
-      border: 4px solid rgba(255, 255, 255, 0.3);
-      border-radius: 50%;
-      border-top-color: white;
-      animation: spin 1s ease-in-out infinite;
-    }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
-    .loading-text {
-      color: white;
-      font-size: 18px;
-      font-weight: 500;
-      margin-top: 20px;
-    }
-
-    /* Hide loading when app is ready */
-    .app-ready .loading-spinner {
-      display: none;
-    }
-  </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MicroDock 插件管理后台</title>
 </head>
 <body>
-  <div id="app">
-    <!-- Loading screen -->
-    <div class="loading-spinner">
-      <div style="text-align: center;">
-        <div class="spinner"></div>
-        <div class="loading-text">MicroDock 插件管理服务器</div>
-      </div>
-    </div>
-  </div>
+  <div id="app"></div>
   <script type="module" src="/src/main.js"></script>
 </body>
 </html>
