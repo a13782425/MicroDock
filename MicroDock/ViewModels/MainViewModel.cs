@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using MicroDock.Extension;
 using MicroDock.Model;
 using MicroDock.Plugin;
 using MicroDock.Service;
@@ -96,7 +97,7 @@ public class MainViewModel : ViewModelBase, IDisposable
             Icon = "Document",
             Content = new LogViewerTabView(),
             UniqueId = NAVIGATION_LOG_ID,
-            NavType = NavigationType.Settings,
+            NavType = NavigationType.System,
             IsVisible = settings.ShowLogViewer
         };
         NavigationItems.Add(logNavItem);
@@ -112,8 +113,19 @@ public class MainViewModel : ViewModelBase, IDisposable
         };
         NavigationItems.Add(SettingsNavItem);
 
+        SortNavItems();
         // 默认选中第一个导航项
         SelectedNavItem = NavigationItems.FirstOrDefault();
+
+    }
+
+    private void SortNavItems()
+    {
+        NavigationItems.Sort((a, b) =>
+        {
+            int typeComp = a.NavType.CompareTo(b.NavType);
+            return typeComp != 0 ? typeComp : a.Order.CompareTo(b.Order);
+        });
     }
 
     /// <summary>
@@ -132,8 +144,8 @@ public class MainViewModel : ViewModelBase, IDisposable
             {
                 if (tab is Control tabControl)
                 {
-                    string uniqueId = $"plugin:{pluginInfo.UniqueName}:{tab.TabName}";
-                    
+                    string uniqueId = pluginInfo.GetTabUniqueId(tab);
+
                     // 检查是否已存在
                     if (NavigationItems.Any(n => n.UniqueId == uniqueId))
                         continue;
@@ -228,7 +240,7 @@ public class MainViewModel : ViewModelBase, IDisposable
         {
             if (SelectedNavItem == item)
                 SelectedNavItem = NavigationItems.FirstOrDefault(n => n != item);
-            
+
             NavigationItems.Remove(item);
         }
     }
@@ -296,12 +308,13 @@ public class MainViewModel : ViewModelBase, IDisposable
         Avalonia.Threading.Dispatcher.UIThread.Post(() =>
         {
             var dbTabs = Database.DBContext.GetAllNavigationTabs().ToDictionary(t => t.Id);
-            
+
             foreach (var item in NavigationItems)
             {
                 if (dbTabs.TryGetValue(item.UniqueId, out var tab))
                     item.IsVisible = tab.IsVisible;
             }
+            SortNavItems();
         });
     }
 

@@ -130,9 +130,6 @@
 							</DataTemplate>
 						</controls:ReorderableListBox.ItemTemplate>
 					</controls:ReorderableListBox>
-                    
-                    <TextBlock Text="提示: 设置全局快捷键后，按下组合键可快速打开对应标签页。" 
-                               FontSize="11" Foreground="Gray" Margin="0,8,0,0" TextWrapping="Wrap"/>
 				</StackPanel>
 			</fa:SettingsExpander>
 

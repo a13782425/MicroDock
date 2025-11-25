@@ -305,7 +305,7 @@ public class SettingsTabViewModel : ViewModelBase
                 continue;
             foreach (var item in pluginInfo.PluginInstance.Tabs)
             {
-                string uniqueId = $"{pluginInfo.UniqueName}:{item.GetType().Name.ToLower()}";
+                string uniqueId = pluginInfo.GetTabUniqueId(item);
                 var navTab = DBContext.GetNavigationTab(uniqueId).GetDto();
                 string name = item.TabName;
                 if (!pluginInfo.IsEnabled)
@@ -331,14 +331,6 @@ public class SettingsTabViewModel : ViewModelBase
             if (item.OrderIndex != i)
             {
                 item.OrderIndex = i;
-
-                // Update DB
-                var itemDB = DBContext.GetNavigationTab(item.UniqueId);
-                if (itemDB != null)
-                {
-                    itemDB.OrderIndex = i;
-                    DBContext.UpdateNavigationTab(itemDB);
-                }
             }
         }
 

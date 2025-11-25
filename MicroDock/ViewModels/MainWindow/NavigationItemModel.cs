@@ -39,7 +39,9 @@ public class NavigationItemModel : ReactiveObject, IDisposable
         _tabDto.WhenValueChanged(a => a.IsVisible)
             .Subscribe(_ => IsVisible = _tabDto.IsVisible)
             .DisposeWith(_cleanUp);
-
+        _tabDto.WhenValueChanged(a => a.OrderIndex)
+            .Subscribe(_ => Order = _tabDto.OrderIndex)
+            .DisposeWith(_cleanUp);
     }
 
     /// <summary>

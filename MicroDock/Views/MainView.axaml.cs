@@ -140,7 +140,7 @@ public partial class MainView : UserControl
 
         ToolTip.SetTip(menuItem, navItem.Title);
 
-        if (navItem.NavType == NavigationType.Settings)
+        if (navItem.NavType == NavigationType.Settings || navItem.NavType == NavigationType.System)
         {
             MainNav.FooterMenuItems.Add(menuItem);
         }
@@ -174,6 +174,25 @@ public partial class MainView : UserControl
                 if (itemToRemove != null)
                 {
                     collection.Remove(itemToRemove);
+                }
+            }
+        }
+        else if (e.Action == NotifyCollectionChangedAction.Move && e.OldItems != null && e.NewItems != null)
+        {
+            // 👇 新增：处理 Move 操作
+            var movedItem = e.NewItems[0] as NavigationItemModel;
+            if (movedItem != null)
+            {
+                var collection = movedItem.NavType == NavigationType.Settings ?
+                    MainNav.FooterMenuItems : MainNav.MenuItems;
+
+                var navViewItem = collection.OfType<NavigationViewItem>()
+                    .FirstOrDefault(item => item.Tag == movedItem);
+
+                if (navViewItem != null)
+                {
+                    collection.RemoveAt(e.OldStartingIndex);
+                    collection.Insert(e.NewStartingIndex, navViewItem);
                 }
             }
         }

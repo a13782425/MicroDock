@@ -1,7 +1,8 @@
+using Avalonia.Controls;
+using MicroDock.Database;
+using MicroDock.Plugin;
 using System;
 using System.Reflection;
-using Avalonia.Controls;
-using MicroDock.Plugin;
 
 namespace MicroDock.Service;
 
@@ -77,6 +78,16 @@ public class PluginInfo : IDisposable
     public string? ErrorMessage { get; set; }
 
     private bool _disposed = false;
+
+    /// <summary>
+    /// 获取tab的唯一Id
+    /// </summary>
+    /// <param name="tab"></param>
+    /// <returns></returns>
+    public string GetTabUniqueId(IMicroTab tab)
+    {
+        return $"{UniqueName.ToLower()}:{tab.GetType().Name.ToLower()}";
+    }
 
     /// <summary>
     /// 释放插件资源
