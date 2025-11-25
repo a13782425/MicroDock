@@ -7,7 +7,7 @@ using System.Collections.ObjectModel;
 using System.Reactive;
 using System.Threading.Tasks;
 
-namespace MicroDock.ViewModel;
+namespace MicroDock.ViewModels;
 
 /// <summary>
 /// 插件设置项
@@ -233,7 +233,7 @@ public class PluginSettingItem : ViewModelBase
     /// <summary>
     /// 切换插件启用状态
     /// </summary>
-    private void TogglePluginEnabled(bool enabled)
+    private async void TogglePluginEnabled(bool enabled)
     {
         // 确保基本属性已设置
         if (string.IsNullOrEmpty(UniqueName) || string.IsNullOrEmpty(PluginName))
@@ -256,7 +256,7 @@ public class PluginSettingItem : ViewModelBase
 
             if (enabled)
             {
-                bool success = pluginLoader.EnablePlugin(UniqueName);
+                bool success = await pluginLoader.EnablePluginAsync(UniqueName);
                 if (!success)
                 {
                     // 启用失败，恢复状态

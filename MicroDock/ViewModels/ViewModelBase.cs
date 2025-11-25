@@ -1,6 +1,6 @@
 ﻿using ReactiveUI;
 
-namespace MicroDock.ViewModel;
+namespace MicroDock.ViewModels;
 
 public class ViewModelBase : ReactiveObject
 {

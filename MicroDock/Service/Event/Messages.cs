@@ -6,27 +6,15 @@ public interface IEventMessage { }
 /// <summary>
 /// 窗口显示请求消息
 /// </summary>
-public class WindowShowRequestMessage : IEventMessage
+public class MainWindowShowMessage : IEventMessage
 {
-    public string WindowName { get; }
-
-    public WindowShowRequestMessage(string windowName)
-    {
-        WindowName = windowName;
-    }
 }
 
 /// <summary>
 /// 窗口隐藏请求消息
 /// </summary>
-public class WindowHideRequestMessage : IEventMessage
+public class MainWindowHideMessage : IEventMessage
 {
-    public string WindowName { get; }
-
-    public WindowHideRequestMessage(string windowName)
-    {
-        WindowName = windowName;
-    }
 }
 
 /// <summary>

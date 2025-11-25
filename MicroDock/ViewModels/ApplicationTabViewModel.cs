@@ -8,7 +8,7 @@ using MicroDock.Database;
 using MicroDock.Service;
 using ReactiveUI;
 
-namespace MicroDock.ViewModel;
+namespace MicroDock.ViewModels;
 
 public class ApplicationTabViewModel : ViewModelBase
 {

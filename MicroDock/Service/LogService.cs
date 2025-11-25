@@ -150,7 +150,7 @@ public class LogService : ILogEventSink
     /// <summary>
     /// 记录 Info 级别日志
     /// </summary>
-    public static void Info(string message, string? tag = null)
+    public static void Information(string message, string? tag = null)
     {
         var logger = string.IsNullOrEmpty(tag) ? Serilog.Log.Logger : Serilog.Log.ForContext(TagPropertyName, tag);
         logger.Information(message);

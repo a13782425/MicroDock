@@ -4,7 +4,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using MicroDock.Database;
 using MicroDock.Service;
-using MicroDock.ViewModel;
+using MicroDock.ViewModels;
 using MicroDock.Views;
 
 namespace MicroDock
@@ -28,7 +28,8 @@ namespace MicroDock
                 {
                     logService.IsInit = true;
                 }
-                ServiceLocator.GetService<Service.PluginService>()?.LoadPlugins();
+                // 插件加载现在移至 AppSplashViewViewModel 中异步执行
+                // ServiceLocator.GetService<Service.PluginService>()?.LoadPlugins();
                 // 2. 应用主题（在创建窗口之前）
                 ApplyThemeOnStartup();
 
@@ -50,7 +51,7 @@ namespace MicroDock
 
                 // 5. 启动命名管道服务器，监听其他实例的显示窗口请求
 #if !DEBUG
-                Services.SingleInstanceService.StartPipeServer(() =>
+                SingleInstanceService.StartPipeServer(() =>
                 {
                     // 在 UI 线程上执行窗口显示操作
                     Avalonia.Threading.Dispatcher.UIThread.Post(() =>
@@ -84,7 +85,7 @@ namespace MicroDock
                 desktop.Exit += (s, e) =>
                 {
 #if !DEBUG
-                    Services.SingleInstanceService.StopPipeServer();
+                    SingleInstanceService.StopPipeServer();
 #endif
                     ServiceLocator.GetService<DelayStorageService>()?.Dispose();
                     ServiceLocator.GetService<PluginService>()?.Dispose();

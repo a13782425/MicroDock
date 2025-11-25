@@ -16,7 +16,7 @@ using System.Linq;
 using System.Reactive;
 using System.Threading.Tasks;
 
-namespace MicroDock.ViewModel;
+namespace MicroDock.ViewModels;
 
 /// <summary>
 /// 设置页签的 ViewModel

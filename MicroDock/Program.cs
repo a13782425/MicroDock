@@ -1,12 +1,11 @@
 ﻿using Avalonia;
-using ReactiveUI.Avalonia;
-using DesktopNotifications;
+using Avalonia.Controls.Notifications;
 using DesktopNotifications.Avalonia;
+using ReactiveUI.Avalonia;
 using Serilog;
 using Serilog.Events;
 using System;
 using System.IO;
-using Avalonia.Controls.Notifications;
 
 namespace MicroDock
 {
@@ -40,10 +39,10 @@ namespace MicroDock
                 // 防止多实例启动 - 使用全局互斥锁
                 // ============================================
 #if !DEBUG
-                if (!Services.SingleInstanceService.TryAcquireMutex())
+                if (!SingleInstanceService.TryAcquireMutex())
                 {
                     Log.Information("检测到已有 MicroDock 实例正在运行，通知显示窗口后退出");
-                    Services.SingleInstanceService.NotifyExistingInstance();
+                    SingleInstanceService.NotifyExistingInstance();
                     Log.Information("程序退出");
                     return; // 退出程序
                 }
@@ -62,7 +61,7 @@ namespace MicroDock
             {
                 // 清理单实例资源
 #if !DEBUG
-                Services.SingleInstanceService.ReleaseMutex();
+                SingleInstanceService.ReleaseMutex();
 #endif
                 Log.CloseAndFlush();
             }

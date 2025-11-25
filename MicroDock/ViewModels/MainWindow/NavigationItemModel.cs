@@ -5,7 +5,7 @@ using System;
 using System.Reactive.Disposables;
 using System.Reactive.Disposables.Fluent;
 
-namespace MicroDock.ViewModel;
+namespace MicroDock.ViewModels;
 
 /// <summary>
 /// 导航项模型

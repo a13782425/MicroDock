@@ -8,7 +8,7 @@ using System.Collections.Specialized;
 using System.Linq;
 using System.Reactive;
 
-namespace MicroDock.ViewModel;
+namespace MicroDock.ViewModels;
 
 /// <summary>
 /// 日志查看器标签页的 ViewModel

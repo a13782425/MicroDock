@@ -52,7 +52,7 @@ internal class PluginContextImpl : IPluginContext
 
     public void LogInfo(string message, string? tag = null)
     {
-        LogService.Info(message, tag ?? _pluginName);
+        LogService.Information(message, tag ?? _pluginName);
     }
 
     public void LogWarning(string message, string? tag = null)

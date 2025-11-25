@@ -153,7 +153,7 @@ namespace MicroDock.Service
                     Log.Information("插件文件已复制到: {TargetDir}", targetPluginDir);
 
                     // 验证插件加载
-                    PluginInfo? pluginInfo = LoadPlugin(targetPluginDir, manifest);
+                    PluginInfo? pluginInfo = await LoadPluginAsync(targetPluginDir, manifest);
                     if (pluginInfo == null)
                     {
                         // 加载失败，清理已复制的文件
@@ -443,11 +443,10 @@ namespace MicroDock.Service
         }
 
         /// <summary>
-        /// 从指定目录加载插件
+        /// 从指定目录异步加载所有插件
         /// </summary>
-        /// <param name="pluginDirectory">插件目录路径</param>
         /// <returns>加载的插件信息列表</returns>
-        public List<PluginInfo> LoadPlugins()
+        public async Task<List<PluginInfo>> LoadPluginsAsync()
         {
             string pluginDirectory = Path.Combine(AppConfig.ROOT_PATH, "plugins");
             List<PluginInfo> loadedPlugins = new List<PluginInfo>();
@@ -514,13 +513,13 @@ namespace MicroDock.Service
 
             Log.Information("依赖解析成功，将按顺序加载 {Count} 个插件", resolveResult.OrderedManifests!.Count);
 
-            // 第三阶段：按依赖顺序加载插件
+            // 第三阶段：按依赖顺序异步加载插件
             foreach (var manifest in resolveResult.OrderedManifests!)
             {
                 // 找到对应的插件文件夹
                 var manifestWithPath = manifestsWithPaths.First(x => x.manifest.Name == manifest.Name);
 
-                PluginInfo? pluginInfo = LoadPlugin(manifestWithPath.folderPath, manifest);
+                PluginInfo? pluginInfo = await LoadPluginAsync(manifestWithPath.folderPath, manifest);
                 if (pluginInfo != null)
                 {
                     loadedPlugins.Add(pluginInfo);
@@ -775,11 +774,11 @@ namespace MicroDock.Service
         }
 
         /// <summary>
-        /// 加载单个插件
+        /// 异步加载单个插件
         /// </summary>
         /// <param name="pluginFolder">插件文件夹路径</param>
         /// <param name="manifest">插件清单</param>
-        private PluginInfo? LoadPlugin(string pluginFolder, PluginManifest manifest)
+        private async Task<PluginInfo?> LoadPluginAsync(string pluginFolder, PluginManifest manifest)
         {
             PluginLoadContext? loadContext = null;
 
@@ -787,20 +786,15 @@ namespace MicroDock.Service
             {
                 Log.Debug("开始加载插件: {Name} (文件夹: {PluginFolder})", manifest.Name, pluginFolder);
 
-                // 使用 manifest 中指定的 DLL 文件
                 string dllFile = Path.Combine(pluginFolder, manifest.Main);
-
                 if (!File.Exists(dllFile))
                 {
                     Log.Error("插件 DLL 文件不存在: {DllFile}", dllFile);
                     return null;
                 }
 
-                // 创建隔离的加载上下文
                 loadContext = new PluginLoadContext(pluginFolder);
                 Assembly assembly = loadContext.LoadFromAssemblyPath(dllFile);
-
-                // 使用 manifest 中指定的入口类
                 Type? pluginType = assembly.GetType(manifest.EntryClass);
 
                 if (pluginType == null)
@@ -810,7 +804,6 @@ namespace MicroDock.Service
                     return null;
                 }
 
-                // 验证类型是否实现 IMicroDockPlugin 接口
                 if (!typeof(IMicroDockPlugin).IsAssignableFrom(pluginType))
                 {
                     Log.Error("入口类 {EntryClass} 没有实现 IMicroDockPlugin 接口", manifest.EntryClass);
@@ -825,151 +818,96 @@ namespace MicroDock.Service
                     return null;
                 }
 
-                try
+                IMicroDockPlugin? dockPlugin = Activator.CreateInstance(pluginType) as IMicroDockPlugin;
+                if (dockPlugin == null)
                 {
-                    // 创建插件实例
-                    IMicroDockPlugin? dockPlugin = Activator.CreateInstance(pluginType) as IMicroDockPlugin;
+                    Log.Error("无法创建插件实例: {Type}", pluginType.Name);
+                    loadContext.Unload();
+                    return null;
+                }
 
-                    if (dockPlugin == null)
+                string[] dependencies = manifest.Dependencies?.Keys.ToArray() ?? Array.Empty<string>();
+                PluginContextImpl context = new PluginContextImpl(manifest.Name, dependencies, pluginFolder);
+                dockPlugin.Initialize(context);
+
+                // 异步初始化插件
+                await dockPlugin.OnInitAsync();
+                Log.Debug("插件 {Name} 异步初始化完成", manifest.Name);
+
+                DiscoverAndRegisterTools(dockPlugin, manifest.Name);
+
+                IMicroTab[]? tabs = dockPlugin.Tabs ?? Array.Empty<IMicroTab>();
+                List<Control> tabControls = new List<Control>();
+                foreach (IMicroTab tab in tabs)
+                {
+                    if (tab is Control control)
+                        tabControls.Add(control);
+ else
+                        Log.Warning("插件 {Name} 的标签页 {TabName} 不是 Control 类型", manifest.Name, tab.TabName);
+                }
+
+                Log.Information("成功加载插件: {DisplayName} ({Name}) v{Version}, 依赖: [{Dependencies}], 标签页数: {TabCount}",
+                    manifest.EffectiveDisplayName, manifest.Name, manifest.Version, string.Join(", ", dependencies), tabControls.Count);
+
+                PluginInfoDB? dbInfo = DBContext.GetPluginInfo(manifest.Name);
+                if (dbInfo?.PendingDelete == true)
+                {
+                    Log.Information("跳过待删除插件: {PluginName}", manifest.Name);
+                    return null;
+                }
+
+                bool isEnabled = dbInfo?.IsEnabled ?? true;
+                if (dbInfo == null)
+                {
+                    dbInfo = new PluginInfoDB
                     {
-                        Log.Error("无法创建插件实例: {Type}", pluginType.Name);
-                        loadContext.Unload();
-                        return null;
-                    }
-
-                    // 创建插件上下文（从 manifest 获取依赖列表）
-                    string[] dependencies = manifest.Dependencies?.Keys.ToArray() ?? Array.Empty<string>();
-                    PluginContextImpl context = new PluginContextImpl(
-                        manifest.Name,
-                        dependencies,
-                        pluginFolder);
-
-                    // 调用 Initialize 方法注入上下文（Initialize 内部会调用 OnInit）
-                    dockPlugin.Initialize(context);
-
-                    // 自动发现并注册工具
-                    DiscoverAndRegisterTools(dockPlugin, manifest.Name);
-
-                    // 通过 Tabs 属性获取所有标签页
-                    IMicroTab[]? tabs = dockPlugin.Tabs;
-                    if (tabs == null)
-                    {
-                        Log.Warning("插件 {Name} 的 Tabs 属性返回 null", manifest.Name);
-                        tabs = Array.Empty<IMicroTab>();
-                    }
-
-                    // 验证每个标签页是否为 Control 类型
-                    List<Control> tabControls = new List<Control>();
-                    foreach (IMicroTab tab in tabs)
-                    {
-                        if (tab is Control control)
-                        {
-                            tabControls.Add(control);
-                        }
-                        else
-                        {
-                            Log.Warning("插件 {Name} 的标签页 {TabName} 不是 Control 类型", manifest.Name, tab.TabName);
-                        }
-                    }
-
-                    Log.Information(
-                        "成功加载插件: {DisplayName} ({Name}) v{Version}, 依赖: [{Dependencies}], 标签页数: {TabCount}",
-                        manifest.EffectiveDisplayName,
-                        manifest.Name,
-                        manifest.Version,
-                        string.Join(", ", dependencies),
-                        tabControls.Count);
-
-                    // 从数据库读取插件启用状态
-                    PluginInfoDB? dbInfo = DBContext.GetPluginInfo(manifest.Name);
-
-                    // 检查是否标记为待删除
-                    if (dbInfo?.PendingDelete == true)
-                    {
-                        Log.Information("跳过待删除插件: {PluginName}", manifest.Name);
-                        return null;
-                    }
-
-                    bool isEnabled = dbInfo?.IsEnabled ?? true; // 默认启用
-
-                    // 如果数据库中没有该插件信息，则自动添加
-                    if (dbInfo == null)
-                    {
-                        Log.Information("插件 {PluginName} 不在数据库中，自动添加记录", manifest.Name);
-                        dbInfo = new PluginInfoDB
-                        {
-                            PluginName = manifest.Name,
-                            DisplayName = manifest.EffectiveDisplayName,
-                            Version = manifest.Version,
-                            Description = manifest.Description ?? string.Empty,
-                            Author = manifest.Author ?? string.Empty,
-                            IsEnabled = true,
-                        };
-                        DBContext.AddPluginInfo(dbInfo);
-                        isEnabled = true;
-                    }
-                    else
-                    {
-                        // 更新版本信息（如果版本不同）
-                        if (dbInfo.Version != manifest.Version)
-                        {
-                            Log.Information("插件 {PluginName} 版本更新: {OldVersion} -> {NewVersion}",
-                                manifest.Name, dbInfo.Version, manifest.Version);
-                            dbInfo.Version = manifest.Version;
-                            dbInfo.DisplayName = manifest.EffectiveDisplayName;
-                            dbInfo.Description = manifest.Description ?? string.Empty;
-                            dbInfo.Author = manifest.Author ?? string.Empty;
-                            DBContext.UpdatePluginInfo(dbInfo);
-                        }
-                    }
-
-                    Log.Information("插件 {PluginName} 启用状态: {IsEnabled} (来自数据库)", manifest.Name, isEnabled);
-
-                    PluginInfo pluginInfo = new PluginInfo
-                    {
-                        Id = Guid.NewGuid().ToString(),
-                        Name = manifest.EffectiveDisplayName,
-                        UniqueName = manifest.Name,
-                        AssemblyPath = dllFile,
-                        LoadContext = loadContext,
-                        Assembly = assembly,
-                        PluginInstance = dockPlugin,
-                        Manifest = manifest,
-                        ControlInstance = tabControls.FirstOrDefault(), // 保留第一个标签页作为 ControlInstance（向后兼容）
-                        IsInitialized = true,
-                        IsEnabled = isEnabled
+                        PluginName = manifest.Name,
+                        DisplayName = manifest.EffectiveDisplayName,
+                        Version = manifest.Version,
+                        Description = manifest.Description ?? string.Empty,
+                        Author = manifest.Author ?? string.Empty,
+                        IsEnabled = true,
                     };
-
-                    return pluginInfo;
+                    DBContext.AddPluginInfo(dbInfo);
                 }
-                catch (Exception ex)
+                else if (dbInfo.Version != manifest.Version)
                 {
-                    Log.Error(ex, "加载插件失败: {Name} , ErrorMsg: {Message}", manifest.Name, ex.Message);
-                    loadContext?.Unload();
-                    throw;
+                    dbInfo.Version = manifest.Version;
+                    dbInfo.DisplayName = manifest.EffectiveDisplayName;
+                    dbInfo.Description = manifest.Description ?? string.Empty;
+                    dbInfo.Author = manifest.Author ?? string.Empty;
+                    DBContext.UpdatePluginInfo(dbInfo);
                 }
+
+                return new PluginInfo
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    Name = manifest.EffectiveDisplayName,
+                    UniqueName = manifest.Name,
+                    AssemblyPath = dllFile,
+                    LoadContext = loadContext,
+                    Assembly = assembly,
+                    PluginInstance = dockPlugin,
+                    Manifest = manifest,
+                    ControlInstance = tabControls.FirstOrDefault(),
+                    IsInitialized = true,
+                    IsEnabled = isEnabled
+                };
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "加载插件失败: {Name} (文件夹: {PluginFolder})", manifest.Name, pluginFolder);
-
-                // 清理失败的上下文
-                try
-                {
-                    loadContext?.Unload();
-                }
-                catch { }
+                Log.Error(ex, "加载插件失败: {Name}", manifest.Name);
+                loadContext?.Unload();
+                return null;
             }
-
-            return null;
         }
 
         /// <summary>
-        /// 启用插件
+        /// 启用插件(异步)
         /// </summary>
         /// <param name="pluginName">插件唯一名称</param>
         /// <returns>是否成功</returns>
-        public bool EnablePlugin(string pluginName)
+        public async Task<bool> EnablePluginAsync(string pluginName)
         {
             try
             {
@@ -1028,7 +966,7 @@ namespace MicroDock.Service
                         return false;
                     }
 
-                    PluginInfo? loadedPlugin = LoadPlugin(pluginFolder, manifest);
+                    PluginInfo? loadedPlugin = await LoadPluginAsync(pluginFolder, manifest);
                     if (loadedPlugin == null)
                     {
                         Log.Error("加载插件失败: {PluginName}", pluginName);

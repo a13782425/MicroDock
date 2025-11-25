@@ -8,7 +8,7 @@ using System.Reactive.Disposables;
 using System.Reactive.Disposables.Fluent;
 using System.Reactive.Linq;
 
-namespace MicroDock.ViewModel;
+namespace MicroDock.ViewModels;
 
 /// <summary>
 /// 导航页签设置项
@@ -113,7 +113,7 @@ public class NavigationTabSettingItem : ReactiveObject, IDisposable
                         platformService?.RegisterHotKey(UniqueId, value, () =>
                         {
                             ServiceLocator.Get<EventService>().Publish(new NavigateToTabMessage(uniqueId: UniqueId));
-                            ServiceLocator.Get<EventService>().Publish(new WindowShowRequestMessage("MainWindow"));
+                            ServiceLocator.Get<EventService>().Publish(new MainWindowShowMessage());
                         });
                     }
                 }
