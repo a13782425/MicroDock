@@ -10,8 +10,10 @@ using System.Threading.Tasks;
 namespace MicroDock.ViewModels;
 public class AppSplashViewModel : ViewModelBase, IApplicationSplashScreen
 {
-    public int LoadingProgress { get; set; }
-    public string LoadingText { get; set; }
+    private int _loadingProgress = 0;
+    public int LoadingProgress { get => _loadingProgress; set => this.RaiseAndSetIfChanged(ref _loadingProgress, value); }
+    private string _loadingText = string.Empty;
+    public string LoadingText { get => _loadingText; set => this.RaiseAndSetIfChanged(ref _loadingText, value); }
     public string VersionInfo { get; set; }
 
     public string AppName => "Game Hub";
@@ -26,7 +28,7 @@ public class AppSplashViewModel : ViewModelBase, IApplicationSplashScreen
     public event EventHandler LoadingCompleted;
 
     // 背景色
-    public LinearGradientBrush Background { get; }
+    //public LinearGradientBrush Background { get; }
 
     private BaseLaunchProcedure procedure = new LaunchInitializeProcedure();
 
@@ -43,22 +45,17 @@ public class AppSplashViewModel : ViewModelBase, IApplicationSplashScreen
         try
         {
             // 尝试获取应用版本
-            var assembly = System.Reflection.Assembly.GetExecutingAssembly();
-            var version = assembly.GetName().Version;
-            return $"{version.Major}.{version.Minor}.{version.Build}";
+            return AppConfig.AppVersion.ToString();
         }
         catch
         {
             // 如果获取失败，返回默认值
-            return "1.0.0";
+            return "0.0.0.0";
         }
     }
 
     public async Task RunTasks(CancellationToken cancellationToken)
     {
-        // 模拟初始化任务
-        await Task.Delay(500); // 初始延迟
-
         // 执行实际的初始化工作
         BaseLaunchProcedure temp = procedure;
         do
@@ -70,38 +67,6 @@ public class AppSplashViewModel : ViewModelBase, IApplicationSplashScreen
         }
         while (temp != null);
 
-        //for (int i = 0; i <= 100; i += 5)
-        //{
-        //    LoadingProgress = i; // IApplicationSplashScreen要求0-1范围
-
-        //    // 更新加载文本
-        //    if (i < 20)
-        //        LoadingText = "正在初始化应用...";
-        //    else if (i < 40)
-        //        LoadingText = "正在检查 Unity 版本...";
-        //    else if (i < 60)
-        //        LoadingText = "正在加载项目列表...";
-        //    else if (i < 80)
-        //        LoadingText = "正在连接服务...";
-        //    else
-        //        LoadingText = "即将完成...";
-
-        //    // 这里可以添加实际的初始化代码，例如：
-        //    // - 加载配置
-        //    // - 初始化数据库连接
-        //    // - 检查更新
-        //    // - 加载资源
-
-        //    // 通知UI更新
-
-        //    this.RaisePropertyChanged(nameof(LoadingProgress));
-        //    this.RaisePropertyChanged(nameof(LoadingText));
-
-
-        //    // 模拟任务耗时
-        //    await Task.Delay(new Random().Next(50, 150));
-        //}
-
         // 确保看到100%
         LoadingProgress = 100;
         LoadingText = "加载完成!";
@@ -110,7 +75,7 @@ public class AppSplashViewModel : ViewModelBase, IApplicationSplashScreen
         this.RaisePropertyChanged(nameof(LoadingText));
 
 
-        await Task.Delay(500); // 最终延迟
+        await Task.Delay(100); // 最终延迟
 
         // 通知初始化完成
         LoadingCompleted?.Invoke(this, EventArgs.Empty);

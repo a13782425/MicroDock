@@ -453,7 +453,7 @@ namespace MicroDock.Service
 
             if (!Directory.Exists(pluginDirectory))
             {
-                Log.Information("插件目录不存在，创建目录: {Directory}", pluginDirectory);
+                LogService.LogInformation($"插件目录不存在，创建目录: {pluginDirectory}");
                 Directory.CreateDirectory(pluginDirectory);
                 return loadedPlugins;
             }
@@ -525,6 +525,7 @@ namespace MicroDock.Service
                     loadedPlugins.Add(pluginInfo);
                     _loadedPlugins.Add(pluginInfo);
                 }
+                await Task.Delay(100); // 小延迟，避免阻塞
             }
 
             Log.Information("成功加载 {Count} 个插件", loadedPlugins.Count);
@@ -842,7 +843,7 @@ namespace MicroDock.Service
                 {
                     if (tab is Control control)
                         tabControls.Add(control);
- else
+                    else
                         Log.Warning("插件 {Name} 的标签页 {TabName} 不是 Control 类型", manifest.Name, tab.TabName);
                 }
 
@@ -1053,7 +1054,7 @@ namespace MicroDock.Service
         /// </summary>
         /// <param name="pluginName">插件唯一名称</param>
         /// <returns>删除结果（成功/失败，消息）</returns>
-        public async Task<(bool success, string message)> MarkPluginForDeletionAsync(string pluginName)
+        public (bool success, string message) MarkPluginForDeletion(string pluginName)
         {
             try
             {

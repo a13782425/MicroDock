@@ -27,7 +27,7 @@ namespace MicroDock.Views
         {
             if (sender is TextBlock textBlock && textBlock.DataContext is PluginSettingItem pluginItem)
             {
-                await SettingsTabViewModel.CopyToClipboardAsync(pluginItem.UniqueName, "插件唯一名");
+                await CopyToClipboardAsync(pluginItem.UniqueName, "插件唯一名");
                 e.Handled = true;
             }
         }
@@ -39,7 +39,7 @@ namespace MicroDock.Views
         {
             if (sender is TextBlock textBlock && textBlock.DataContext is ToolInfo toolInfo)
             {
-                await SettingsTabViewModel.CopyToClipboardAsync(toolInfo.Name, "工具名");
+                await CopyToClipboardAsync(toolInfo.Name, "工具名");
                 e.Handled = true;
             }
         }

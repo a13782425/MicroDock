@@ -16,10 +16,6 @@ namespace MicroDock.ViewModels;
 /// </summary>
 public class MainViewModel : ViewModelBase, IDisposable
 {
-    private const string NAVIGATION_APP_ID = "microdock:ApplicationTabView";
-    private const string NAVIGATION_LOG_ID = "microdock:LogViewerTabView";
-    private const string NAVIGATION_SETTING_ID = "microdock:SettingsTabView";
-
     private NavigationItemModel? _selectedNavItem;
     private object? _currentView;
     private bool _disposed = false;

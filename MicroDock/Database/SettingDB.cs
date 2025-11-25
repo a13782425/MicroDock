@@ -12,7 +12,6 @@ internal class SettingDB
 {
     [PrimaryKey, AutoIncrement]
     public int Id { get; set; }
-    public string AppTheme { get; set; } = AppConfig.THEME_SYSTEM;
     public string SelectedTheme { get; set; } = string.Empty; // 选中的主题名称（XML文件名）
     
     /// <summary>

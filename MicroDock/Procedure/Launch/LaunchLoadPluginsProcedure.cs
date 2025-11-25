@@ -22,16 +22,15 @@ internal class LaunchLoadPluginsProcedure : BaseLaunchProcedure
     {
         try
         {
-            Log.Information("开始异步加载所有插件");
-            
+            LogService.LogInformation("开始异步加载所有插件");
+
             var pluginService = ServiceLocator.Get<PluginService>();
             var loadedPlugins = await pluginService.LoadPluginsAsync();
-            
-            Log.Information("插件加载完成,共加载 {Count} 个插件", loadedPlugins.Count);
+            LogService.LogInformation($"插件加载完成,共加载 {loadedPlugins.Count} 个插件");
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "插件加载过程中发生错误");
+            LogService.LogError("插件加载过程中发生错误", ex: ex);
             // 即使失败也继续启动,允许用户使用基础功能
         }
     }

@@ -181,7 +181,7 @@ public class PluginSettingItem : ViewModelBase
         Tools = new ObservableCollection<ToolInfo>();
 
         DeleteCommand = ReactiveCommand.CreateFromTask(DeletePlugin);
-        CancelDeleteCommand = ReactiveCommand.CreateFromTask(CancelDelete);
+        CancelDeleteCommand = ReactiveCommand.Create(CancelDelete);
         CancelUpdateCommand = ReactiveCommand.CreateFromTask(CancelUpdate);
     }
 
@@ -262,7 +262,7 @@ public class PluginSettingItem : ViewModelBase
                     // 启用失败，恢复状态
                     _isEnabled = false;
                     this.RaisePropertyChanged(nameof(IsEnabled));
-                    SettingsTabViewModel.ShowNotification("启用失败", $"插件 {PluginName} 启用失败", Avalonia.Controls.Notifications.NotificationType.Error);
+                    ShowNotification("启用失败", $"插件 {PluginName} 启用失败", AppNotificationType.Error);
                 }
             }
             else
@@ -273,7 +273,7 @@ public class PluginSettingItem : ViewModelBase
                     // 禁用失败，恢复状态
                     _isEnabled = true;
                     this.RaisePropertyChanged(nameof(IsEnabled));
-                    SettingsTabViewModel.ShowNotification("禁用失败", $"插件 {PluginName} 禁用失败", Avalonia.Controls.Notifications.NotificationType.Error);
+                    ShowNotification("禁用失败", $"插件 {PluginName} 禁用失败", AppNotificationType.Error);
                 }
             }
         }
@@ -283,7 +283,7 @@ public class PluginSettingItem : ViewModelBase
             // 恢复原状态
             _isEnabled = !enabled;
             this.RaisePropertyChanged(nameof(IsEnabled));
-            SettingsTabViewModel.ShowNotification("操作失败", ex.Message, Avalonia.Controls.Notifications.NotificationType.Error);
+            ShowNotification("操作失败", ex.Message, AppNotificationType.Error);
         }
     }
 
@@ -334,7 +334,7 @@ public class PluginSettingItem : ViewModelBase
 
             // 调用 PluginLoader 标记插件为待删除
             PluginService pluginLoader = ServiceLocator.Get<PluginService>();
-            var (success, message) = await pluginLoader.MarkPluginForDeletionAsync(UniqueName);
+            var (success, message) = pluginLoader.MarkPluginForDeletion(UniqueName);
 
             // 隐藏加载提示
             ServiceLocator.Get<EventService>().Publish(new HideLoadingMessage());
@@ -344,25 +344,25 @@ public class PluginSettingItem : ViewModelBase
                 IsPendingDelete = true;
                 this.RaisePropertyChanged(nameof(StatusText));
                 this.RaisePropertyChanged(nameof(CanCancelDelete));
-                SettingsTabViewModel.ShowNotification("标记成功", message);
+                ShowNotification("标记成功", message);
             }
             else
             {
-                SettingsTabViewModel.ShowNotification("标记失败", message, Avalonia.Controls.Notifications.NotificationType.Error);
+                ShowNotification("标记失败", message, AppNotificationType.Error);
             }
         }
         catch (Exception ex)
         {
             Serilog.Log.Error(ex, "删除插件 {PluginName} 失败", PluginName);
             ServiceLocator.Get<EventService>().Publish(new HideLoadingMessage());
-            SettingsTabViewModel.ShowNotification("删除失败", ex.Message, Avalonia.Controls.Notifications.NotificationType.Error);
+            ShowNotification("删除失败", ex.Message, AppNotificationType.Error);
         }
     }
 
     /// <summary>
     /// 取消删除插件
     /// </summary>
-    private async Task CancelDelete()
+    private void CancelDelete()
     {
         try
         {
@@ -375,17 +375,17 @@ public class PluginSettingItem : ViewModelBase
                 this.RaisePropertyChanged(nameof(StatusText));
                 this.RaisePropertyChanged(nameof(CanCancelDelete));
 
-                SettingsTabViewModel.ShowNotification("取消成功", "插件删除已取消，请手动启用插件");
+                ShowNotification("取消成功", "插件删除已取消，请手动启用插件");
             }
             else
             {
-                SettingsTabViewModel.ShowNotification("取消失败", "取消删除失败", Avalonia.Controls.Notifications.NotificationType.Error);
+                ShowNotification("取消失败", "取消删除失败", AppNotificationType.Error);
             }
         }
         catch (Exception ex)
         {
             Serilog.Log.Error(ex, "取消删除插件 {PluginName} 失败", PluginName);
-            SettingsTabViewModel.ShowNotification("取消失败", ex.Message, Avalonia.Controls.Notifications.NotificationType.Error);
+            ShowNotification("取消失败", ex.Message, AppNotificationType.Error);
         }
     }
 
@@ -405,17 +405,17 @@ public class PluginSettingItem : ViewModelBase
                 PendingVersion = null;
                 this.RaisePropertyChanged(nameof(StatusText));
 
-                SettingsTabViewModel.ShowNotification("取消成功", "插件更新已取消");
+                ShowNotification("取消成功", "插件更新已取消");
             }
             else
             {
-                SettingsTabViewModel.ShowNotification("取消失败", message, Avalonia.Controls.Notifications.NotificationType.Error);
+                ShowNotification("取消失败", message, AppNotificationType.Error);
             }
         }
         catch (Exception ex)
         {
             Serilog.Log.Error(ex, "取消更新插件 {PluginName} 失败", PluginName);
-            SettingsTabViewModel.ShowNotification("取消失败", ex.Message, Avalonia.Controls.Notifications.NotificationType.Error);
+            ShowNotification("取消失败", ex.Message, AppNotificationType.Error);
         }
     }
 }

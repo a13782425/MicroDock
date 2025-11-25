@@ -77,7 +77,7 @@ public partial class MainWindow : AppWindow
             MaxItems = 3
         };
 
-        LogService.Debug("WindowNotificationManager 已初始化");
+        LogService.LogDebug("WindowNotificationManager 已初始化");
     }
     /// <summary>
     /// 订阅事件消息
@@ -190,12 +190,12 @@ public partial class MainWindow : AppWindow
 
     private void OnNotificationDismissed(object? sender, NotificationDismissedEventArgs e)
     {
-        LogService.Debug($"通知已关闭: {e.Reason}");
+        LogService.LogDebug($"通知已关闭: {e.Reason}");
     }
 
     private void OnNotificationActivated(object? sender, NotificationActivatedEventArgs e)
     {
-        LogService.Information($"通知已激活: {e.ActionId}");
+        LogService.LogInformation($"通知已激活: {e.ActionId}");
     }
 
     /// <summary>
@@ -204,8 +204,12 @@ public partial class MainWindow : AppWindow
     protected override void OnClosing(WindowClosingEventArgs e)
     {
         base.OnClosing(e);
-        if (this.WindowState == WindowState.Minimized)
+        if (AppConfig.RealExit)
+        {
+            if (this.WindowState != WindowState.Minimized)
+                SaveWindowState();
             return;
+        }
         SaveWindowState();
         e.Cancel = true;
         this.WindowState = WindowState.Minimized;

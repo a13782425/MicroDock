@@ -1,6 +1,5 @@
 using MicroDock.Database;
 using MicroDock.Plugin;
-using Serilog;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -47,17 +46,17 @@ internal class PluginContextImpl : IPluginContext
 
     public void LogDebug(string message, string? tag = null)
     {
-        LogService.Debug(message, tag ?? _pluginName);
+        LogService.LogDebug(message, tag ?? _pluginName);
     }
 
     public void LogInfo(string message, string? tag = null)
     {
-        LogService.Information(message, tag ?? _pluginName);
+        LogService.LogInformation(message, tag ?? _pluginName);
     }
 
     public void LogWarning(string message, string? tag = null)
     {
-        LogService.Warning(message, tag ?? _pluginName);
+        LogService.LogWarning(message, tag ?? _pluginName);
     }
     public void LogError(string message)
     {
@@ -69,7 +68,7 @@ internal class PluginContextImpl : IPluginContext
     }
     public void LogError(string message, string? tag = null, Exception? exception = null)
     {
-        LogService.Error(message, tag ?? _pluginName, exception);
+        LogService.LogError(message, tag ?? _pluginName, exception);
     }
 
     #endregion
@@ -438,20 +437,20 @@ internal class PluginContextImpl : IPluginContext
 
     #region 通知 API
 
-    public void ShowInAppNotification(string title, string message, Plugin.NotificationType type = Plugin.NotificationType.Information)
+    public void ShowInAppNotification(string title, string message, PluginNotificationType type = PluginNotificationType.Information)
     {
         try
         {
             if (Program.WindowNotificationManager != null)
             {
                 // 将插件的NotificationType转换为Avalonia的NotificationType
-                Avalonia.Controls.Notifications.NotificationType avaloniaType = type switch
+                AppNotificationType avaloniaType = type switch
                 {
-                    Plugin.NotificationType.Information => Avalonia.Controls.Notifications.NotificationType.Information,
-                    Plugin.NotificationType.Success => Avalonia.Controls.Notifications.NotificationType.Success,
-                    Plugin.NotificationType.Warning => Avalonia.Controls.Notifications.NotificationType.Warning,
-                    Plugin.NotificationType.Error => Avalonia.Controls.Notifications.NotificationType.Error,
-                    _ => Avalonia.Controls.Notifications.NotificationType.Information
+                    PluginNotificationType.Information => AppNotificationType.Information,
+                    PluginNotificationType.Success => AppNotificationType.Success,
+                    PluginNotificationType.Warning => AppNotificationType.Warning,
+                    PluginNotificationType.Error => AppNotificationType.Error,
+                    _ => AppNotificationType.Information
                 };
 
                 // 需要在UI线程上显示通知

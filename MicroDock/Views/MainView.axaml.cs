@@ -3,10 +3,13 @@ using Avalonia.Controls;
 using Avalonia.Data;
 using Avalonia.Interactivity;
 using FluentAvalonia.UI.Controls;
+using MicroDock.Extension;
 using MicroDock.ViewModels;
 using System;
 using System.Collections.Specialized;
 using System.Linq;
+using System.Reactive.Linq;
+using System.Reflection;
 
 namespace MicroDock.Views;
 
@@ -65,7 +68,7 @@ public partial class MainView : UserControl
         // 添加导航项
         foreach (var navItem in viewModel.NavigationItems)
         {
-            AddNavigationMenuItem(MainNav, navItem);
+            AddNavigationMenuItem(navItem);
         }
 
         // 订阅选中项变更事件
@@ -98,7 +101,7 @@ public partial class MainView : UserControl
         MainNav.OpenPaneLength = targetWidth;
     }
 
-    private void AddNavigationMenuItem(NavigationView navView, NavigationItemModel navItem)
+    private void AddNavigationMenuItem(NavigationItemModel navItem)
     {
         var menuItem = new NavigationViewItem
         {
@@ -107,8 +110,18 @@ public partial class MainView : UserControl
             Tag = navItem
         };
 
+        menuItem.IsVisible = navItem.IsVisible;
         menuItem.Bind(Visual.IsVisibleProperty, new Binding(nameof(NavigationItemModel.IsVisible)));
-
+        menuItem.PropertyChanged += (s, e) =>
+        {
+            if (e.Property.Name == nameof(NavigationItemModel.IsVisible))
+            {
+                RunUIThread(() =>
+                {
+                    MainNav.UpdatePaneLayout();
+                });
+            }
+        };
         // 设置图标
         if (!string.IsNullOrEmpty(navItem.Icon))
         {
@@ -145,7 +158,7 @@ public partial class MainView : UserControl
         {
             foreach (NavigationItemModel newItem in e.NewItems)
             {
-                AddNavigationMenuItem(MainNav, newItem);
+                AddNavigationMenuItem(newItem);
             }
         }
         else if (e.Action == NotifyCollectionChangedAction.Remove && e.OldItems != null)
@@ -172,7 +185,7 @@ public partial class MainView : UserControl
             {
                 foreach (var navItem in viewModel.NavigationItems)
                 {
-                    AddNavigationMenuItem(MainNav, navItem);
+                    AddNavigationMenuItem(navItem);
                 }
             }
         }

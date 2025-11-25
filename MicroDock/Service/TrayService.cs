@@ -115,6 +115,7 @@ public class TrayService
         {
             if (Avalonia.Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             {
+                AppConfig.RealExit = true;
                 ServiceLocator.GetService<AutoHideService>()?.Dispose();                
                 ServiceLocator.GetService<TopMostService>()?.Dispose();
                 desktop.Shutdown();

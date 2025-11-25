@@ -6,6 +6,7 @@ using MicroDock.Extension;
 using MicroDock.Model;
 using MicroDock.Plugin;
 using MicroDock.Service;
+using MicroDock.Utils;
 using ReactiveUI;
 using Serilog;
 using System;
@@ -507,14 +508,14 @@ public class SettingsTabViewModel : ViewModelBase
                         }
                         else
                         {
-                            ShowNotification("导入失败", message, Avalonia.Controls.Notifications.NotificationType.Error);
+                            ShowNotification("导入失败", message, AppNotificationType.Error);
                         }
                     }
                     catch (Exception ex)
                     {
                         ServiceLocator.Get<EventService>().Publish(new HideLoadingMessage());
                         Log.Error(ex, "导入插件失败");
-                        ShowNotification("导入失败", ex.Message, Avalonia.Controls.Notifications.NotificationType.Error);
+                        ShowNotification("导入失败", ex.Message, AppNotificationType.Error);
                     }
                 }
             }
@@ -694,68 +695,6 @@ public class SettingsTabViewModel : ViewModelBase
         });
     }
 
-    /// <summary>
-    /// 复制文本到剪切板并显示通知
-    /// </summary>
-    /// <param name="text">要复制的文本</param>
-    /// <param name="typeName">类型名称（用于通知显示）</param>
-    public static async Task CopyToClipboardAsync(string text, string typeName)
-    {
-        try
-        {
-            // 获取主窗口
-            if (Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
-                && desktop.MainWindow != null)
-            {
-                var clipboard = desktop.MainWindow.Clipboard;
-                if (clipboard != null)
-                {
-                    await clipboard.SetTextAsync(text);
-
-                    // 显示应用内通知
-                    ShowNotification($"已复制{typeName}", text);
-
-                    Log.Information("已复制{TypeName}到剪切板: {Text}", typeName, text);
-                }
-                else
-                {
-                    Log.Warning("剪切板服务不可用");
-                }
-            }
-            else
-            {
-                Log.Warning("无法获取主窗口，剪切板操作失败");
-            }
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "复制到剪切板失败");
-            ShowNotification("复制失败", ex.Message, Avalonia.Controls.Notifications.NotificationType.Error);
-        }
-    }
-
-    /// <summary>
-    /// 显示应用内通知
-    /// </summary>
-    /// <param name="title">通知标题</param>
-    /// <param name="message">通知内容</param>
-    /// <param name="type">通知类型</param>
-    public static void ShowNotification(string title, string message, Avalonia.Controls.Notifications.NotificationType type = Avalonia.Controls.Notifications.NotificationType.Success)
-    {
-        if (Program.WindowNotificationManager != null)
-        {
-            Program.WindowNotificationManager.Show(new Avalonia.Controls.Notifications.Notification(
-                title,
-                message,
-                type,
-                TimeSpan.FromSeconds(2)
-            ));
-        }
-        else
-        {
-            Log.Warning("WindowNotificationManager 未初始化，无法显示通知");
-        }
-    }
 }
 
 

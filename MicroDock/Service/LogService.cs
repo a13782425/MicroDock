@@ -17,7 +17,7 @@ public class LogService : ILogEventSink
     private const int MaxLogCount = 1000;
     private const string TagPropertyName = "Tag";
 
-    public const string DEFAULT_TAG = "System";
+    public const string DEFAULT_LOG_TAG = "System";
     private readonly object _lock = new object();
 
     /// <summary>
@@ -150,16 +150,23 @@ public class LogService : ILogEventSink
     /// <summary>
     /// 记录 Info 级别日志
     /// </summary>
-    public static void Information(string message, string? tag = null)
+    public static void LogInformation(string message, string? tag = null)
     {
         var logger = string.IsNullOrEmpty(tag) ? Serilog.Log.Logger : Serilog.Log.ForContext(TagPropertyName, tag);
         logger.Information(message);
     }
-
+    /// <summary>
+    /// 记录 Debug 级别日志
+    /// </summary>
+    public static void LogDebug(string message, string? tag = null)
+    {
+        var logger = string.IsNullOrEmpty(tag) ? Serilog.Log.Logger : Serilog.Log.ForContext(TagPropertyName, tag);
+        logger.Debug(message);
+    }
     /// <summary>
     /// 记录 Warning 级别日志
     /// </summary>
-    public static void Warning(string message, string? tag = null)
+    public static void LogWarning(string message, string? tag = null)
     {
         var logger = string.IsNullOrEmpty(tag) ? Serilog.Log.Logger : Serilog.Log.ForContext(TagPropertyName, tag);
         logger.Warning(message);
@@ -168,7 +175,7 @@ public class LogService : ILogEventSink
     /// <summary>
     /// 记录 Error 级别日志
     /// </summary>
-    public static void Error(string message, string? tag = null, Exception? ex = null)
+    public static void LogError(string message, string? tag = null, Exception? ex = null)
     {
         var logger = string.IsNullOrEmpty(tag) ? Serilog.Log.Logger : Serilog.Log.ForContext(TagPropertyName, tag);
         if (ex != null)
@@ -182,18 +189,9 @@ public class LogService : ILogEventSink
     }
 
     /// <summary>
-    /// 记录 Debug 级别日志
-    /// </summary>
-    public static void Debug(string message, string? tag = null)
-    {
-        var logger = string.IsNullOrEmpty(tag) ? Serilog.Log.Logger : Serilog.Log.ForContext(TagPropertyName, tag);
-        logger.Debug(message);
-    }
-
-    /// <summary>
     /// 记录 Fatal 级别日志
     /// </summary>
-    public static void Fatal(string message, string? tag = null, Exception? ex = null)
+    public static void LogFatal(string message, string? tag = null, Exception? ex = null)
     {
         var logger = string.IsNullOrEmpty(tag) ? Serilog.Log.Logger : Serilog.Log.ForContext(TagPropertyName, tag);
         if (ex != null)
