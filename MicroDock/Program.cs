@@ -39,10 +39,10 @@ namespace MicroDock
                 // 防止多实例启动 - 使用全局互斥锁
                 // ============================================
 #if !DEBUG
-                if (!SingleInstanceService.TryAcquireMutex())
+                if (!Service.SingleInstanceService.TryAcquireMutex())
                 {
                     Log.Information("检测到已有 MicroDock 实例正在运行，通知显示窗口后退出");
-                    SingleInstanceService.NotifyExistingInstance();
+                    Service.SingleInstanceService.NotifyExistingInstance();
                     Log.Information("程序退出");
                     return; // 退出程序
                 }
@@ -61,7 +61,7 @@ namespace MicroDock
             {
                 // 清理单实例资源
 #if !DEBUG
-                SingleInstanceService.ReleaseMutex();
+                Service.SingleInstanceService.ReleaseMutex();
 #endif
                 Log.CloseAndFlush();
             }
