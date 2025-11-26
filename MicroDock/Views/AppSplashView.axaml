@@ -1,20 +1,13 @@
 <UserControl xmlns="https://github.com/avaloniaui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:vm="clr-namespace:MicroDock.ViewModels"
-             xmlns:fa="clr-namespace:FluentAvalonia.UI.Controls;assembly=FluentAvalonia"
-             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-             x:Class="MicroDock.Views.AppSplashView"
-             x:DataType="vm:AppSplashViewModel">
+			 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+			 xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+			 xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+			 xmlns:vm="clr-namespace:MicroDock.ViewModels"
+			 xmlns:fa="clr-namespace:FluentAvalonia.UI.Controls;assembly=FluentAvalonia"
+			 mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+			 x:Class="MicroDock.Views.AppSplashView"
+			 x:DataType="vm:AppSplashViewModel">
 
-	<!--<UserControl.Resources>
-		<LinearGradientBrush x:Key="SplashBackground" StartPoint="0%,0%" EndPoint="100%,100%">
-			<GradientStop Offset="0" Color="#1e3c72"/>
-			<GradientStop Offset="1" Color="#2a5298"/>
-		</LinearGradientBrush>
-	</UserControl.Resources>-->
-	<!--NavigationViewDefaultPaneBackground-->
 	<Grid Background="{DynamicResource ApplicationPageBackgroundThemeBrush}">
 		<Grid.RowDefinitions>
 			<RowDefinition Height="*"/>
@@ -24,73 +17,55 @@
 
 		<!-- 应用名称和图标 -->
 		<StackPanel Grid.Row="1"
-                    VerticalAlignment="Center"
-                    HorizontalAlignment="Center"
-                    Spacing="20">
+					VerticalAlignment="Center"
+					HorizontalAlignment="Center"
+					Spacing="20">
 
 			<!-- 应用图标 -->
 			<fa:BitmapIcon UriSource="avares://MicroDock/Assets/logo.ico"
-                                   Width="64"
-                                   Height="64"
-                                   VerticalAlignment="Center"
-                                   ShowAsMonochrome="True"
-                                   Foreground="{DynamicResource TextControlForeground}"/>
+						   Width="64"
+						   Height="64"
+						   VerticalAlignment="Center"
+						   ShowAsMonochrome="True"
+						   Foreground="{DynamicResource TextControlForeground}"/>
 
 			<!-- 应用名称 -->
 			<TextBlock Text="Micro Dock"
-                       FontSize="36"
-                       FontWeight="Bold"
-                       Foreground="{DynamicResource TextControlForeground}"
-                       HorizontalAlignment="Center"/>
+					   FontSize="36"
+					   FontWeight="Bold"
+					   Foreground="{DynamicResource TextControlForeground}"
+					   HorizontalAlignment="Center"/>
 
 			<!-- 加载进度 -->
 			<StackPanel Spacing="12" Width="300">
 				<TextBlock Text="{Binding LoadingText}"
-                          Foreground="{DynamicResource TextControlForeground}"
-                          HorizontalAlignment="Center"
-                          Opacity="0.9"/>
+						   Foreground="{DynamicResource TextControlForeground}"
+						   HorizontalAlignment="Center"
+						   Opacity="0.9"/>
 				<ProgressBar Value="{Binding LoadingProgress}"
-                            Maximum="100"
-                            Height="5"
-                            CornerRadius="2.5"
-							IsVisible="False"
-                            Foreground="{DynamicResource TextControlForeground}"/>
+							 Maximum="100"
+							 Height="5"
+							 CornerRadius="2.5"
+							 IsVisible="False"
+							 Foreground="{DynamicResource TextControlForeground}"/>
+
 				<!-- 符号图标旋转效果 -->
-				<Border Width="32"
-						Height="32"
-						HorizontalAlignment="Center">
-					<fa:BitmapIcon UriSource="avares://MicroDock/Assets/loading.png"
-								   ShowAsMonochrome="True"
-                                   Foreground="{DynamicResource TextControlForeground}">
-						<fa:BitmapIcon.RenderTransform>
-							<RotateTransform CenterX="0" CenterY="0" Angle="0"/>
-						</fa:BitmapIcon.RenderTransform>
-						<fa:BitmapIcon.Styles>
-							<Style Selector="fa|BitmapIcon">
-								<Style.Animations>
-									<Animation Duration="0:0:1.5"
-											  IterationCount="Infinite"
-											  Easing="CubicEaseInOut">
-										<KeyFrame Cue="0%">
-											<Setter Property="(RotateTransform.Angle)" Value="0"/>
-										</KeyFrame>
-										<KeyFrame Cue="100%">
-											<Setter Property="(RotateTransform.Angle)" Value="360"/>
-										</KeyFrame>
-									</Animation>
-								</Style.Animations>
-							</Style>
-						</fa:BitmapIcon.Styles>
-					</fa:BitmapIcon>
-				</Border>
+
+				<fa:ProgressRing Width="32" Height="32"
+								 IsIndeterminate="True"
+								 HorizontalAlignment="Center"
+								 Foreground="{DynamicResource TextControlForeground}"
+								 Opacity="0.8"/>
 			</StackPanel>
 
 			<!-- 版本信息 -->
 			<TextBlock Text="{Binding VersionInfo}"
-                      Foreground="{DynamicResource TextControlForeground}"
-                      Opacity="0.7"
-                      Margin="0,20,0,0"
-                      HorizontalAlignment="Center"/>
+					   Foreground="{DynamicResource TextControlForeground}"
+					   Opacity="0.7"
+					   Margin="0,20,0,0"
+					   HorizontalAlignment="Center"/>
 		</StackPanel>
 	</Grid>
 </UserControl>
+
+		
