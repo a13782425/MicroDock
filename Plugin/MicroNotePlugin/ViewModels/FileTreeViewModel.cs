@@ -1,72 +1,545 @@
-using ReactiveUI;
 using System.Collections.ObjectModel;
-using System.IO;
-using System.Linq;
+using System.Reactive.Linq;
+using ReactiveUI;
+using MicroNotePlugin.Models;
+using MicroNotePlugin.Services;
 
 namespace MicroNotePlugin.ViewModels;
 
+/// <summary>
+/// 文件树 ViewModel
+/// </summary>
 public class FileTreeViewModel : ReactiveObject
 {
-    // 简单的文件节点模型
-    public class FileNode : ReactiveObject
+    private readonly NoteFileService _fileService;
+    private readonly MetadataService _metadataService;
+    private SearchService? _searchService;
+
+    private ObservableCollection<FileNodeViewModel> _rootNodes = new();
+    private FileNodeViewModel? _selectedNode;
+    private FileNodeViewModel? _favoritesNode;
+    private FileNodeViewModel? _frequentNode;
+    private FileNodeViewModel? _tagsNode;
+    private FileNodeViewModel? _allFilesNode;
+    private FileNodeViewModel? _searchResultsNode;
+
+    private string _searchKeyword = string.Empty;
+    private bool _isSearching;
+    private ObservableCollection<SearchResultItem> _searchResults = new();
+
+    public FileTreeViewModel(NoteFileService fileService, MetadataService metadataService)
     {
-        public string Name { get; set; } = string.Empty;
-        public string FullPath { get; set; } = string.Empty;
-        public ObservableCollection<FileNode> Children { get; set; } = new();
-        public bool IsDirectory => Directory.Exists(FullPath);
+        _fileService = fileService;
+        _metadataService = metadataService;
+        _searchService = new SearchService(fileService);
+
+        // 初始化树结构
+        RefreshTree();
     }
 
-    private ObservableCollection<FileNode> _rootNodes = new();
-    public ObservableCollection<FileNode> RootNodes
+    /// <summary>
+    /// 根节点集合
+    /// </summary>
+    public ObservableCollection<FileNodeViewModel> RootNodes
     {
         get => _rootNodes;
         set => this.RaiseAndSetIfChanged(ref _rootNodes, value);
     }
 
-    private string? _selectedFilePath;
-    public string? SelectedFilePath
+    /// <summary>
+    /// 当前选中的节点
+    /// </summary>
+    public FileNodeViewModel? SelectedNode
     {
-        get => _selectedFilePath;
-        set => this.RaiseAndSetIfChanged(ref _selectedFilePath, value);
+        get => _selectedNode;
+        set => this.RaiseAndSetIfChanged(ref _selectedNode, value);
     }
 
-    public FileTreeViewModel()
+    /// <summary>
+    /// 笔记根目录路径
+    /// </summary>
+    public string NotesRootPath => _fileService.NotesRootPath;
+
+    /// <summary>
+    /// 搜索关键词
+    /// </summary>
+    public string SearchKeyword
     {
-        // 默认根目录为插件数据文件夹（可自行修改）
-        var basePath = Path.Combine(Directory.GetCurrentDirectory(), "MicroNoteData");
-        if (!Directory.Exists(basePath))
-            Directory.CreateDirectory(basePath);
-        LoadDirectory(basePath, null);
+        get => _searchKeyword;
+        set => this.RaiseAndSetIfChanged(ref _searchKeyword, value);
     }
 
-    private void LoadDirectory(string path, FileNode? parent)
+    /// <summary>
+    /// 是否正在搜索
+    /// </summary>
+    public bool IsSearching
     {
-        var node = new FileNode
+        get => _isSearching;
+        set => this.RaiseAndSetIfChanged(ref _isSearching, value);
+    }
+
+    /// <summary>
+    /// 搜索结果
+    /// </summary>
+    public ObservableCollection<SearchResultItem> SearchResults
+    {
+        get => _searchResults;
+        set => this.RaiseAndSetIfChanged(ref _searchResults, value);
+    }
+
+    /// <summary>
+    /// 执行搜索
+    /// </summary>
+    public async Task SearchAsync(string keyword)
+    {
+        SearchKeyword = keyword;
+
+        if (string.IsNullOrWhiteSpace(keyword))
         {
-            Name = Path.GetFileName(path),
-            FullPath = path
-        };
-        var directories = Directory.GetDirectories(path);
-        foreach (var dir in directories)
-        {
-            LoadDirectory(dir, node);
+            ClearSearch();
+            return;
         }
-        var files = Directory.GetFiles(path, "*.md");
-        foreach (var file in files)
+
+        IsSearching = true;
+
+        try
         {
-            node.Children.Add(new FileNode
+            if (_searchService == null)
+                _searchService = new SearchService(_fileService);
+
+            var results = await _searchService.SearchAsync(keyword);
+            SearchResults.Clear();
+
+            foreach (var result in results)
             {
-                Name = Path.GetFileName(file),
-                FullPath = file
-            });
+                SearchResults.Add(result);
+            }
+
+            // 更新搜索结果节点
+            UpdateSearchResultsNode();
         }
-        if (parent == null)
+        finally
         {
-            RootNodes.Add(node);
+            IsSearching = false;
+        }
+    }
+
+    /// <summary>
+    /// 清除搜索
+    /// </summary>
+    public void ClearSearch()
+    {
+        SearchKeyword = string.Empty;
+        SearchResults.Clear();
+        
+        // 移除搜索结果节点
+        if (_searchResultsNode != null && RootNodes.Contains(_searchResultsNode))
+        {
+            RootNodes.Remove(_searchResultsNode);
+            _searchResultsNode = null;
+        }
+    }
+
+    /// <summary>
+    /// 更新搜索结果节点
+    /// </summary>
+    private void UpdateSearchResultsNode()
+    {
+        // 移除旧的搜索结果节点
+        if (_searchResultsNode != null && RootNodes.Contains(_searchResultsNode))
+        {
+            RootNodes.Remove(_searchResultsNode);
+        }
+
+        if (SearchResults.Count == 0)
+        {
+            _searchResultsNode = null;
+            return;
+        }
+
+        // 创建搜索结果节点
+        _searchResultsNode = FileNodeViewModel.CreateRoot($"🔍 搜索结果 ({SearchResults.Count})");
+        _searchResultsNode.IsExpanded = true;
+
+        foreach (var result in SearchResults)
+        {
+            var node = FileNodeViewModel.FromNoteFile(
+                result.File,
+                _metadataService.IsFavorite(result.File.Hash),
+                result.TotalMatches);
+            _searchResultsNode.Children.Add(node);
+        }
+
+        // 插入到第一个位置
+        RootNodes.Insert(0, _searchResultsNode);
+    }
+
+    /// <summary>
+    /// 刷新整个树结构
+    /// </summary>
+    public void RefreshTree()
+    {
+        RootNodes.Clear();
+
+        // 创建四个根节点
+        _favoritesNode = FileNodeViewModel.CreateRoot("⭐ 收藏");
+        _frequentNode = FileNodeViewModel.CreateRoot("📊 常用");
+        _tagsNode = FileNodeViewModel.CreateRoot("🏷️ 标签");
+        _allFilesNode = FileNodeViewModel.CreateRoot("📁 全部文件");
+
+        RootNodes.Add(_favoritesNode);
+        RootNodes.Add(_frequentNode);
+        RootNodes.Add(_tagsNode);
+        RootNodes.Add(_allFilesNode);
+
+        // 加载文件数据
+        RefreshFavorites();
+        RefreshFrequent();
+        RefreshTags();
+        RefreshAllFiles();
+    }
+
+    /// <summary>
+    /// 刷新标签节点
+    /// </summary>
+    public void RefreshTags()
+    {
+        if (_tagsNode == null) return;
+
+        _tagsNode.Children.Clear();
+
+        var allTags = _metadataService.GetAllTags();
+
+        foreach (var tag in allTags.OrderBy(t => t.Name))
+        {
+            var tagNode = FileNodeViewModel.CreateRoot($"🏷️ {tag.Name}");
+            tagNode.IsExpanded = false;
+
+            var notesByTag = _metadataService.GetNotesByTag(tag.Name);
+            foreach (var metadata in notesByTag)
+            {
+                var node = FileNodeViewModel.FromNoteMetadata(metadata);
+                tagNode.Children.Add(node);
+            }
+
+            // 只添加有笔记的标签
+            if (tagNode.Children.Count > 0)
+            {
+                _tagsNode.Children.Add(tagNode);
+            }
+        }
+    }
+
+    /// <summary>
+    /// 刷新收藏节点
+    /// </summary>
+    public void RefreshFavorites()
+    {
+        if (_favoritesNode == null) return;
+
+        _favoritesNode.Children.Clear();
+
+        var favorites = _metadataService.GetFavorites();
+
+        foreach (var metadata in favorites)
+        {
+            var node = FileNodeViewModel.FromNoteMetadata(metadata);
+            _favoritesNode.Children.Add(node);
+        }
+    }
+
+    /// <summary>
+    /// 刷新常用节点
+    /// </summary>
+    public void RefreshFrequent()
+    {
+        if (_frequentNode == null) return;
+
+        _frequentNode.Children.Clear();
+
+        var frequent = _metadataService.GetFrequentlyUsed(10);
+
+        foreach (var metadata in frequent)
+        {
+            var node = FileNodeViewModel.FromNoteMetadata(metadata);
+            _frequentNode.Children.Add(node);
+        }
+    }
+
+    /// <summary>
+    /// 刷新全部文件节点
+    /// </summary>
+    public void RefreshAllFiles()
+    {
+        if (_allFilesNode == null) return;
+
+        _allFilesNode.Children.Clear();
+
+        var folderStructure = _fileService.GetFolderStructure();
+
+        // 添加子文件夹
+        foreach (var subFolder in folderStructure.SubFolders.OrderBy(f => f.Name))
+        {
+            var node = FileNodeViewModel.FromNoteFolder(
+                subFolder,
+                _metadataService.IsFavorite,
+                _metadataService.GetOpenCount);
+            _allFilesNode.Children.Add(node);
+        }
+
+        // 添加文件
+        foreach (var file in folderStructure.Files.OrderBy(f => f.Name))
+        {
+            var node = FileNodeViewModel.FromNoteFile(
+                file,
+                _metadataService.IsFavorite(file.Hash),
+                _metadataService.GetOpenCount(file.Hash));
+            _allFilesNode.Children.Add(node);
+        }
+    }
+
+    /// <summary>
+    /// 创建新笔记
+    /// </summary>
+    public FileNodeViewModel? CreateNote(string name, FileNodeViewModel? parentNode = null)
+    {
+        string folder = "/";
+
+        if (parentNode != null)
+        {
+            if (parentNode.IsFolder)
+            {
+                folder = parentNode.FolderPath;
+            }
+            else if (parentNode.IsFile)
+            {
+                folder = parentNode.FolderPath;
+            }
+        }
+
+        var noteFile = _fileService.CreateNote(name, folder);
+        RefreshAllFiles();
+
+        return FindNodeByHash(noteFile.Hash);
+    }
+
+    /// <summary>
+    /// 创建新文件夹
+    /// </summary>
+    public FileNodeViewModel? CreateFolder(string name, FileNodeViewModel? parentNode = null)
+    {
+        string parentPath = "/";
+
+        if (parentNode != null && parentNode.IsFolder)
+        {
+            parentPath = parentNode.FolderPath;
+        }
+
+        var folder = _fileService.CreateFolder(parentPath, name);
+        RefreshAllFiles();
+
+        return FindNodeByFolderPath(folder.Path);
+    }
+
+    /// <summary>
+    /// 删除节点（文件或文件夹）
+    /// </summary>
+    public bool DeleteNode(FileNodeViewModel node)
+    {
+        if (node.IsRoot) return false;
+
+        bool success;
+        if (node.IsFile)
+        {
+            success = _fileService.DeleteNote(node.Hash);
+        }
+        else if (node.IsFolder)
+        {
+            _fileService.DeleteFolder(node.FolderPath);
+            success = true;
         }
         else
         {
-            parent.Children.Add(node);
+            return false;
         }
+
+        if (success)
+        {
+            RefreshTree();
+        }
+
+        return success;
+    }
+
+    /// <summary>
+    /// 移动文件到目标文件夹
+    /// </summary>
+    public bool MoveNode(FileNodeViewModel sourceNode, FileNodeViewModel targetNode)
+    {
+        // 不能移动根节点
+        if (sourceNode.IsRoot) return false;
+
+        // 确定目标文件夹路径
+        string targetFolderPath;
+        if (targetNode.IsRoot)
+        {
+            // 如果目标是根节点（全部文件），移动到根目录
+            if (targetNode.Name.Contains("全部文件"))
+            {
+                targetFolderPath = "/";
+            }
+            else
+            {
+                return false; // 不能移动到收藏/常用节点
+            }
+        }
+        else if (targetNode.IsFolder)
+        {
+            targetFolderPath = targetNode.FolderPath;
+        }
+        else if (targetNode.IsFile)
+        {
+            // 如果目标是文件，移动到文件所在的文件夹
+            targetFolderPath = targetNode.FolderPath;
+        }
+        else
+        {
+            return false;
+        }
+
+        // 不能移动文件夹到自身或子文件夹
+        if (sourceNode.IsFolder && targetFolderPath.StartsWith(sourceNode.FolderPath + "/"))
+        {
+            return false;
+        }
+
+        // 不能移动到同一位置
+        if (sourceNode.FolderPath == targetFolderPath)
+        {
+            return false;
+        }
+
+        try
+        {
+            if (sourceNode.IsFile)
+            {
+                _fileService.MoveNote(sourceNode.Hash, targetFolderPath);
+                RefreshTree();
+                return true;
+            }
+            // 文件夹移动可以在这里添加
+        }
+        catch
+        {
+            return false;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// 检查是否可以将源节点移动到目标节点
+    /// </summary>
+    public bool CanMove(FileNodeViewModel sourceNode, FileNodeViewModel targetNode)
+    {
+        if (sourceNode.IsRoot) return false;
+        if (sourceNode == targetNode) return false;
+
+        // 不能移动到收藏/常用节点
+        if (targetNode.IsRoot && !targetNode.Name.Contains("全部文件"))
+        {
+            return false;
+        }
+
+        // 不能移动文件夹到自己的子文件夹
+        if (sourceNode.IsFolder && targetNode.FolderPath.StartsWith(sourceNode.FolderPath + "/"))
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// 重命名节点
+    /// </summary>
+    public bool RenameNode(FileNodeViewModel node, string newName)
+    {
+        if (node.IsRoot) return false;
+
+        if (node.IsFile)
+        {
+            _fileService.RenameNote(node.Hash, newName);
+            RefreshTree();
+            return true;
+        }
+        else if (node.IsFolder)
+        {
+            _fileService.RenameFolder(node.FolderPath, newName);
+            RefreshTree();
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// 切换收藏状态
+    /// </summary>
+    public bool ToggleFavorite(FileNodeViewModel node)
+    {
+        if (!node.IsFile) return false;
+
+        var isFavorite = _metadataService.ToggleFavorite(node.Hash);
+        node.IsFavorite = isFavorite;
+
+        RefreshFavorites();
+        return isFavorite;
+    }
+
+    /// <summary>
+    /// 记录打开文件
+    /// </summary>
+    public void RecordFileOpen(FileNodeViewModel node)
+    {
+        if (!node.IsFile) return;
+
+        _metadataService.RecordOpen(node.Hash);
+        RefreshFrequent();
+    }
+
+    /// <summary>
+    /// 根据 Hash 查找节点
+    /// </summary>
+    public FileNodeViewModel? FindNodeByHash(string hash)
+    {
+        return FindNodeInCollection(RootNodes, n => n.IsFile && n.Hash == hash);
+    }
+
+    /// <summary>
+    /// 根据文件夹路径查找节点
+    /// </summary>
+    public FileNodeViewModel? FindNodeByFolderPath(string folderPath)
+    {
+        return FindNodeInCollection(RootNodes, n => n.IsFolder && n.FolderPath == folderPath);
+    }
+
+    private FileNodeViewModel? FindNodeInCollection(ObservableCollection<FileNodeViewModel> nodes, Func<FileNodeViewModel, bool> predicate)
+    {
+        foreach (var node in nodes)
+        {
+            if (predicate(node))
+            {
+                return node;
+            }
+
+            var found = FindNodeInCollection(node.Children, predicate);
+            if (found != null)
+            {
+                return found;
+            }
+        }
+
+        return null;
     }
 }

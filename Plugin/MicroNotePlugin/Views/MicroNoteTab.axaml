@@ -1,14 +1,35 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:d="https://github.com/avaloniaui"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:local="clr-namespace:MicroNotePlugin.Views.Controls"
-             mc:Ignorable="d"
-             x:Class="MicroNotePlugin.Views.MicroNoteTab">
-  <Grid RowDefinitions="Auto,*" ColumnDefinitions="200,*">
-    <!-- 左侧文件树 -->
-    <local:FileTreeView Grid.Row="0" Grid.RowSpan="2" Grid.Column="0" />
-    <!-- 右侧编辑区 -->
-    <local:MarkdownEditor Grid.Row="0" Grid.Column="1" />
-  </Grid>
+             xmlns:vm="clr-namespace:MicroNotePlugin.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="MicroNotePlugin.Views.MicroNoteTab"
+             x:DataType="vm:MicroNoteTabViewModel">
+
+    <UserControl.Styles>
+        <!-- 分隔条样式 -->
+        <Style Selector="GridSplitter">
+            <Setter Property="Background" Value="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid ColumnDefinitions="220,4,*">
+        <!-- 左侧文件树 -->
+        <local:FileTreeView x:Name="FileTreeView" 
+                            Grid.Column="0"
+                            DataContext="{Binding FileTree}"/>
+        
+        <!-- 分隔条 -->
+        <GridSplitter Grid.Column="1" 
+                      Width="4"
+                      ResizeDirection="Columns"
+                      Background="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"/>
+        
+        <!-- 右侧编辑区 -->
+        <local:MarkdownEditor x:Name="MarkdownEditor" 
+                              Grid.Column="2"
+                              DataContext="{Binding Editor}"/>
+    </Grid>
 </UserControl>

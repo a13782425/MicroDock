@@ -180,7 +180,7 @@ public class LogService : ILogEventSink
         var logger = string.IsNullOrEmpty(tag) ? Serilog.Log.Logger : Serilog.Log.ForContext(TagPropertyName, tag);
         if (ex != null)
         {
-            logger.Error(ex, message);
+            logger.Error($"{message}:{ex.Message}");
         }
         else
         {
@@ -196,7 +196,7 @@ public class LogService : ILogEventSink
         var logger = string.IsNullOrEmpty(tag) ? Serilog.Log.Logger : Serilog.Log.ForContext(TagPropertyName, tag);
         if (ex != null)
         {
-            logger.Fatal(ex, message);
+            logger.Fatal($"{message}:{ex.Message}");
         }
         else
         {

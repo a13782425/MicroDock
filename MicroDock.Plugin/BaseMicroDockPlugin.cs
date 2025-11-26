@@ -45,7 +45,19 @@ public abstract class BaseMicroDockPlugin : IMicroDockPlugin
     { 
         // 子类可以重写此方法
     }
-    
+    /// <summary>
+    /// 异步初始化(可选)
+    /// 如果插件需要执行异步初始化操作(如网络请求、文件IO等),请重写此方法
+    /// 框架会优先调用此方法,如果插件未重写此方法,则回退到调用 OnInit
+    /// </summary>
+    /// <returns>初始化任务</returns>
+    public virtual Task OnInitAsync()
+    {
+        // 默认实现:同步调用 OnInit 并返回已完成的 Task
+        OnInit();
+        return Task.CompletedTask;
+    }
+
     /// <summary>
     /// 插件启用
     /// </summary>
@@ -334,9 +346,19 @@ public abstract class BaseMicroDockPlugin : IMicroDockPlugin
         EnsureContextInitialized();
         return Context!.DataPath;
     }
-    
+
+    /// <summary>
+    /// 获取插件的临时目录
+    /// </summary>
+    /// <returns></returns>
+    protected string GetPluginTempDataPath()
+    {
+        EnsureContextInitialized();
+        return Context!.TempDataPath;
+    }
+
     #endregion
-    
+
     /// <summary>
     /// 确保上下文已初始化
     /// </summary>

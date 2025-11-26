@@ -37,7 +37,8 @@ namespace UnityProjectPlugin.ViewModels
         {
             _plugin = plugin ?? throw new ArgumentNullException(nameof(plugin));
             _filePickerService = filePickerService ?? throw new ArgumentNullException(nameof(filePickerService));
-
+            // 从插件加载保存的分组视图状态
+            _isGroupViewEnabled = _plugin.IsGroupViewEnabled;
             AddProjectCommand = new AsyncRelayCommand(AddProjectAsync);
             OpenProjectCommand = new AsyncRelayCommand(OpenProjectAsync);
             DeleteProjectCommand = new AsyncRelayCommand(DeleteProjectAsync);
@@ -106,6 +107,7 @@ namespace UnityProjectPlugin.ViewModels
                 if (_isGroupViewEnabled != value)
                 {
                     _isGroupViewEnabled = value;
+                    _plugin.IsGroupViewEnabled = value;  // 同步到插件
                     OnPropertyChanged();
                     FilterProjects(); // 重新过滤和分组
                 }

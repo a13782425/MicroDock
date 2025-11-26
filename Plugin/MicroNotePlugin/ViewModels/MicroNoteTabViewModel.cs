@@ -1,27 +1,52 @@
 using ReactiveUI;
-using System.Reactive;
-using System.Reactive.Linq;
+using MicroNotePlugin.Services;
 
 namespace MicroNotePlugin.ViewModels;
 
+/// <summary>
+/// 随手记主页面 ViewModel
+/// </summary>
 public class MicroNoteTabViewModel : ReactiveObject
 {
     public FileTreeViewModel FileTree { get; }
     public MarkdownEditorViewModel Editor { get; }
 
-    public MicroNoteTabViewModel(MicroNotePlugin plugin)
+    public MicroNoteTabViewModel(
+        NoteFileService fileService, 
+        MetadataService metadataService,
+        MarkdownService markdownService)
     {
-        // 初始化子 ViewModel
-        FileTree = new FileTreeViewModel();
-        Editor = new MarkdownEditorViewModel();
+        FileTree = new FileTreeViewModel(fileService, metadataService);
+        Editor = new MarkdownEditorViewModel(fileService, markdownService);
+    }
 
-        // 当选中文件变化时，加载内容
-        this.WhenAnyValue(vm => vm.FileTree.SelectedFilePath)
-            .Where(path => !string.IsNullOrEmpty(path))
-            .Subscribe(async path =>
-            {
-                var content = await Services.FileService.Instance.ReadFileAsync(path);
-                Editor.MarkdownText = content ?? string.Empty;
-            });
+    /// <summary>
+    /// 打开选中的文件
+    /// </summary>
+    public void OpenSelectedFile()
+    {
+        if (FileTree.SelectedNode is { IsFile: true } node)
+        {
+            FileTree.RecordFileOpen(node);
+            Editor.LoadFile(node);
+        }
+    }
+
+    /// <summary>
+    /// 通过节点打开文件
+    /// </summary>
+    public void OpenFile(FileNodeViewModel node)
+    {
+        if (!node.IsFile) return;
+        FileTree.RecordFileOpen(node);
+        Editor.LoadFile(node);
+    }
+
+    /// <summary>
+    /// 通过 Hash 打开文件
+    /// </summary>
+    public void OpenFile(string hash, string fileName)
+    {
+        Editor.LoadFile(hash, fileName);
     }
 }

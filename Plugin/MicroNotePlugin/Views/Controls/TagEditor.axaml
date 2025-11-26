@@ -1,0 +1,65 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="300" d:DesignHeight="100"
+             x:Class="MicroNotePlugin.Views.Controls.TagEditor">
+
+    <UserControl.Styles>
+        <Style Selector="Border.tag-chip">
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="Padding" Value="8,4"/>
+            <Setter Property="Margin" Value="0,0,4,4"/>
+        </Style>
+        <Style Selector="Button.tag-remove">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Padding" Value="2"/>
+            <Setter Property="Margin" Value="4,0,0,0"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+    </UserControl.Styles>
+
+    <StackPanel Spacing="8">
+        <!-- 当前标签列表 -->
+        <ItemsControl x:Name="TagsPanel" ItemsSource="{Binding Tags}">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <WrapPanel/>
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <Border Classes="tag-chip" Background="{Binding Color}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding Name}" 
+                                       VerticalAlignment="Center"
+                                       Foreground="White"
+                                       FontSize="12"/>
+                            <Button Classes="tag-remove"
+                                    Command="{Binding $parent[UserControl].DataContext.RemoveTagCommand}"
+                                    CommandParameter="{Binding Name}"
+                                    ToolTip.Tip="移除标签">
+                                <TextBlock Text="✕" FontSize="10" Foreground="White"/>
+                            </Button>
+                        </StackPanel>
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <!-- 添加标签 -->
+        <Grid ColumnDefinitions="*,Auto">
+            <AutoCompleteBox x:Name="TagInput"
+                             Grid.Column="0"
+                             Watermark="添加标签..."
+                             FilterMode="Contains"/>
+            <Button x:Name="AddTagButton"
+                    Grid.Column="1"
+                    Content="+"
+                    Margin="4,0,0,0"
+                    Padding="8,4"
+                    ToolTip.Tip="添加标签"/>
+        </Grid>
+    </StackPanel>
+</UserControl>
+

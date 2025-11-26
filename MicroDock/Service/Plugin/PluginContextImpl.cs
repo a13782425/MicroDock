@@ -17,6 +17,7 @@ internal class PluginContextImpl : IPluginContext
     private readonly string _pluginDirectory;
     private readonly string _configDirectory;
     private readonly string _dataDirectory;
+    private readonly string _tempDataDirectory;
 
     public PluginContextImpl(string pluginName, string[] dependencies, string pluginFolder)
     {
@@ -32,14 +33,13 @@ internal class PluginContextImpl : IPluginContext
         }
         _configDirectory = Path.Combine(_pluginDirectory, "config");
         _dataDirectory = Path.Combine(_pluginDirectory, "data");
+        _tempDataDirectory = Path.Combine(_pluginDirectory, "temp_data");
         if (!Directory.Exists(_configDirectory))
-        {
             Directory.CreateDirectory(_configDirectory);
-        }
         if (!Directory.Exists(_dataDirectory))
-        {
             Directory.CreateDirectory(_dataDirectory);
-        }
+        if (!Directory.Exists(_tempDataDirectory))
+            Directory.CreateDirectory(_tempDataDirectory);
     }
 
     #region 日志 API
@@ -323,6 +323,8 @@ internal class PluginContextImpl : IPluginContext
     public string ConfigPath => _configDirectory;
 
     public string DataPath => _dataDirectory;
+
+    public string TempDataPath => _tempDataDirectory;
 
     #endregion
 

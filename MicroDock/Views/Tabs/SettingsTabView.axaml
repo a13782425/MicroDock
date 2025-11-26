@@ -100,7 +100,7 @@
 			<!-- 页签管理分组 -->
 			<fa:SettingsExpander Header="页签管理"
 								 IconSource="Library"
-								 IsExpanded="True">
+								 IsExpanded="False">
 				<StackPanel Margin="10">
                     <TextBlock Text="导航栏顺序与快捷键" FontWeight="SemiBold" Margin="0,0,0,8"/>
 					<controls:ReorderableListBox ItemsSource="{Binding NavigationTabs}"

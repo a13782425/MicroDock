@@ -246,7 +246,7 @@ internal static class DBContext
         PluginDataDB? existingData = null;
         if (_database.Table<PluginDataDB>() != null)
         {
-            existingData = _database.Table<PluginDataDB>()?.FirstOrDefault(d => d != null && d.Id == id);
+            existingData = _database.Table<PluginDataDB>()?.FirstOrDefault(d => d.Id == id);
         }
 
         if (existingData != null)

@@ -34,12 +34,7 @@ public interface IMicroDockPlugin
     /// 框架会优先调用此方法,如果插件未重写此方法,则回退到调用 OnInit
     /// </summary>
     /// <returns>初始化任务</returns>
-    Task OnInitAsync()
-    {
-        // 默认实现:同步调用 OnInit 并返回已完成的 Task
-        OnInit();
-        return Task.CompletedTask;
-    }
+    Task OnInitAsync();
 
     /// <summary>
     /// 插件启用

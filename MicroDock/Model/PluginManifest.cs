@@ -73,8 +73,8 @@ public class PluginManifest
     /// <summary>
     /// 运行环境要求（例如 MicroDock 的最低版本）
     /// </summary>
-    [JsonPropertyName("engines")]
-    public Dictionary<string, string>? Engines { get; set; }
+    [JsonPropertyName("engine")]
+    public string? Engine { get; set; }
 
     /// <summary>
     /// 获取有效的显示名称（如果 DisplayName 为空则返回 Name）

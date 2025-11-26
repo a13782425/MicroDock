@@ -22,9 +22,21 @@ namespace UnityProjectPlugin
         private List<UnityProject> _projects = new();
         private List<UnityVersion> _versions = new();
         private List<ProjectGroup> _groups = new();
+        private PluginSettings _pluginSettings = new();
         private UnityProjectTabView? _projectTabView;
         private UnityVersionSettingsView? _versionSettingsView;
+        private bool _isGroupViewEnabled = false;
 
+        // 添加属性供 ViewModel 访问
+        public bool IsGroupViewEnabled
+        {
+            get => _isGroupViewEnabled;
+            set
+            {
+                _isGroupViewEnabled = value;
+                _ = SaveSettingsAsync();     // 保存设置
+            }
+        }
         public override IMicroTab[] Tabs
         {
             get
@@ -39,41 +51,20 @@ namespace UnityProjectPlugin
 
         public override object? GetSettingsControl()
         {
-            //// 创建包含多个设置区域的容器
-            //StackPanel container = new StackPanel
-            //{
-            //    Spacing = 24,
-            //    Margin = new Avalonia.Thickness(0, 0, 0, 12)
-            //};
-
             // Unity 版本管理
             if (_versionSettingsView == null)
             {
                 _versionSettingsView = new UnityVersionSettingsView(this);
             }
-            //container.Children.Add(_versionSettingsView);
-
-            //// 添加分隔线
-            //Border separator = new Border
-            //{
-            //    Height = 1,
-            //    Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.FromRgb(200, 200, 200)),
-            //    Opacity = 0.3,
-            //    Margin = new Avalonia.Thickness(0, 12, 0, 12)
-            //};
-            //container.Children.Add(separator);
-
-            //// 分组管理
-            //GroupManagementView groupManagementView = new GroupManagementView(this);
-            //container.Children.Add(groupManagementView);
-
             return _versionSettingsView;
         }
 
         public override void OnInit()
         {
             base.OnInit();
-
+        }
+        public override async Task OnInitAsync()
+        {
             LogInfo("Unity 项目管理插件初始化中...");
 
             // 初始化数据文件夹路径
@@ -92,7 +83,8 @@ namespace UnityProjectPlugin
             }
 
             // 异步加载数据
-            _ = InitializeDataAsync();
+            await InitializeDataAsync();
+
         }
 
         private async Task InitializeDataAsync()
@@ -103,6 +95,7 @@ namespace UnityProjectPlugin
                 await LoadProjectsFromFileAsync();
                 await LoadVersionsFromFileAsync();
                 await LoadGroupsFromFileAsync();
+                await LoadSettingsAsync();
 
                 LogInfo($"已加载 {_projects.Count} 个项目、{_versions.Count} 个 Unity 版本和 {_groups.Count} 个分组");
 
@@ -263,6 +256,50 @@ namespace UnityProjectPlugin
         }
 
         /// <summary>
+        /// 加载设置
+        /// </summary>
+        private async Task LoadSettingsAsync()
+        {
+            try
+            {
+                string filePath = Path.Combine(_dataFolder, "settings.json");
+                if (File.Exists(filePath))
+                {
+                    string json = await File.ReadAllTextAsync(filePath);
+                    _pluginSettings = JsonSerializer.Deserialize<PluginSettings>(json, _jsonOptions);
+                    if (_pluginSettings != null)
+                    {
+                        _isGroupViewEnabled = _pluginSettings.IsGroupViewEnabled;
+                    }
+                    LogInfo("设置已加载");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogError("加载设置失败", ex);
+            }
+        }
+
+        /// <summary>
+        /// 保存设置
+        /// </summary>
+        public async Task SaveSettingsAsync()
+        {
+            try
+            {
+                string filePath = Path.Combine(_dataFolder, "settings.json");
+                _pluginSettings.IsGroupViewEnabled = IsGroupViewEnabled;
+                string json = JsonSerializer.Serialize(_pluginSettings, _jsonOptions);
+                await File.WriteAllTextAsync(filePath, json);
+                LogInfo("设置已保存");
+            }
+            catch (Exception ex)
+            {
+                LogError("保存设置失败", ex);
+            }
+        }
+
+        /// <summary>
         /// 添加项目
         /// </summary>
         public async Task AddProjectAsync(string path, string? name = null, string? groupName = null)
@@ -279,7 +316,7 @@ namespace UnityProjectPlugin
 
             // 规范化路径并去除末尾的反斜杠
             string fullPath = Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-            
+
             // 检查是否已存在
             if (_projects.Any(p => p.Id == fullPath.ToLowerInvariant()))
             {

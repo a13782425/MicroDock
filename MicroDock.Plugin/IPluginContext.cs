@@ -142,14 +142,19 @@ public interface IPluginContext
     #region 路径 API
     
     /// <summary>
-    /// 获取插件配置目录
+    /// 获取插件配置目录（跟随插件更新而覆盖）
     /// </summary>
     string ConfigPath { get; }
     
     /// <summary>
-    /// 获取插件数据目录
+    /// 获取插件数据目录（会进行备份，主要存储玩家数据）
     /// </summary>
     string DataPath { get; }
+
+    /// <summary>
+    /// 获取插件临时数据目录
+    /// </summary>
+    string TempDataPath { get; }
     
     #endregion
     

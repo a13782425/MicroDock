@@ -1,11 +1,163 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:d="https://github.com/avaloniaui"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:MicroNotePlugin.ViewModels"
              xmlns:local="clr-namespace:MicroNotePlugin.Views.Controls"
-             mc:Ignorable="d"
-             x:Class="MicroNotePlugin.Views.Controls.FileTreeView">
-  <TreeView x:Name="FileTree"
-            Items="{Binding RootNodes}"
-            SelectedItem="{Binding SelectedNode, Mode=TwoWay}" />
+             mc:Ignorable="d" d:DesignWidth="250" d:DesignHeight="450"
+             x:Class="MicroNotePlugin.Views.Controls.FileTreeView"
+             x:DataType="vm:FileTreeViewModel">
+
+    <UserControl.Resources>
+        <local:NodeIconConverter x:Key="NodeIconConverter"/>
+    </UserControl.Resources>
+
+    <UserControl.Styles>
+        <!-- 树节点样式 -->
+        <Style Selector="TreeViewItem">
+            <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
+        </Style>
+        
+        <!-- 文件节点悬停效果 -->
+        <Style Selector="Border.node-border:pointerover">
+            <Setter Property="Background" Value="{DynamicResource SystemControlHighlightListLowBrush}"/>
+        </Style>
+        
+        <!-- 收藏图标样式 -->
+        <Style Selector="TextBlock.favorite-star">
+            <Setter Property="Foreground" Value="#FFD700"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Margin" Value="4,0,0,0"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto,Auto,*">
+        <!-- 工具栏 -->
+        <Border Grid.Row="0" 
+                Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
+                Padding="4">
+            <StackPanel Orientation="Horizontal" Spacing="4">
+                <Button x:Name="NewNoteButton" 
+                        ToolTip.Tip="新建笔记"
+                        Padding="6"
+                        Background="Transparent">
+                    <TextBlock Text="📝" FontSize="14"/>
+                </Button>
+                <Button x:Name="NewFolderButton" 
+                        ToolTip.Tip="新建文件夹"
+                        Padding="6"
+                        Background="Transparent">
+                    <TextBlock Text="📁" FontSize="14"/>
+                </Button>
+                <Button x:Name="RefreshButton" 
+                        ToolTip.Tip="刷新"
+                        Padding="6"
+                        Background="Transparent">
+                    <TextBlock Text="🔄" FontSize="14"/>
+                </Button>
+            </StackPanel>
+        </Border>
+
+        <!-- 搜索框 -->
+        <Border Grid.Row="1" Padding="4">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBox x:Name="SearchBox"
+                         Grid.Column="0"
+                         Watermark="🔍 搜索笔记..."
+                         Text="{Binding SearchKeyword, Mode=TwoWay}"
+                         Padding="8,6"/>
+                <Button x:Name="ClearSearchButton"
+                        Grid.Column="1"
+                        ToolTip.Tip="清除搜索"
+                        Padding="6"
+                        Margin="4,0,0,0"
+                        Background="Transparent"
+                        IsVisible="{Binding SearchKeyword, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                    <TextBlock Text="✕" FontSize="12"/>
+                </Button>
+            </Grid>
+        </Border>
+
+        <!-- 文件树 -->
+        <TreeView Grid.Row="2" 
+                  x:Name="FileTree"
+                  ItemsSource="{Binding RootNodes}"
+                  SelectedItem="{Binding SelectedNode, Mode=TwoWay}"
+                  SelectionMode="Single"
+                  Margin="0,4,0,0">
+            <TreeView.ItemTemplate>
+                <TreeDataTemplate ItemsSource="{Binding Children}">
+                    <Border Classes="node-border" 
+                            Padding="4,2" 
+                            CornerRadius="4"
+                            Background="Transparent">
+                        <Border.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Header="新建笔记" x:Name="ContextNewNote">
+                                    <MenuItem.Icon>
+                                        <TextBlock Text="📝"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="新建文件夹" x:Name="ContextNewFolder">
+                                    <MenuItem.Icon>
+                                        <TextBlock Text="📁"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <Separator/>
+                                <MenuItem Header="收藏/取消收藏" x:Name="ContextToggleFavorite"
+                                          IsVisible="{Binding IsFile}">
+                                    <MenuItem.Icon>
+                                        <TextBlock Text="⭐"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <Separator IsVisible="{Binding IsFile}"/>
+                                <MenuItem Header="重命名" x:Name="ContextRename"
+                                          IsVisible="{Binding !IsRoot}">
+                                    <MenuItem.Icon>
+                                        <TextBlock Text="✏️"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="删除" x:Name="ContextDelete"
+                                          IsVisible="{Binding !IsRoot}">
+                                    <MenuItem.Icon>
+                                        <TextBlock Text="🗑️"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                            </ContextMenu>
+                        </Border.ContextMenu>
+                        
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <!-- 图标 -->
+                            <TextBlock FontSize="14">
+                                <TextBlock.Text>
+                                    <MultiBinding Converter="{StaticResource NodeIconConverter}">
+                                        <Binding Path="NodeType"/>
+                                        <Binding Path="Name"/>
+                                    </MultiBinding>
+                                </TextBlock.Text>
+                            </TextBlock>
+                            
+                            <!-- 名称 -->
+                            <TextBlock Text="{Binding Name}" 
+                                       VerticalAlignment="Center"
+                                       FontWeight="{Binding IsRoot, Converter={x:Static local:BoolConverters.ToFontWeight}}"/>
+                            
+                            <!-- 收藏标记 -->
+                            <TextBlock Text="⭐" 
+                                       Classes="favorite-star"
+                                       IsVisible="{Binding IsFavorite}"
+                                       VerticalAlignment="Center"/>
+                            
+                            <!-- 打开次数（仅常用节点下显示） -->
+                            <TextBlock Text="{Binding OpenCount, StringFormat='({0})'}"
+                                       FontSize="11"
+                                       Opacity="0.6"
+                                       VerticalAlignment="Center"
+                                       IsVisible="{Binding OpenCount, Converter={x:Static local:ObjectConverters.IsGreaterThanZero}}"/>
+                        </StackPanel>
+                    </Border>
+                </TreeDataTemplate>
+            </TreeView.ItemTemplate>
+        </TreeView>
+    </Grid>
 </UserControl>
