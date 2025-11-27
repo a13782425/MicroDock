@@ -13,7 +13,7 @@ from app.models.version import PluginVersion
 from app.services.file_service import FileService
 from app.services.version_service import VersionService
 from app.utils.hash import calculate_file_hash
-from app.utils.validators import validate_upload_file
+from app.utils.validators import validate_upload_file, validate_key_or_raise
 
 
 class PluginService:
@@ -40,7 +40,8 @@ class PluginService:
     @staticmethod
     async def create_plugin_from_upload(
         db: AsyncSession,
-        file: UploadFile
+        file: UploadFile,
+        plugin_key: str
     ) -> Plugin:
         """
         从上传的ZIP文件创建插件
@@ -48,6 +49,7 @@ class PluginService:
         Args:
             db: 数据库会话
             file: 上传的ZIP文件
+            plugin_key: 插件密钥（首次上传绑定，后续验证）
             
         Returns:
             Plugin: 创建的插件对象
@@ -55,7 +57,10 @@ class PluginService:
         # 1. 验证文件
         await validate_upload_file(file)
         
-        # 2. 临时保存文件用于解析
+        # 2. 验证 plugin_key 格式
+        validate_key_or_raise(plugin_key, "插件密钥")
+        
+        # 3. 临时保存文件用于解析
         temp_path = Path("./data/temp") / file.filename
         temp_path.parent.mkdir(parents=True, exist_ok=True)
         
@@ -65,12 +70,18 @@ class PluginService:
                 content = await file.read()
                 f.write(content)
             
-            # 3. 解析 plugin.json
+            # 4. 解析 plugin.json
             plugin_data = await FileService.parse_plugin_json(temp_path)
             
-            # 4. 检查插件是否已存在该版本
+            # 5. 检查插件是否已存在
             existing_plugin = await PluginService.get_plugin_by_name(db, plugin_data['name'])
             if existing_plugin:
+                # 验证 plugin_key 是否匹配
+                if existing_plugin.upload_key != plugin_key:
+                    raise HTTPException(
+                        status_code=403,
+                        detail="插件密钥不匹配，无权更新此插件"
+                    )
                 # 检查版本是否存在
                 exists = await VersionService.check_version_exists(
                     db, existing_plugin.id, plugin_data['version']
@@ -81,7 +92,7 @@ class PluginService:
                         detail=f"插件 '{plugin_data['name']}' 的版本 '{plugin_data['version']}' 已存在"
                     )
             
-            # 5. 创建或更新插件
+            # 6. 创建或更新插件
             if existing_plugin:
                 plugin = existing_plugin
             else:
@@ -95,6 +106,7 @@ class PluginService:
                     homepage=plugin_data.get('homepage', ''),
                     main_dll=plugin_data['main'],
                     entry_class=plugin_data['entryClass'],
+                    upload_key=plugin_key,  # 首次上传绑定密钥
                 )
                 db.add(plugin)
                 await db.flush()  # 刷新以获取ID

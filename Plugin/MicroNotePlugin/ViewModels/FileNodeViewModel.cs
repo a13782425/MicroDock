@@ -30,6 +30,8 @@ public class FileNodeViewModel : ReactiveObject
     private bool _isExpanded;
     private bool _isSelected;
     private int _openCount;
+    private bool _isEditing;
+    private string _editingName = string.Empty;
     private ObservableCollection<FileNodeViewModel> _children = new();
 
     /// <summary>
@@ -105,6 +107,24 @@ public class FileNodeViewModel : ReactiveObject
     }
 
     /// <summary>
+    /// 是否正在编辑名称
+    /// </summary>
+    public bool IsEditing
+    {
+        get => _isEditing;
+        set => this.RaiseAndSetIfChanged(ref _isEditing, value);
+    }
+
+    /// <summary>
+    /// 编辑中的名称（临时存储）
+    /// </summary>
+    public string EditingName
+    {
+        get => _editingName;
+        set => this.RaiseAndSetIfChanged(ref _editingName, value);
+    }
+
+    /// <summary>
     /// 子节点
     /// </summary>
     public ObservableCollection<FileNodeViewModel> Children
@@ -132,6 +152,24 @@ public class FileNodeViewModel : ReactiveObject
     /// 是否有子节点
     /// </summary>
     public bool HasChildren => Children.Count > 0;
+
+    /// <summary>
+    /// 开始编辑名称
+    /// </summary>
+    public void StartEditing()
+    {
+        EditingName = Name;
+        IsEditing = true;
+    }
+
+    /// <summary>
+    /// 取消编辑
+    /// </summary>
+    public void CancelEditing()
+    {
+        IsEditing = false;
+        EditingName = string.Empty;
+    }
 
     /// <summary>
     /// 从 NoteFile 创建节点

@@ -1,5 +1,12 @@
 """
 MicroDock 插件服务器一键启动脚本
+
+支持通过 .env 文件或环境变量配置：
+- BACKEND_HOST: 后端监听地址，默认 0.0.0.0
+- BACKEND_PORT: 后端端口，默认 8000
+- FRONTEND_PORT: 前端端口，默认 3000
+- SKIP_INSTALL: 跳过依赖安装，默认 False
+- AUTO_OPEN_BROWSER: 自动打开浏览器，默认 True
 """
 import subprocess
 import sys
@@ -8,33 +15,106 @@ import time
 import webbrowser
 import threading
 from pathlib import Path
-import signal
+
+
+# ==================== 配置加载 ====================
+
+def load_env_file(env_path: str = ".env"):
+    """
+    加载 .env 文件中的环境变量
+    
+    Args:
+        env_path: .env 文件路径
+    """
+    if not os.path.exists(env_path):
+        return
+    
+    with open(env_path, 'r', encoding='utf-8') as f:
+        for line in f:
+            line = line.strip()
+            # 跳过空行和注释
+            if not line or line.startswith('#'):
+                continue
+            # 解析 KEY=VALUE 格式
+            if '=' in line:
+                key, value = line.split('=', 1)
+                key = key.strip()
+                value = value.strip().strip('"').strip("'")
+                # 只设置未定义的环境变量（环境变量优先级高于 .env 文件）
+                if key not in os.environ:
+                    os.environ[key] = value
+
+
+def get_config():
+    """
+    获取配置项
+    
+    Returns:
+        dict: 配置字典
+    """
+    return {
+        # 后端监听地址
+        'backend_host': os.getenv('BACKEND_HOST', '0.0.0.0'),
+        # 后端端口
+        'backend_port': int(os.getenv('BACKEND_PORT', '8000')),
+        # 前端端口
+        'frontend_port': int(os.getenv('FRONTEND_PORT', '3000')),
+        # 是否跳过依赖安装（加快启动速度）
+        'skip_install': os.getenv('SKIP_INSTALL', 'False').lower() in ('true', '1', 'yes'),
+        # 是否自动打开浏览器
+        'auto_open_browser': os.getenv('AUTO_OPEN_BROWSER', 'True').lower() in ('true', '1', 'yes'),
+    }
+
+
+# ==================== 工具函数 ====================
 
 def get_npm_command():
-    """获取 npm 命令"""
+    """
+    获取 npm 命令
+    
+    Windows 下使用 npm.cmd，其他系统使用 npm
+    """
     return "npm.cmd" if os.name == 'nt' else "npm"
 
+
 def check_environment():
-    """检查环境"""
+    """
+    检查运行环境
+    
+    - Python 版本 >= 3.11
+    - Node.js 已安装
+    """
     print("🔍 检查环境...")
     
-    # 检查 Python
+    # 检查 Python 版本
     if sys.version_info < (3, 11):
         print("❌ 错误: 需要 Python 3.11 或更高版本")
         sys.exit(1)
+    print(f"✓ Python {sys.version_info.major}.{sys.version_info.minor}")
         
     # 检查 Node.js
     npm_cmd = get_npm_command()
     try:
-        # 使用 shell=True 在 Windows 上通常能更好地找到路径中的命令
-        subprocess.run([npm_cmd, "--version"], capture_output=True, check=True, shell=True)
-        print(f"✓ Node.js 环境检查通过 ({npm_cmd})")
+        result = subprocess.run(
+            [npm_cmd, "--version"], 
+            capture_output=True, 
+            check=True, 
+            shell=True,
+            text=True
+        )
+        print(f"✓ Node.js/npm {result.stdout.strip()}")
     except (subprocess.CalledProcessError, FileNotFoundError):
         print(f"❌ 错误: 未找到 {npm_cmd}，请确保已安装 Node.js 并添加到环境变量")
         sys.exit(1)
 
+
 def install_dependencies():
-    """安装依赖"""
+    """
+    安装项目依赖
+    
+    - 后端: pip install -r requirements.txt
+    - 前端: npm install
+    """
     print("\n📦 安装依赖...")
     
     # 后端依赖
@@ -54,53 +134,127 @@ def install_dependencies():
     
     print("✓ 依赖安装完成")
 
-def start_backend():
-    """启动后端服务"""
-    print("🚀 启动后端服务 (Port 8000)...")
+
+# ==================== 服务启动 ====================
+
+def start_backend(config: dict):
+    """
+    启动后端服务
+    
+    Args:
+        config: 配置字典
+    
+    Returns:
+        subprocess.Popen: 后端进程
+    """
+    host = config['backend_host']
+    port = config['backend_port']
+    
+    print(f"🚀 启动后端服务 ({host}:{port})...")
+    
     # 确保数据目录存在
     Path("backend/data/uploads").mkdir(parents=True, exist_ok=True)
+    Path("backend/data/backups").mkdir(parents=True, exist_ok=True)
     Path("backend/data/temp").mkdir(parents=True, exist_ok=True)
     
     return subprocess.Popen(
-        [sys.executable, "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"],
+        [
+            sys.executable, "-m", "uvicorn", 
+            "app.main:app", 
+            "--host", host, 
+            "--port", str(port), 
+            "--reload"
+        ],
         cwd="backend"
     )
 
-def start_frontend():
-    """启动前端服务"""
-    print("🎨 启动前端服务 (Port 3000)...")
+
+def start_frontend(config: dict):
+    """
+    启动前端服务
+    
+    Args:
+        config: 配置字典
+    
+    Returns:
+        subprocess.Popen: 前端进程
+    """
+    port = config['frontend_port']
+    backend_port = config['backend_port']
+    
+    print(f"🎨 启动前端服务 (Port {port})...")
+    
+    # 设置前端环境变量
+    env = os.environ.copy()
+    env['VITE_PORT'] = str(port)
+    env['VITE_API_URL'] = f"http://localhost:{backend_port}"
+    
     npm_cmd = get_npm_command()
     return subprocess.Popen(
         [npm_cmd, "run", "dev"],
         cwd="frontend",
-        shell=True
+        shell=True,
+        env=env
     )
 
-def open_browser():
-    """打开浏览器"""
+
+def open_browser(config: dict):
+    """
+    打开浏览器访问前端页面
+    
+    Args:
+        config: 配置字典
+    """
     time.sleep(3)  # 等待服务启动
-    print("\n🌐 打开浏览器...")
-    webbrowser.open("http://localhost:3000")
+    port = config['frontend_port']
+    url = f"http://localhost:{port}"
+    print(f"\n🌐 打开浏览器: {url}")
+    webbrowser.open(url)
+
+
+# ==================== 主函数 ====================
 
 def main():
+    """主函数"""
     print("=" * 60)
     print("MicroDock 插件管理系统 - 一键启动")
     print("=" * 60)
     
+    # 加载环境变量
+    load_env_file(".env")
+    config = get_config()
+    
+    # 打印配置信息
+    print("\n⚙️  当前配置:")
+    print(f"   后端地址: {config['backend_host']}:{config['backend_port']}")
+    print(f"   前端端口: {config['frontend_port']}")
+    print(f"   跳过安装: {config['skip_install']}")
+    print(f"   自动打开浏览器: {config['auto_open_browser']}")
+    
     try:
+        # 检查环境
         check_environment()
-        install_dependencies()
+        
+        # 安装依赖（可通过配置跳过）
+        if not config['skip_install']:
+            install_dependencies()
+        else:
+            print("\n⏭️  跳过依赖安装")
         
         # 启动服务
-        backend_process = start_backend()
-        frontend_process = start_frontend()
+        backend_process = start_backend(config)
+        frontend_process = start_frontend(config)
         
-        # 打开浏览器
-        threading.Thread(target=open_browser, daemon=True).start()
+        # 打开浏览器（可通过配置禁用）
+        if config['auto_open_browser']:
+            threading.Thread(target=open_browser, args=(config,), daemon=True).start()
         
-        print("\n✅ 服务已启动！")
-        print("   后端 API: http://localhost:8000/docs")
-        print("   前端界面: http://localhost:3000")
+        # 显示启动信息
+        print("\n" + "=" * 60)
+        print("✅ 服务已启动！")
+        print(f"   后端 API:  http://localhost:{config['backend_port']}/docs")
+        print(f"   前端界面: http://localhost:{config['frontend_port']}")
+        print("=" * 60)
         print("\n按 Ctrl+C 停止所有服务...")
         
         # 等待进程结束
@@ -112,9 +266,12 @@ def main():
         if 'backend_process' in locals():
             backend_process.terminate()
         if 'frontend_process' in locals():
-            # Windows下终止shell启动的子进程比较麻烦，这里简单处理
+            # Windows 下终止 shell 启动的子进程
             if os.name == 'nt':
-                subprocess.run(["taskkill", "/F", "/T", "/PID", str(frontend_process.pid)])
+                subprocess.run(
+                    ["taskkill", "/F", "/T", "/PID", str(frontend_process.pid)],
+                    capture_output=True
+                )
             else:
                 frontend_process.terminate()
         print("✓ 服务已停止")
@@ -122,6 +279,7 @@ def main():
     except Exception as e:
         print(f"\n❌ 发生错误: {e}")
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

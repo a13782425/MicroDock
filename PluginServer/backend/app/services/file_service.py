@@ -38,7 +38,7 @@ class FileService:
         file_path = plugin_dir / file_name
         
         # 保存文件
-       file_size = 0
+        file_size = 0
         async with aiofiles.open(file_path, 'wb') as f:
             while chunk := await file.read(8192):
                 await f.write(chunk)

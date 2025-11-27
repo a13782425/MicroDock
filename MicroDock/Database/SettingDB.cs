@@ -53,4 +53,23 @@ internal class SettingDB
     /// 窗口高度
     /// </summary>
     public int WindowHeight { get; set; } = 360;
+
+    #region 服务器与备份设置
+
+    /// <summary>
+    /// 服务器地址（用于插件上传和数据备份）
+    /// </summary>
+    public string ServerAddress { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 备份密码（用于数据备份和恢复）
+    /// </summary>
+    public string BackupPassword { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 上次主程序备份时间（Unix时间戳）
+    /// </summary>
+    public long LastAppBackupTime { get; set; } = 0;
+
+    #endregion
 }

@@ -5,9 +5,26 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sess
 from sqlalchemy.orm import declarative_base
 from app.config import settings
 
+# 验证 aiosqlite 是否正确安装
+try:
+    import aiosqlite
+    print(f"[DEBUG] aiosqlite version: {aiosqlite.__version__}")
+except ImportError as e:
+    print(f"[ERROR] aiosqlite not found: {e}")
+    raise
+
+# 打印调试信息
+print(f"[DEBUG] DATABASE_URL: {settings.DATABASE_URL}")
+
+# 确保使用正确的异步驱动 URL
+db_url = settings.DATABASE_URL
+if db_url.startswith("sqlite:///") and not db_url.startswith("sqlite+aiosqlite:///"):
+    db_url = db_url.replace("sqlite:///", "sqlite+aiosqlite:///")
+    print(f"[DEBUG] Converted to async URL: {db_url}")
+
 # 创建异步引擎
 engine = create_async_engine(
-    settings.DATABASE_URL,
+    db_url,
     echo=settings.DEBUG,
     future=True
 )
@@ -44,5 +61,10 @@ async def init_db():
     """
     初始化数据库（创建所有表）
     """
+    # 导入所有模型以确保它们被注册到 Base.metadata
+    from app.models.plugin import Plugin
+    from app.models.version import PluginVersion
+    from app.models.backup import Backup
+    
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

@@ -29,6 +29,13 @@
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="Margin" Value="4,0,0,0"/>
         </Style>
+
+        <!-- 编辑框样式 -->
+        <Style Selector="TextBox.inline-edit">
+            <Setter Property="MinWidth" Value="100"/>
+            <Setter Property="Padding" Value="2"/>
+            <Setter Property="FontSize" Value="12"/>
+        </Style>
     </UserControl.Styles>
 
     <Grid RowDefinitions="Auto,Auto,*">
@@ -93,31 +100,41 @@
                             Background="Transparent">
                         <Border.ContextMenu>
                             <ContextMenu>
-                                <MenuItem Header="新建笔记" x:Name="ContextNewNote">
+                                <MenuItem Header="新建笔记"
+                                          Command="{Binding #FileTree.DataContext.CreateNoteCommand}"
+                                          CommandParameter="{Binding}">
                                     <MenuItem.Icon>
                                         <TextBlock Text="📝"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
-                                <MenuItem Header="新建文件夹" x:Name="ContextNewFolder">
+                                <MenuItem Header="新建文件夹"
+                                          Command="{Binding #FileTree.DataContext.CreateFolderCommand}"
+                                          CommandParameter="{Binding}">
                                     <MenuItem.Icon>
                                         <TextBlock Text="📁"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <Separator/>
-                                <MenuItem Header="收藏/取消收藏" x:Name="ContextToggleFavorite"
+                                <MenuItem Header="收藏/取消收藏"
+                                          Command="{Binding #FileTree.DataContext.ToggleFavoriteCommand}"
+                                          CommandParameter="{Binding}"
                                           IsVisible="{Binding IsFile}">
                                     <MenuItem.Icon>
                                         <TextBlock Text="⭐"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <Separator IsVisible="{Binding IsFile}"/>
-                                <MenuItem Header="重命名" x:Name="ContextRename"
+                                <MenuItem Header="重命名"
+                                          Command="{Binding #FileTree.DataContext.StartRenameCommand}"
+                                          CommandParameter="{Binding}"
                                           IsVisible="{Binding !IsRoot}">
                                     <MenuItem.Icon>
                                         <TextBlock Text="✏️"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
-                                <MenuItem Header="删除" x:Name="ContextDelete"
+                                <MenuItem Header="删除"
+                                          Command="{Binding #FileTree.DataContext.DeleteCommand}"
+                                          CommandParameter="{Binding}"
                                           IsVisible="{Binding !IsRoot}">
                                     <MenuItem.Icon>
                                         <TextBlock Text="🗑️"/>
@@ -137,10 +154,18 @@
                                 </TextBlock.Text>
                             </TextBlock>
                             
-                            <!-- 名称 -->
+                            <!-- 名称（非编辑状态） -->
                             <TextBlock Text="{Binding Name}" 
                                        VerticalAlignment="Center"
-                                       FontWeight="{Binding IsRoot, Converter={x:Static local:BoolConverters.ToFontWeight}}"/>
+                                       FontWeight="{Binding IsRoot, Converter={x:Static local:BoolConverters.ToFontWeight}}"
+                                       IsVisible="{Binding !IsEditing}"/>
+                            
+                            <!-- 编辑框（编辑状态） -->
+                            <TextBox x:Name="EditTextBox"
+                                     Classes="inline-edit"
+                                     Text="{Binding EditingName, Mode=TwoWay}"
+                                     IsVisible="{Binding IsEditing}"
+                                     VerticalAlignment="Center"/>
                             
                             <!-- 收藏标记 -->
                             <TextBlock Text="⭐" 

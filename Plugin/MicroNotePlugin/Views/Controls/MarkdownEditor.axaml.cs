@@ -12,12 +12,9 @@ public partial class MarkdownEditor : UserControl
 {
     private MarkdownEditorViewModel? _viewModel;
     private TextEditor? _editor;
-    private TextEditor? _splitEditor;
     private EditorToolbar? _toolbar;
     private Control? _previewScroller;
-    private Control? _splitPreviewScroller;
     private bool _isUpdatingContent;
-    private bool _isSyncingScroll;
     private ImageService? _imageService;
 
     public MarkdownEditor()
@@ -66,10 +63,8 @@ public partial class MarkdownEditor : UserControl
     private void OnLoaded(object? sender, RoutedEventArgs e)
     {
         _editor = this.FindControl<TextEditor>("Editor");
-        _splitEditor = this.FindControl<TextEditor>("SplitEditor");
         _toolbar = this.FindControl<EditorToolbar>("Toolbar");
         _previewScroller = this.FindControl<Control>("PreviewScroller");
-        _splitPreviewScroller = this.FindControl<Control>("SplitPreviewScroller");
 
         if (_editor != null)
         {
@@ -77,6 +72,7 @@ public partial class MarkdownEditor : UserControl
             _editor.IsReadOnly = false;
             _editor.ShowLineNumbers = true;
             _editor.WordWrap = true;
+            _editor.TextArea.RightClickMovesCaret = true;
             
             // 绑定文本变化事件
             _editor.TextChanged += OnEditorTextChanged;
@@ -91,61 +87,10 @@ public partial class MarkdownEditor : UserControl
             }
         }
 
-        if (_splitEditor != null)
-        {
-            // 确保编辑器可编辑
-            _splitEditor.IsReadOnly = false;
-            _splitEditor.ShowLineNumbers = true;
-            _splitEditor.WordWrap = true;
-            
-            // 绑定分屏编辑器事件
-            _splitEditor.TextChanged += OnSplitEditorTextChanged;
-            _splitEditor.KeyDown += OnEditorKeyDown;
-            
-            // 绑定滚动同步
-            _splitEditor.TextArea.Caret.PositionChanged += OnSplitEditorCaretChanged;
-        }
-
         if (_toolbar != null)
         {
             BindToolbarEvents();
         }
-    }
-
-    private void OnSplitEditorTextChanged(object? sender, EventArgs e)
-    {
-        if (_viewModel == null || _splitEditor == null || _isUpdatingContent)
-            return;
-
-        _isUpdatingContent = true;
-        try
-        {
-            _viewModel.MarkdownContent = _splitEditor.Text;
-            // 同步到主编辑器
-            if (_editor != null && _editor.Text != _splitEditor.Text)
-            {
-                _editor.Text = _splitEditor.Text;
-            }
-        }
-        finally
-        {
-            _isUpdatingContent = false;
-        }
-    }
-
-    private void OnSplitEditorCaretChanged(object? sender, EventArgs e)
-    {
-        if (_splitEditor == null || _splitPreviewScroller == null || _isSyncingScroll)
-            return;
-
-        // 计算滚动比例并同步到预览
-        SyncScrollToPreview();
-    }
-
-    private void SyncScrollToPreview()
-    {
-        // MarkdownScrollViewer 自带滚动功能，暂时禁用同步滚动
-        // 后续可以通过获取内部 ScrollViewer 来实现同步
     }
 
     private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -175,10 +120,6 @@ public partial class MarkdownEditor : UserControl
             if (_editor != null && _editor.Text != _viewModel.MarkdownContent)
             {
                 _editor.Text = _viewModel.MarkdownContent;
-            }
-            if (_splitEditor != null && _splitEditor.Text != _viewModel.MarkdownContent)
-            {
-                _splitEditor.Text = _viewModel.MarkdownContent;
             }
         }
         finally
@@ -298,28 +239,8 @@ public partial class MarkdownEditor : UserControl
         _toolbar.HorizontalRuleClicked += (_, _) => InsertHorizontalRule();
 
         _toolbar.EditModeClicked += (_, _) => _viewModel?.SwitchToEditMode();
-        _toolbar.SplitModeClicked += (_, _) => 
-        {
-            _viewModel?.SwitchToSplitMode();
-            SyncSplitEditorContent();
-        };
+        _toolbar.SplitModeClicked += (_, _) => _viewModel?.SwitchToSplitMode();
         _toolbar.PreviewModeClicked += (_, _) => _viewModel?.SwitchToPreviewMode();
-    }
-
-    private void SyncSplitEditorContent()
-    {
-        if (_splitEditor != null && _viewModel != null)
-        {
-            _isUpdatingContent = true;
-            try
-            {
-                _splitEditor.Text = _viewModel.MarkdownContent;
-            }
-            finally
-            {
-                _isUpdatingContent = false;
-            }
-        }
     }
 
     #region 格式化操作

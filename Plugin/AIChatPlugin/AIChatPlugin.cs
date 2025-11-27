@@ -89,38 +89,29 @@ namespace AIChatPlugin
         #region 配置管理
 
         /// <summary>
+        /// 获取配置文件路径
+        /// </summary>
+        private string GetConfigFilePath()
+        {
+            return Path.Combine(_dataFolder, "config.json");
+        }
+
+        /// <summary>
         /// 加载配置
         /// </summary>
         private void LoadConfig()
         {
             try
             {
-                // 优先从设置中读取
-                string? apiKey = GetSettings("api_key");
-                string? baseUrl = GetSettings("base_url");
-                string? model = GetSettings("model");
-                string? temperature = GetSettings("temperature");
-                string? maxTokens = GetSettings("max_tokens");
-
-                if (!string.IsNullOrEmpty(apiKey))
+                string configFile = GetConfigFilePath();
+                if (File.Exists(configFile))
                 {
-                    _config.ApiKey = apiKey;
-                }
-                if (!string.IsNullOrEmpty(baseUrl))
-                {
-                    _config.BaseUrl = baseUrl;
-                }
-                if (!string.IsNullOrEmpty(model))
-                {
-                    _config.Model = model;
-                }
-                if (!string.IsNullOrEmpty(temperature) && double.TryParse(temperature, out double temp))
-                {
-                    _config.Temperature = temp;
-                }
-                if (!string.IsNullOrEmpty(maxTokens) && int.TryParse(maxTokens, out int max))
-                {
-                    _config.MaxTokens = max;
+                    string json = File.ReadAllText(configFile);
+                    ChatConfig? loadedConfig = JsonSerializer.Deserialize<ChatConfig>(json, _jsonOptions);
+                    if (loadedConfig != null)
+                    {
+                        _config = loadedConfig;
+                    }
                 }
 
                 Context!.LogInfo("已加载配置");
@@ -139,11 +130,9 @@ namespace AIChatPlugin
         {
             try
             {
-                SetSettings("api_key", _config.ApiKey, "AI API 密钥");
-                SetSettings("base_url", _config.BaseUrl, "API 基础地址");
-                SetSettings("model", _config.Model, "模型名称");
-                SetSettings("temperature", _config.Temperature.ToString(), "温度参数");
-                SetSettings("max_tokens", _config.MaxTokens.ToString(), "最大 Token 数");
+                string configFile = GetConfigFilePath();
+                string json = JsonSerializer.Serialize(_config, _jsonOptions);
+                File.WriteAllText(configFile, json);
 
                 Context!.LogInfo("配置已保存");
             }

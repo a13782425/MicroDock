@@ -12,6 +12,7 @@ using Serilog;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reactive;
@@ -37,6 +38,11 @@ public class SettingsTabViewModel : ViewModelBase
     {
         SaveTabOrderCommand = ReactiveCommand.Create(SaveTabOrder);
         ImportPluginCommand = ReactiveCommand.CreateFromTask(ImportPlugin);
+        OpenPluginsFolderCommand = ReactiveCommand.Create(OpenPluginsFolder);
+        TestConnectionCommand = ReactiveCommand.CreateFromTask(TestConnection);
+        BackupAppDataCommand = ReactiveCommand.CreateFromTask(BackupAppData);
+        RestoreAppDataCommand = ReactiveCommand.CreateFromTask(RestoreAppData);
+        
         PluginSettings = new ObservableCollection<PluginSettingItem>();
         AvailableThemes = new ObservableCollection<MicroDock.Model.ThemeModel>();
         FlattenedThemeList = new ObservableCollection<object>();
@@ -581,12 +587,21 @@ public class SettingsTabViewModel : ViewModelBase
         _showLogViewer = settings.ShowLogViewer;
         _selectedTheme = settings.SelectedTheme;
 
+        // 加载服务器与备份设置
+        _serverAddress = settings.ServerAddress ?? string.Empty;
+        _backupPassword = settings.BackupPassword ?? string.Empty;
+
         // 通知UI更新（仅UI，不触发setter中的事件发布）
         this.RaisePropertyChanged(nameof(AutoStartup));
         this.RaisePropertyChanged(nameof(AutoHide));
         this.RaisePropertyChanged(nameof(AlwaysOnTop));
         this.RaisePropertyChanged(nameof(ShowLogViewer));
         this.RaisePropertyChanged(nameof(SelectedTheme));
+        this.RaisePropertyChanged(nameof(ServerAddress));
+        this.RaisePropertyChanged(nameof(BackupPassword));
+
+        // 更新备份时间显示
+        UpdateLastBackupTime();
     }
 
     /// <summary>
@@ -686,6 +701,255 @@ public class SettingsTabViewModel : ViewModelBase
             }
         });
     }
+
+    #region 服务器与备份设置
+
+    private string _serverAddress = string.Empty;
+    private string _backupPassword = string.Empty;
+    private string _lastAppBackupTimeText = "从未备份";
+
+    /// <summary>
+    /// 服务器地址
+    /// </summary>
+    public string ServerAddress
+    {
+        get => _serverAddress;
+        set
+        {
+            if (this.RaiseAndSetIfChanged(ref _serverAddress, value) == value)
+            {
+                DBContext.UpdateSetting(s => s.ServerAddress = value);
+            }
+        }
+    }
+
+    /// <summary>
+    /// 备份密码
+    /// </summary>
+    public string BackupPassword
+    {
+        get => _backupPassword;
+        set
+        {
+            if (this.RaiseAndSetIfChanged(ref _backupPassword, value) == value)
+            {
+                DBContext.UpdateSetting(s => s.BackupPassword = value);
+            }
+        }
+    }
+
+    /// <summary>
+    /// 上次备份时间显示文本
+    /// </summary>
+    public string LastAppBackupTimeText
+    {
+        get => _lastAppBackupTimeText;
+        private set => this.RaiseAndSetIfChanged(ref _lastAppBackupTimeText, value);
+    }
+
+    /// <summary>
+    /// 打开插件文件夹命令
+    /// </summary>
+    public ReactiveCommand<Unit, Unit> OpenPluginsFolderCommand { get; }
+
+    /// <summary>
+    /// 测试服务器连接命令
+    /// </summary>
+    public ReactiveCommand<Unit, Unit> TestConnectionCommand { get; }
+
+    /// <summary>
+    /// 备份主程序数据命令
+    /// </summary>
+    public ReactiveCommand<Unit, Unit> BackupAppDataCommand { get; }
+
+    /// <summary>
+    /// 恢复主程序数据命令
+    /// </summary>
+    public ReactiveCommand<Unit, Unit> RestoreAppDataCommand { get; }
+
+    /// <summary>
+    /// 打开插件根目录
+    /// </summary>
+    private void OpenPluginsFolder()
+    {
+        try
+        {
+            string pluginDirectory = Path.Combine(AppConfig.ROOT_PATH, "plugins");
+            if (!Directory.Exists(pluginDirectory))
+            {
+                Directory.CreateDirectory(pluginDirectory);
+            }
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = pluginDirectory,
+                UseShellExecute = true
+            });
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "打开插件文件夹失败");
+            ShowNotification("打开失败", ex.Message, AppNotificationType.Error);
+        }
+    }
+
+    /// <summary>
+    /// 测试服务器连接
+    /// </summary>
+    private async Task TestConnection()
+    {
+        if (string.IsNullOrEmpty(ServerAddress))
+        {
+            ShowNotification("测试失败", "请先输入服务器地址", AppNotificationType.Warning);
+            return;
+        }
+
+        ServiceLocator.Get<EventService>().Publish(new ShowLoadingMessage("正在测试连接..."));
+
+        try
+        {
+            var backupService = new BackupService();
+            var (success, message) = await backupService.TestConnectionAsync(ServerAddress);
+
+            ServiceLocator.Get<EventService>().Publish(new HideLoadingMessage());
+
+            if (success)
+            {
+                ShowNotification("连接成功", message, AppNotificationType.Success);
+            }
+            else
+            {
+                ShowNotification("连接失败", message, AppNotificationType.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            ServiceLocator.Get<EventService>().Publish(new HideLoadingMessage());
+            Log.Error(ex, "测试服务器连接失败");
+            ShowNotification("测试失败", ex.Message, AppNotificationType.Error);
+        }
+    }
+
+    /// <summary>
+    /// 备份主程序数据
+    /// </summary>
+    private async Task BackupAppData()
+    {
+        if (string.IsNullOrEmpty(ServerAddress))
+        {
+            ShowNotification("备份失败", "请先配置服务器地址", AppNotificationType.Warning);
+            return;
+        }
+
+        if (string.IsNullOrEmpty(BackupPassword))
+        {
+            ShowNotification("备份失败", "请先配置备份密码", AppNotificationType.Warning);
+            return;
+        }
+
+        bool confirm = await ShowConfirmDialogAsync(
+            "备份主程序数据",
+            "确定要备份主程序数据库到服务器吗？",
+            "这将覆盖服务器上已有的备份。"
+        );
+
+        if (!confirm) return;
+
+        ServiceLocator.Get<EventService>().Publish(new ShowLoadingMessage("正在备份主程序数据..."));
+
+        try
+        {
+            var backupService = new BackupService();
+            var (success, message) = await backupService.BackupAppDataAsync();
+
+            ServiceLocator.Get<EventService>().Publish(new HideLoadingMessage());
+
+            if (success)
+            {
+                UpdateLastBackupTime();
+                ShowNotification("备份成功", message, AppNotificationType.Success);
+            }
+            else
+            {
+                ShowNotification("备份失败", message, AppNotificationType.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            ServiceLocator.Get<EventService>().Publish(new HideLoadingMessage());
+            Log.Error(ex, "备份主程序数据失败");
+            ShowNotification("备份失败", ex.Message, AppNotificationType.Error);
+        }
+    }
+
+    /// <summary>
+    /// 恢复主程序数据
+    /// </summary>
+    private async Task RestoreAppData()
+    {
+        if (string.IsNullOrEmpty(ServerAddress))
+        {
+            ShowNotification("恢复失败", "请先配置服务器地址", AppNotificationType.Warning);
+            return;
+        }
+
+        if (string.IsNullOrEmpty(BackupPassword))
+        {
+            ShowNotification("恢复失败", "请先配置备份密码", AppNotificationType.Warning);
+            return;
+        }
+
+        bool confirm = await ShowConfirmDialogAsync(
+            "恢复主程序数据",
+            "确定要从服务器恢复主程序数据库吗？",
+            "这将覆盖当前的数据库，应用需要重启才能生效。"
+        );
+
+        if (!confirm) return;
+
+        ServiceLocator.Get<EventService>().Publish(new ShowLoadingMessage("正在恢复主程序数据..."));
+
+        try
+        {
+            var backupService = new BackupService();
+            var (success, message) = await backupService.RestoreAppDataAsync();
+
+            ServiceLocator.Get<EventService>().Publish(new HideLoadingMessage());
+
+            if (success)
+            {
+                ShowNotification("恢复成功", message, AppNotificationType.Success);
+            }
+            else
+            {
+                ShowNotification("恢复失败", message, AppNotificationType.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            ServiceLocator.Get<EventService>().Publish(new HideLoadingMessage());
+            Log.Error(ex, "恢复主程序数据失败");
+            ShowNotification("恢复失败", ex.Message, AppNotificationType.Error);
+        }
+    }
+
+    /// <summary>
+    /// 更新上次备份时间显示
+    /// </summary>
+    private void UpdateLastBackupTime()
+    {
+        var settings = DBContext.GetSetting();
+        if (settings.LastAppBackupTime > 0)
+        {
+            var dt = DateTimeOffset.FromUnixTimeSeconds(settings.LastAppBackupTime).LocalDateTime;
+            LastAppBackupTimeText = dt.ToString("yyyy-MM-dd HH:mm:ss");
+        }
+        else
+        {
+            LastAppBackupTimeText = "从未备份";
+        }
+    }
+
+    #endregion
 
 }
 

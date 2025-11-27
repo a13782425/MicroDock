@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Reactive;
 using System.Reactive.Linq;
 using ReactiveUI;
 using MicroNotePlugin.Models;
@@ -27,11 +28,105 @@ public class FileTreeViewModel : ReactiveObject
     private bool _isSearching;
     private ObservableCollection<SearchResultItem> _searchResults = new();
 
+    /// <summary>
+    /// 切换收藏命令
+    /// </summary>
+    public ReactiveCommand<FileNodeViewModel, Unit> ToggleFavoriteCommand { get; }
+
+    /// <summary>
+    /// 开始重命名命令
+    /// </summary>
+    public ReactiveCommand<FileNodeViewModel, Unit> StartRenameCommand { get; }
+
+    /// <summary>
+    /// 确认重命名命令
+    /// </summary>
+    public ReactiveCommand<FileNodeViewModel, Unit> ConfirmRenameCommand { get; }
+
+    /// <summary>
+    /// 取消重命名命令
+    /// </summary>
+    public ReactiveCommand<FileNodeViewModel, Unit> CancelRenameCommand { get; }
+
+    /// <summary>
+    /// 删除节点命令
+    /// </summary>
+    public ReactiveCommand<FileNodeViewModel, Unit> DeleteCommand { get; }
+
+    /// <summary>
+    /// 在指定节点下创建笔记命令
+    /// </summary>
+    public ReactiveCommand<FileNodeViewModel, Unit> CreateNoteCommand { get; }
+
+    /// <summary>
+    /// 在指定节点下创建文件夹命令
+    /// </summary>
+    public ReactiveCommand<FileNodeViewModel, Unit> CreateFolderCommand { get; }
+
+    /// <summary>
+    /// 创建笔记后的事件（用于通知 View 选中并打开新文件）
+    /// </summary>
+    public event EventHandler<FileNodeViewModel>? NoteCreated;
+
     public FileTreeViewModel(NoteFileService fileService, MetadataService metadataService)
     {
         _fileService = fileService;
         _metadataService = metadataService;
         _searchService = new SearchService(fileService);
+
+        // 初始化命令
+        ToggleFavoriteCommand = ReactiveCommand.Create<FileNodeViewModel>(node =>
+        {
+            if (node.IsFile)
+            {
+                ToggleFavorite(node);
+            }
+        });
+
+        StartRenameCommand = ReactiveCommand.Create<FileNodeViewModel>(node =>
+        {
+            if (!node.IsRoot)
+            {
+                node.StartEditing();
+            }
+        });
+
+        ConfirmRenameCommand = ReactiveCommand.Create<FileNodeViewModel>(node =>
+        {
+            if (node.IsEditing && !string.IsNullOrWhiteSpace(node.EditingName))
+            {
+                RenameNode(node, node.EditingName.Trim());
+                node.CancelEditing();
+            }
+        });
+
+        CancelRenameCommand = ReactiveCommand.Create<FileNodeViewModel>(node =>
+        {
+            node.CancelEditing();
+        });
+
+        DeleteCommand = ReactiveCommand.Create<FileNodeViewModel>(node =>
+        {
+            if (!node.IsRoot)
+            {
+                DeleteNode(node);
+            }
+        });
+
+        CreateNoteCommand = ReactiveCommand.Create<FileNodeViewModel>(node =>
+        {
+            var newNote = CreateNote("新建笔记", node);
+            if (newNote != null)
+            {
+                SelectedNode = newNote;
+                NoteCreated?.Invoke(this, newNote);
+            }
+        });
+
+        CreateFolderCommand = ReactiveCommand.Create<FileNodeViewModel>(node =>
+        {
+            CreateFolder("新建文件夹", node);
+        });
 
         // 初始化树结构
         RefreshTree();

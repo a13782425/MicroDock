@@ -138,9 +138,13 @@
 								 IconSource="ViewAll"
 								 Description="查看、导入和管理插件">
 				<fa:SettingsExpander.Footer>
-					<Button Content="导入插件"
-							Command="{Binding ImportPluginCommand}"
-							Classes="accent"/>
+					<StackPanel Orientation="Horizontal" Spacing="8">
+						<Button Content="打开插件文件夹"
+								Command="{Binding OpenPluginsFolderCommand}"/>
+						<Button Content="导入插件"
+								Command="{Binding ImportPluginCommand}"
+								Classes="accent"/>
+					</StackPanel>
 				</fa:SettingsExpander.Footer>
 				<ItemsControl ItemsSource="{Binding PluginSettings}" Margin="0,0,0,0">
 					<ItemsControl.ItemTemplate>
@@ -181,6 +185,27 @@
 													  OnContent="已启用"
 													  OffContent="已禁用"/>
 										
+										<!-- 更多操作下拉菜单 -->
+										<Button Content="更多 ▾">
+											<Button.Flyout>
+												<MenuFlyout Placement="BottomEdgeAlignedRight">
+													<MenuItem Header="打开文件夹"
+															  Command="{Binding OpenFolderCommand}"/>
+													<Separator/>
+													<MenuItem Header="备份数据"
+															  Command="{Binding BackupDataCommand}"/>
+													<MenuItem Header="恢复数据"
+															  Command="{Binding RestoreDataCommand}"/>
+													<MenuItem Header="上传插件..."
+															  Command="{Binding UploadPluginCommand}"/>
+													<Separator/>
+													<MenuItem Header="删除插件"
+															  Command="{Binding DeleteCommand}"
+															  IsVisible="{Binding !IsPendingDelete}"/>
+												</MenuFlyout>
+											</Button.Flyout>
+										</Button>
+										
 										<!-- 取消更新按钮（仅待更新时显示） -->
 										<Button Content="取消更新"
 												Command="{Binding CancelUpdateCommand}"
@@ -192,12 +217,6 @@
 												Command="{Binding CancelDeleteCommand}"
 												IsVisible="{Binding IsPendingDelete}"
 												Classes="accent"/>
-
-										<!-- 删除按钮（待删除或待更新时隐藏） -->
-										<Button Content="删除"
-												Command="{Binding DeleteCommand}"
-												IsVisible="{Binding !IsPendingDelete}"
-												Classes="danger"/>
 									</StackPanel>
 								</fa:SettingsExpander.Footer>
 
@@ -339,7 +358,7 @@
 			<!-- 高级设置分组 -->
 			<fa:SettingsExpander Header="高级设置"
 								 IconSource="Code">
-				<StackPanel Margin="10,10,0,10">
+				<StackPanel Margin="10,10,10,10">
 					<!-- 显示日志查看器选项 -->
 					<Grid Margin="0,4">
 						<Grid.ColumnDefinitions>
@@ -355,16 +374,81 @@
 									  OffContent=""/>
 					</Grid>
 
-					<TextBlock Text="性能优化"
+					<!-- 服务器设置 -->
+					<TextBlock Text="服务器设置"
 							   FontSize="13"
 							   FontWeight="SemiBold"
 							   Margin="0,15,0,8"
 							   Foreground="#666"/>
-					<TextBlock Text="高级配置功能待实现..."
+					<Grid Margin="0,4">
+						<Grid.ColumnDefinitions>
+							<ColumnDefinition Width="100"/>
+							<ColumnDefinition Width="*"/>
+							<ColumnDefinition Width="Auto"/>
+						</Grid.ColumnDefinitions>
+						<TextBlock Text="服务器地址"
+								   VerticalAlignment="Center"
+								   Grid.Column="0"/>
+						<TextBox Text="{Binding ServerAddress, Mode=TwoWay}"
+								 Watermark="http://your-server.com"
+								 Grid.Column="1"
+								 Margin="0,0,8,0"/>
+						<Button Content="测试连接"
+								Command="{Binding TestConnectionCommand}"
+								Grid.Column="2"/>
+					</Grid>
+
+					<!-- 数据备份 -->
+					<TextBlock Text="数据备份"
+							   FontSize="13"
+							   FontWeight="SemiBold"
+							   Margin="0,15,0,8"
+							   Foreground="#666"/>
+					<Grid Margin="0,4">
+						<Grid.ColumnDefinitions>
+							<ColumnDefinition Width="100"/>
+							<ColumnDefinition Width="*"/>
+						</Grid.ColumnDefinitions>
+						<TextBlock Text="备份密码"
+								   VerticalAlignment="Center"
+								   Grid.Column="0"/>
+						<TextBox Text="{Binding BackupPassword, Mode=TwoWay}"
+								 PasswordChar="●"
+								 Watermark="用于加密备份数据"
+								 Grid.Column="1"/>
+					</Grid>
+					<Grid Margin="0,8">
+						<Grid.ColumnDefinitions>
+							<ColumnDefinition Width="100"/>
+							<ColumnDefinition Width="Auto"/>
+							<ColumnDefinition Width="Auto"/>
+							<ColumnDefinition Width="*"/>
+						</Grid.ColumnDefinitions>
+						<TextBlock Text="主程序数据"
+								   VerticalAlignment="Center"
+								   Grid.Column="0"/>
+						<Button Content="备份"
+								Command="{Binding BackupAppDataCommand}"
+								Grid.Column="1"
+								Margin="0,0,8,0"/>
+						<Button Content="恢复"
+								Command="{Binding RestoreAppDataCommand}"
+								Grid.Column="2"/>
+						<TextBlock Grid.Column="3"
+								   VerticalAlignment="Center"
+								   Margin="16,0,0,0"
+								   Foreground="Gray"
+								   FontSize="11">
+							<Run Text="上次备份: "/>
+							<Run Text="{Binding LastAppBackupTimeText}"/>
+						</TextBlock>
+					</Grid>
+					<TextBlock Text="提示: 插件数据备份请在各插件的更多菜单中操作"
 							   Foreground="Gray"
-							   FontSize="12"
+							   FontSize="11"
 							   Margin="0,4"/>
 
+					<!-- 调试选项 -->
 					<TextBlock Text="调试选项"
 							   FontSize="13"
 							   FontWeight="SemiBold"

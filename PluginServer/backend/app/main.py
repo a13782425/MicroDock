@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 
 from app.config import settings
 from app.database import init_db
-from app.api import plugins, versions, system
+from app.api import plugins, versions, system, backups
 
 
 @asynccontextmanager
@@ -43,6 +43,7 @@ app.add_middleware(
 # 注册路由
 app.include_router(plugins.router)
 app.include_router(versions.router)
+app.include_router(backups.router)
 app.include_router(system.router)
 
 

@@ -11,22 +11,48 @@
           <div class="sm:flex sm:items-start">
             <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
               <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
-                上传新插件
+                上传备份
               </h3>
               <div class="mt-4 space-y-4">
-                <!-- 插件密钥输入 -->
+                <!-- 备份类型选择 -->
                 <div>
-                  <label for="plugin-key" class="block text-sm font-medium text-gray-700">
-                    插件密钥 <span class="text-red-500">*</span>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">
+                    备份类型 <span class="text-red-500">*</span>
+                  </label>
+                  <div class="flex gap-4">
+                    <label class="flex items-center">
+                      <input 
+                        type="radio" 
+                        v-model="backupType" 
+                        value="program"
+                        class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                      >
+                      <span class="ml-2 text-sm text-gray-700">主程序</span>
+                    </label>
+                    <label class="flex items-center">
+                      <input 
+                        type="radio" 
+                        v-model="backupType" 
+                        value="plugin"
+                        class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                      >
+                      <span class="ml-2 text-sm text-gray-700">插件</span>
+                    </label>
+                  </div>
+                </div>
+
+                <!-- 备份描述 -->
+                <div>
+                  <label for="backup-desc" class="block text-sm font-medium text-gray-700">
+                    备份描述（可选）
                   </label>
                   <input 
-                    id="plugin-key"
-                    v-model="pluginKey"
+                    id="backup-desc"
+                    v-model="description"
                     type="text" 
                     class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                    placeholder="输入插件密钥（字母、数字、下划线）"
+                    placeholder="例如：版本 1.0.0 备份"
                   >
-                  <p class="mt-1 text-xs text-gray-500">首次上传将绑定此密钥，后续更新需使用相同密钥</p>
                 </div>
 
                 <!-- 文件选择区域 -->
@@ -41,22 +67,19 @@
                       <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
                     </svg>
                     <div class="flex text-sm text-gray-600 justify-center">
-                      <label for="file-upload" class="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none">
+                      <label class="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none">
                         <span>选择文件</span>
                         <input 
                           ref="fileInput"
-                          id="file-upload" 
-                          name="file-upload" 
                           type="file" 
                           class="sr-only"
-                          accept=".zip"
                           @change="handleFileSelect"
                         >
                       </label>
                       <p class="pl-1">或拖拽文件到此处</p>
                     </div>
                     <p class="text-xs text-gray-500">
-                      仅支持 ZIP 格式，必须包含 plugin.json
+                      支持任意格式文件
                     </p>
                   </div>
                 </div>
@@ -124,11 +147,15 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { pluginService } from '../services/pluginService'
+import { backupService } from '../services/pluginService'
 import { useNotify } from '../utils/toast'
 
 const props = defineProps({
-  modelValue: Boolean
+  modelValue: Boolean,
+  userKey: {
+    type: String,
+    required: true
+  }
 })
 
 const emit = defineEmits(['update:modelValue', 'uploaded'])
@@ -137,19 +164,14 @@ const notify = useNotify()
 
 const fileInput = ref(null)
 const selectedFile = ref(null)
-const pluginKey = ref('')
+const backupType = ref('program')
+const description = ref('')
 const uploading = ref(false)
 const uploadProgress = ref(0)
 const error = ref(null)
 
-// 验证 key 格式
-const isValidKey = computed(() => {
-  return /^[a-zA-Z0-9_]+$/.test(pluginKey.value) && pluginKey.value.length <= 256
-})
-
-// 是否可以上传
 const canUpload = computed(() => {
-  return selectedFile.value && pluginKey.value && isValidKey.value
+  return selectedFile.value && backupType.value && props.userKey
 })
 
 function close() {
@@ -160,7 +182,8 @@ function close() {
 
 function reset() {
   selectedFile.value = null
-  pluginKey.value = ''
+  backupType.value = 'program'
+  description.value = ''
   error.value = null
   uploadProgress.value = 0
   if (fileInput.value) {
@@ -170,21 +193,18 @@ function reset() {
 
 function handleFileSelect(event) {
   const file = event.target.files[0]
-  if (file) validateAndSetFile(file)
+  if (file) {
+    selectedFile.value = file
+    error.value = null
+  }
 }
 
 function handleDrop(event) {
   const file = event.dataTransfer.files[0]
-  if (file) validateAndSetFile(file)
-}
-
-function validateAndSetFile(file) {
-  error.value = null
-  if (!file.name.toLowerCase().endsWith('.zip')) {
-    error.value = '仅支持 ZIP 格式文件'
-    return
+  if (file) {
+    selectedFile.value = file
+    error.value = null
   }
-  selectedFile.value = file
 }
 
 function formatSize(bytes) {
@@ -203,11 +223,17 @@ async function upload() {
   uploadProgress.value = 0
   
   try {
-    await pluginService.uploadPlugin(selectedFile.value, pluginKey.value, (progressEvent) => {
-      uploadProgress.value = Math.round((progressEvent.loaded * 100) / progressEvent.total)
-    })
+    await backupService.uploadBackup(
+      selectedFile.value,
+      props.userKey,
+      backupType.value,
+      description.value,
+      (progressEvent) => {
+        uploadProgress.value = Math.round((progressEvent.loaded * 100) / progressEvent.total)
+      }
+    )
     
-    notify.success('插件上传成功')
+    notify.success('备份上传成功')
     emit('uploaded')
     reset()
   } catch (e) {
@@ -219,3 +245,4 @@ async function upload() {
   }
 }
 </script>
+

@@ -14,6 +14,13 @@
             >
               插件列表
             </router-link>
+            <router-link 
+              to="/backups" 
+              class="px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-200"
+              :class="$route.path === '/backups' ? 'bg-gray-200' : ''"
+            >
+              用户备份
+            </router-link>
           </div>
         </div>
       </div>

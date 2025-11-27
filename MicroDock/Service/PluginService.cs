@@ -600,7 +600,7 @@ namespace MicroDock.Service
                 }
 
                 string[] dependencies = manifest.Dependencies?.Keys.ToArray() ?? Array.Empty<string>();
-                PluginContextImpl context = new PluginContextImpl(manifest.Name, dependencies, pluginFolder);
+                PluginContextImpl context = new PluginContextImpl(manifest.Name, pluginFolder);
                 dockPlugin.Initialize(context);
 
                 // 异步初始化插件
@@ -1181,7 +1181,6 @@ namespace MicroDock.Service
                 try
                 {
                     DBContext.DeletePluginInfo(plugin.PluginName);
-                    DBContext.DeleteAllPluginData(plugin.PluginName);
                     Log.Information("已删除待删除插件: {PluginName}", plugin.PluginName);
                 }
                 catch (Exception ex)

@@ -1,8 +1,13 @@
 """
 通用响应 schemas
 """
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Any, Optional
+
+
+class IdRequest(BaseModel):
+    """通用 ID 请求"""
+    id: int = Field(..., description="资源ID")
 
 
 class SuccessResponse(BaseModel):

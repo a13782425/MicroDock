@@ -217,27 +217,49 @@ internal static class UniversalUtils
     /// <param name="title">对话框标题</param>
     /// <param name="placeholder">输入框占位符</param>
     /// <param name="defaultValue">默认值</param>
+    /// <param name="isPassword">是否为密码输入框</param>
     /// <returns>用户输入的文本，如果取消则返回 null</returns>
     public static async Task<string?> ShowInputDialogAsync(
         string title,
         string placeholder = "",
-        string? defaultValue = null)
+        string? defaultValue = null,
+        bool isPassword = false)
     {
         try
         {
             return await Dispatcher.UIThread.InvokeAsync(async () =>
             {
-                var textBox = new TextBox
+                Control inputControl;
+                Func<string?> getValue;
+
+                if (isPassword)
                 {
-                    Text = defaultValue ?? string.Empty,
-                    Watermark = placeholder,
-                    MinWidth = 300
-                };
+                    var passwordBox = new TextBox
+                    {
+                        Text = defaultValue ?? string.Empty,
+                        Watermark = placeholder,
+                        MinWidth = 300,
+                        PasswordChar = '●'
+                    };
+                    inputControl = passwordBox;
+                    getValue = () => passwordBox.Text;
+                }
+                else
+                {
+                    var textBox = new TextBox
+                    {
+                        Text = defaultValue ?? string.Empty,
+                        Watermark = placeholder,
+                        MinWidth = 300
+                    };
+                    inputControl = textBox;
+                    getValue = () => textBox.Text;
+                }
 
                 var dialog = new ContentDialog
                 {
                     Title = title,
-                    Content = textBox,
+                    Content = inputControl,
                     PrimaryButtonText = "确定",
                     CloseButtonText = "取消",
                     DefaultButton = ContentDialogButton.Primary
@@ -247,7 +269,7 @@ internal static class UniversalUtils
 
                 if (result == ContentDialogResult.Primary)
                 {
-                    return textBox.Text;
+                    return getValue();
                 }
 
                 return null;

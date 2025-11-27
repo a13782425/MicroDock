@@ -21,8 +21,10 @@ api.interceptors.response.use(
         return response.data
     },
     error => {
-        const message = error.response?.data?.message || error.message || '请求失败'
-        console.error('API Error:', message)
+        // FastAPI 返回的错误格式是 { "detail": "错误信息" }
+        const detail = error.response?.data?.detail
+        const message = detail || error.response?.data?.message || error.message || '请求失败'
+        console.error('API Error:', message, error.response?.status)
         return Promise.reject(new Error(message))
     }
 )

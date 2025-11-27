@@ -122,11 +122,13 @@ import { usePluginStore } from '../stores/plugin'
 import UploadDialog from '../components/UploadDialog.vue'
 import VersionDialog from '../components/VersionDialog.vue'
 import { pluginService } from '../services/pluginService'
+import { useNotify } from '../utils/toast'
 
 const pluginStore = usePluginStore()
 const showUploadDialog = ref(false)
 const showVersionDialog = ref(false)
 const selectedPlugin = ref(null)
+const notify = useNotify()
 
 onMounted(() => {
   pluginStore.fetchPlugins()
@@ -135,8 +137,9 @@ onMounted(() => {
 async function togglePlugin(plugin) {
   try {
     await pluginStore.togglePlugin(plugin.id, !plugin.is_enabled)
+    notify.success(plugin.is_enabled ? '插件已禁用' : '插件已启用')
   } catch (error) {
-    alert('操作失败: ' + error.message)
+    notify.error('操作失败: ' + error.message)
   }
 }
 
@@ -154,8 +157,9 @@ async function downloadPlugin(plugin) {
     a.download = `${plugin.name}-${plugin.version_number}.zip`
     a.click()
     window.URL.revokeObjectURL(url)
+    notify.success('下载已开始')
   } catch (error) {
-    alert('下载失败: ' + error.message)
+    notify.error('下载失败: ' + error.message)
   }
 }
 
@@ -166,8 +170,9 @@ async function deletePlugin(plugin) {
   
   try {
     await pluginStore.deletePlugin(plugin.id)
+    notify.success('插件已删除')
   } catch (error) {
-    alert('删除失败: ' + error.message)
+    notify.error('删除失败: ' + error.message)
   }
 }
 

@@ -51,43 +51,34 @@
                            HorizontalAlignment="Center"/>
             </StackPanel>
             
-            <!-- 单面板模式（仅编辑） -->
-            <ae:TextEditor x:Name="Editor"
-                           IsVisible="{Binding ShowEditOnly}"
-                           IsReadOnly="False"
-                           Focusable="True"
-                           HorizontalScrollBarVisibility="Auto"
-                           VerticalScrollBarVisibility="Auto"
-                           Margin="0"/>
-            
-            <!-- 单面板模式（仅预览） -->
-            <Border IsVisible="{Binding ShowPreviewOnly}" Padding="16">
-                <md:MarkdownScrollViewer x:Name="PreviewScroller"
-                                         Markdown="{Binding MarkdownContent}"/>
-            </Border>
-            
-            <!-- 分屏模式 -->
-            <Grid x:Name="SplitPanel" 
-                  IsVisible="{Binding ShowSplitView}"
-                  ColumnDefinitions="*,4,*">
-                <!-- 左侧编辑器 -->
-                <ae:TextEditor x:Name="SplitEditor"
+            <!-- 主内容区：统一的分栏布局 -->
+            <Grid x:Name="ContentPanel" 
+                  IsVisible="{Binding HasFile}"
+                  ColumnDefinitions="*,Auto,*">
+                
+                <!-- 编辑器（编辑模式和分屏模式显示） -->
+                <ae:TextEditor x:Name="Editor"
                                Grid.Column="0"
+                               IsVisible="{Binding ShowEditor}"
                                IsReadOnly="False"
                                Focusable="True"
+                               FontWeight="Light"
                                HorizontalScrollBarVisibility="Auto"
-                               VerticalScrollBarVisibility="Auto"
-                               Margin="0"/>
+                               VerticalScrollBarVisibility="Auto"/>
                 
-                <!-- 分隔条 -->
-                <GridSplitter Grid.Column="1" 
+                <!-- 分隔条（仅分屏模式显示） -->
+                <GridSplitter x:Name="Splitter"
+                              Grid.Column="1" 
                               Width="4"
+                              IsVisible="{Binding IsSplitMode}"
                               ResizeDirection="Columns"
                               Background="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"/>
                 
-                <!-- 右侧预览 -->
-                <Border Grid.Column="2" Padding="16">
-                    <md:MarkdownScrollViewer x:Name="SplitPreviewScroller"
+                <!-- 预览（预览模式和分屏模式显示） -->
+                <Border Grid.Column="2" 
+                        Padding="16"
+                        IsVisible="{Binding ShowPreview}">
+                    <md:MarkdownScrollViewer x:Name="PreviewScroller"
                                              Markdown="{Binding MarkdownContent}"/>
                 </Border>
             </Grid>

@@ -32,6 +32,9 @@ class Plugin(Base):
     is_enabled = Column(Boolean, default=True, comment="是否启用")
     is_deprecated = Column(Boolean, default=False, comment="是否过时")
     
+    # 上传密钥（首次上传时绑定，后续更新需验证）
+    upload_key = Column(String(256), nullable=False, comment="插件上传密钥")
+    
     # 版本关联
     current_version_id = Column(Integer, ForeignKey("plugin_versions.id"), nullable=True, comment="当前版本ID")
     

@@ -4,6 +4,8 @@ using MicroDock.Service;
 using ReactiveUI;
 using System;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.IO;
 using System.Reactive;
 using System.Threading.Tasks;
 
@@ -172,6 +174,26 @@ public class PluginSettingItem : ViewModelBase
     /// </summary>
     public ReactiveCommand<Unit, Unit> CancelUpdateCommand { get; private set; } = null!;
 
+    /// <summary>
+    /// 打开插件文件夹命令
+    /// </summary>
+    public ReactiveCommand<Unit, Unit> OpenFolderCommand { get; private set; } = null!;
+
+    /// <summary>
+    /// 备份插件数据命令
+    /// </summary>
+    public ReactiveCommand<Unit, Unit> BackupDataCommand { get; private set; } = null!;
+
+    /// <summary>
+    /// 恢复插件数据命令
+    /// </summary>
+    public ReactiveCommand<Unit, Unit> RestoreDataCommand { get; private set; } = null!;
+
+    /// <summary>
+    /// 上传插件命令
+    /// </summary>
+    public ReactiveCommand<Unit, Unit> UploadPluginCommand { get; private set; } = null!;
+
     public PluginSettingItem()
     {
         // 确保所有属性都有默认值，避免 null 引用
@@ -183,6 +205,10 @@ public class PluginSettingItem : ViewModelBase
         DeleteCommand = ReactiveCommand.CreateFromTask(DeletePlugin);
         CancelDeleteCommand = ReactiveCommand.Create(CancelDelete);
         CancelUpdateCommand = ReactiveCommand.CreateFromTask(CancelUpdate);
+        OpenFolderCommand = ReactiveCommand.Create(OpenFolder);
+        BackupDataCommand = ReactiveCommand.CreateFromTask(BackupData);
+        RestoreDataCommand = ReactiveCommand.CreateFromTask(RestoreData);
+        UploadPluginCommand = ReactiveCommand.CreateFromTask(UploadPlugin);
     }
 
     /// <summary>
@@ -418,5 +444,225 @@ public class PluginSettingItem : ViewModelBase
             ShowNotification("取消失败", ex.Message, AppNotificationType.Error);
         }
     }
+
+    #region 文件夹和备份操作
+
+    /// <summary>
+    /// 获取插件文件夹路径
+    /// </summary>
+    private string GetPluginFolderPath()
+    {
+        return Path.Combine(AppConfig.ROOT_PATH, "plugins", UniqueName);
+    }
+
+    /// <summary>
+    /// 获取插件数据文件夹路径
+    /// </summary>
+    private string GetPluginDataPath()
+    {
+        return Path.Combine(GetPluginFolderPath(), "data");
+    }
+
+    /// <summary>
+    /// 打开插件文件夹
+    /// </summary>
+    private void OpenFolder()
+    {
+        try
+        {
+            string pluginFolder = GetPluginFolderPath();
+            if (!Directory.Exists(pluginFolder))
+            {
+                ShowNotification("打开失败", "插件文件夹不存在", AppNotificationType.Error);
+                return;
+            }
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = pluginFolder,
+                UseShellExecute = true
+            });
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Error(ex, "打开插件文件夹失败: {PluginName}", PluginName);
+            ShowNotification("打开失败", ex.Message, AppNotificationType.Error);
+        }
+    }
+
+    /// <summary>
+    /// 备份插件数据
+    /// </summary>
+    private async Task BackupData()
+    {
+        try
+        {
+            var settings = Database.DBContext.GetSetting();
+            
+            if (string.IsNullOrEmpty(settings.ServerAddress))
+            {
+                ShowNotification("备份失败", "请先在高级设置中配置服务器地址", AppNotificationType.Warning);
+                return;
+            }
+
+            if (string.IsNullOrEmpty(settings.BackupPassword))
+            {
+                ShowNotification("备份失败", "请先在高级设置中配置备份密码", AppNotificationType.Warning);
+                return;
+            }
+
+            string dataPath = GetPluginDataPath();
+            if (!Directory.Exists(dataPath))
+            {
+                ShowNotification("备份失败", "插件数据文件夹不存在", AppNotificationType.Warning);
+                return;
+            }
+
+            bool confirm = await ShowConfirmDialogAsync(
+                $"备份插件数据",
+                $"确定要备份插件 \"{PluginName}\" 的数据到服务器吗？",
+                "这将覆盖服务器上已有的备份。"
+            );
+
+            if (!confirm) return;
+
+            ServiceLocator.Get<EventService>().Publish(new ShowLoadingMessage($"正在备份 {PluginName} 数据..."));
+
+            var backupService = new BackupService();
+            var (success, message) = await backupService.BackupPluginDataAsync(UniqueName, dataPath);
+
+            ServiceLocator.Get<EventService>().Publish(new HideLoadingMessage());
+
+            if (success)
+            {
+                ShowNotification("备份成功", message, AppNotificationType.Success);
+            }
+            else
+            {
+                ShowNotification("备份失败", message, AppNotificationType.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            ServiceLocator.Get<EventService>().Publish(new HideLoadingMessage());
+            Serilog.Log.Error(ex, "备份插件数据失败: {PluginName}", PluginName);
+            ShowNotification("备份失败", ex.Message, AppNotificationType.Error);
+        }
+    }
+
+    /// <summary>
+    /// 恢复插件数据
+    /// </summary>
+    private async Task RestoreData()
+    {
+        try
+        {
+            var settings = Database.DBContext.GetSetting();
+            
+            if (string.IsNullOrEmpty(settings.ServerAddress))
+            {
+                ShowNotification("恢复失败", "请先在高级设置中配置服务器地址", AppNotificationType.Warning);
+                return;
+            }
+
+            if (string.IsNullOrEmpty(settings.BackupPassword))
+            {
+                ShowNotification("恢复失败", "请先在高级设置中配置备份密码", AppNotificationType.Warning);
+                return;
+            }
+
+            string dataPath = GetPluginDataPath();
+
+            bool confirm = await ShowConfirmDialogAsync(
+                $"恢复插件数据",
+                $"确定要从服务器恢复插件 \"{PluginName}\" 的数据吗？",
+                "这将覆盖当前的插件数据，建议先手动备份重要数据。"
+            );
+
+            if (!confirm) return;
+
+            ServiceLocator.Get<EventService>().Publish(new ShowLoadingMessage($"正在恢复 {PluginName} 数据..."));
+
+            var backupService = new BackupService();
+            var (success, message) = await backupService.RestorePluginDataAsync(UniqueName, dataPath);
+
+            ServiceLocator.Get<EventService>().Publish(new HideLoadingMessage());
+
+            if (success)
+            {
+                ShowNotification("恢复成功", message, AppNotificationType.Success);
+            }
+            else
+            {
+                ShowNotification("恢复失败", message, AppNotificationType.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            ServiceLocator.Get<EventService>().Publish(new HideLoadingMessage());
+            Serilog.Log.Error(ex, "恢复插件数据失败: {PluginName}", PluginName);
+            ShowNotification("恢复失败", ex.Message, AppNotificationType.Error);
+        }
+    }
+
+    /// <summary>
+    /// 上传插件到服务器
+    /// </summary>
+    private async Task UploadPlugin()
+    {
+        try
+        {
+            var settings = Database.DBContext.GetSetting();
+            
+            if (string.IsNullOrEmpty(settings.ServerAddress))
+            {
+                ShowNotification("上传失败", "请先在高级设置中配置服务器地址", AppNotificationType.Warning);
+                return;
+            }
+
+            // 弹窗输入上传验证Key
+            var uploadKey = await ShowInputDialogAsync(
+                $"上传插件: {PluginName}",
+                "请输入上传验证Key",
+                null,
+                true // 密码模式
+            );
+
+            if (string.IsNullOrEmpty(uploadKey))
+            {
+                return; // 用户取消
+            }
+
+            string pluginFolder = GetPluginFolderPath();
+            if (!Directory.Exists(pluginFolder))
+            {
+                ShowNotification("上传失败", "插件文件夹不存在", AppNotificationType.Error);
+                return;
+            }
+
+            ServiceLocator.Get<EventService>().Publish(new ShowLoadingMessage($"正在上传 {PluginName}..."));
+
+            var uploadService = new PluginUploadService();
+            var (success, message) = await uploadService.UploadPluginAsync(UniqueName, pluginFolder, uploadKey);
+
+            ServiceLocator.Get<EventService>().Publish(new HideLoadingMessage());
+
+            if (success)
+            {
+                ShowNotification("上传成功", message, AppNotificationType.Success);
+            }
+            else
+            {
+                ShowNotification("上传失败", message, AppNotificationType.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            ServiceLocator.Get<EventService>().Publish(new HideLoadingMessage());
+            Serilog.Log.Error(ex, "上传插件失败: {PluginName}", PluginName);
+            ShowNotification("上传失败", ex.Message, AppNotificationType.Error);
+        }
+    }
+
+    #endregion
 }
 

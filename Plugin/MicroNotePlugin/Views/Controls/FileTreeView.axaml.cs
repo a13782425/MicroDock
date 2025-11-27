@@ -4,6 +4,7 @@ using Avalonia.Data.Converters;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
+using Avalonia.VisualTree;
 using MicroNotePlugin.ViewModels;
 using System.Globalization;
 
@@ -33,8 +34,26 @@ public partial class FileTreeView : UserControl
     /// </summary>
     public void SetViewModel(FileTreeViewModel viewModel)
     {
+        // 解除旧 ViewModel 的事件订阅
+        if (_viewModel != null)
+        {
+            _viewModel.NoteCreated -= OnNoteCreated;
+        }
+
         _viewModel = viewModel;
         DataContext = viewModel;
+
+        // 订阅新 ViewModel 的事件
+        if (_viewModel != null)
+        {
+            _viewModel.NoteCreated += OnNoteCreated;
+        }
+    }
+
+    private void OnNoteCreated(object? sender, FileNodeViewModel node)
+    {
+        // 当通过右键菜单创建笔记时，触发文件选择事件
+        FileSelected?.Invoke(this, node);
     }
 
     private void OnLoaded(object? sender, RoutedEventArgs e)
@@ -63,6 +82,9 @@ public partial class FileTreeView : UserControl
 
             // 启用拖拽
             SetupDragDrop();
+
+            // 监听树内的按键事件（用于编辑框）
+            _fileTree.AddHandler(KeyDownEvent, OnTreeKeyDown, RoutingStrategies.Tunnel);
         }
 
         if (searchBox != null)
@@ -73,6 +95,27 @@ public partial class FileTreeView : UserControl
         if (clearSearchButton != null)
         {
             clearSearchButton.Click += OnClearSearchClick;
+        }
+    }
+
+    private void OnTreeKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (_viewModel?.SelectedNode == null) return;
+        var node = _viewModel.SelectedNode;
+
+        if (!node.IsEditing) return;
+
+        if (e.Key == Key.Enter)
+        {
+            // 确认重命名
+            _viewModel.ConfirmRenameCommand.Execute(node).Subscribe();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Escape)
+        {
+            // 取消重命名
+            _viewModel.CancelRenameCommand.Execute(node).Subscribe();
+            e.Handled = true;
         }
     }
 
@@ -94,7 +137,7 @@ public partial class FileTreeView : UserControl
         if (point.Properties.IsLeftButtonPressed)
         {
             var node = _viewModel.SelectedNode;
-            if (node != null && !node.IsRoot)
+            if (node != null && !node.IsRoot && !node.IsEditing)
             {
                 _draggedNode = node;
 
@@ -194,7 +237,7 @@ public partial class FileTreeView : UserControl
 
     private void OnTreeDoubleTapped(object? sender, TappedEventArgs e)
     {
-        if (_viewModel?.SelectedNode is { IsFile: true } node)
+        if (_viewModel?.SelectedNode is { IsFile: true, IsEditing: false } node)
         {
             _viewModel.RecordFileOpen(node);
             FileSelected?.Invoke(this, node);
@@ -203,7 +246,17 @@ public partial class FileTreeView : UserControl
 
     private void OnTreeSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
-        // 单击选择时的处理（如需要）
+        // 当选择改变时，如果之前有节点在编辑状态，取消编辑
+        if (e.RemovedItems != null)
+        {
+            foreach (var item in e.RemovedItems)
+            {
+                if (item is FileNodeViewModel oldNode && oldNode.IsEditing)
+                {
+                    oldNode.CancelEditing();
+                }
+            }
+        }
     }
 
     /// <summary>
@@ -236,6 +289,17 @@ public partial class FileTreeView : UserControl
         if (_viewModel?.SelectedNode is { IsRoot: false } node)
         {
             _viewModel.RenameNode(node, newName);
+        }
+    }
+
+    /// <summary>
+    /// 开始重命名选中的节点
+    /// </summary>
+    public void StartRenameSelected()
+    {
+        if (_viewModel?.SelectedNode is { IsRoot: false } node)
+        {
+            node.StartEditing();
         }
     }
 }

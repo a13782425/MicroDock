@@ -135,21 +135,9 @@ function formatDate(dateString) {
 
 async function downloadVersion(version) {
   try {
-    const blob = await pluginService.downloadPlugin(props.plugin.id) // 注意：这里应该有专门下载版本的API，或者复用插件下载API（如果它下载的是当前版本）
-    // 修正：我们需要调用下载特定版本的API
-    // 假设后端有 /api/versions/{id}/download
-    // 查看之前的后端代码，确实有 versions.py 提供了 /api/versions/{id}/download
+    const blob = await pluginService.downloadVersion(version.id)
     
-    // 我们需要扩展 pluginService.js 来支持版本下载，或者直接在这里调用
-    // 让我们临时在这里实现，或者假设 pluginService 已经有了（我们在上一步创建了）
-    // 检查 pluginService.js... 没有 downloadVersion 方法。
-    // 让我们用 axios 直接调用，或者假设我们之后会补上。
-    // 为了稳健，我们在这里直接用 axios
-    
-    const { default: api } = await import('../services/api')
-    const response = await api.get(`/versions/${version.id}/download`, { responseType: 'blob' })
-    
-    const url = window.URL.createObjectURL(response)
+    const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
     a.download = `${props.plugin.name}-${version.version}.zip`
@@ -164,8 +152,7 @@ async function deprecateVersion(version) {
   if (!confirm(`确定要将版本 ${version.version} 标记为过时吗？`)) return
   
   try {
-    const { default: api } = await import('../services/api')
-    await api.patch(`/versions/${version.id}/deprecate`)
+    await pluginService.deprecateVersion(version.id)
     await loadVersions() // 刷新列表
   } catch (error) {
     alert('操作失败: ' + error.message)
