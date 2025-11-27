@@ -34,9 +34,9 @@ export const usePluginStore = defineStore('plugin', () => {
         }
     }
 
-    async function deletePlugin(id) {
+    async function deletePlugin(name) {
         try {
-            await pluginService.deletePlugin(id)
+            await pluginService.deletePlugin(name)
             await fetchPlugins()
         } catch (e) {
             error.value = e.message
@@ -44,12 +44,12 @@ export const usePluginStore = defineStore('plugin', () => {
         }
     }
 
-    async function togglePlugin(id, enabled) {
+    async function togglePlugin(name, enabled) {
         try {
             if (enabled) {
-                await pluginService.enablePlugin(id)
+                await pluginService.enablePlugin(name)
             } else {
-                await pluginService.disablePlugin(id)
+                await pluginService.disablePlugin(name)
             }
             await fetchPlugins()
         } catch (e) {

@@ -42,6 +42,7 @@ public class SettingsTabViewModel : ViewModelBase
         TestConnectionCommand = ReactiveCommand.CreateFromTask(TestConnection);
         BackupAppDataCommand = ReactiveCommand.CreateFromTask(BackupAppData);
         RestoreAppDataCommand = ReactiveCommand.CreateFromTask(RestoreAppData);
+        InstallPluginCommand = ReactiveCommand.CreateFromTask(InstallPluginFromServer);
         
         PluginSettings = new ObservableCollection<PluginSettingItem>();
         AvailableThemes = new ObservableCollection<MicroDock.Model.ThemeModel>();
@@ -768,6 +769,11 @@ public class SettingsTabViewModel : ViewModelBase
     public ReactiveCommand<Unit, Unit> RestoreAppDataCommand { get; }
 
     /// <summary>
+    /// 安装插件命令（从服务器）
+    /// </summary>
+    public ReactiveCommand<Unit, Unit> InstallPluginCommand { get; }
+
+    /// <summary>
     /// 打开插件根目录
     /// </summary>
     private void OpenPluginsFolder()
@@ -807,8 +813,7 @@ public class SettingsTabViewModel : ViewModelBase
 
         try
         {
-            var backupService = new BackupService();
-            var (success, message) = await backupService.TestConnectionAsync(ServerAddress);
+            var (success, message) = await PluginServerApiClient.TestConnectionAsync(ServerAddress);
 
             ServiceLocator.Get<EventService>().Publish(new HideLoadingMessage());
 
@@ -858,8 +863,7 @@ public class SettingsTabViewModel : ViewModelBase
 
         try
         {
-            var backupService = new BackupService();
-            var (success, message) = await backupService.BackupAppDataAsync();
+            var (success, message) = await PluginServerApiClient.BackupAppDataAsync();
 
             ServiceLocator.Get<EventService>().Publish(new HideLoadingMessage());
 
@@ -910,8 +914,7 @@ public class SettingsTabViewModel : ViewModelBase
 
         try
         {
-            var backupService = new BackupService();
-            var (success, message) = await backupService.RestoreAppDataAsync();
+            var (success, message) = await PluginServerApiClient.RestoreAppDataAsync();
 
             ServiceLocator.Get<EventService>().Publish(new HideLoadingMessage());
 
@@ -930,6 +933,287 @@ public class SettingsTabViewModel : ViewModelBase
             Log.Error(ex, "恢复主程序数据失败");
             ShowNotification("恢复失败", ex.Message, AppNotificationType.Error);
         }
+    }
+
+    /// <summary>
+    /// 从服务器安装插件
+    /// </summary>
+    private async Task InstallPluginFromServer()
+    {
+        if (string.IsNullOrEmpty(ServerAddress))
+        {
+            ShowNotification("安装失败", "请先配置服务器地址", AppNotificationType.Warning);
+            return;
+        }
+
+        ServiceLocator.Get<EventService>().Publish(new ShowLoadingMessage("正在获取插件列表..."));
+
+        try
+        {
+            // 获取服务器插件列表
+            var response = await PluginServerApiClient.GetPluginListAsync();
+
+            ServiceLocator.Get<EventService>().Publish(new HideLoadingMessage());
+
+            if (!response.Success || response.Data == null)
+            {
+                ShowNotification("获取失败", response.Message ?? "无法获取插件列表", AppNotificationType.Error);
+                return;
+            }
+
+            var plugins = response.Data;
+            if (plugins.Count == 0)
+            {
+                ShowNotification("提示", "服务器上暂无可用插件", AppNotificationType.Information);
+                return;
+            }
+
+            // 获取已安装的插件名称列表
+            var installedPlugins = PluginSettings.Select(p => p.UniqueName).ToHashSet();
+
+            // 构建插件列表数据
+            var pluginItems = new ObservableCollection<RemotePluginListItem>();
+            foreach (var plugin in plugins.Where(p => p.IsEnabled && !p.IsDeprecated))
+            {
+                var isInstalled = installedPlugins.Contains(plugin.Name);
+                var installedPlugin = PluginSettings.FirstOrDefault(p => p.UniqueName == plugin.Name);
+                var needsUpdate = isInstalled && installedPlugin != null && 
+                                  !string.IsNullOrEmpty(plugin.CurrentVersion) &&
+                                  plugin.CurrentVersion != installedPlugin.Version;
+
+                pluginItems.Add(new RemotePluginListItem
+                {
+                    Name = plugin.Name,
+                    DisplayName = plugin.DisplayName,
+                    Description = plugin.Description ?? "",
+                    Author = plugin.Author ?? "未知",
+                    Version = plugin.CurrentVersion,
+                    IsInstalled = isInstalled,
+                    NeedsUpdate = needsUpdate,
+                    InstalledVersion = installedPlugin?.Version
+                });
+            }
+
+            // 构建插件列表 UI - 标题固定，列表滚动
+            var listBox = new ListBox
+            {
+                MinWidth = 450,
+                SelectionMode = SelectionMode.Single,
+                ItemsSource = pluginItems,
+                ItemTemplate = CreatePluginListItemTemplate()
+            };
+
+            // 使用 ScrollViewer 包裹 ListBox，确保只有列表滚动
+            var scrollViewer = new ScrollViewer
+            {
+                MaxHeight = 350,
+                HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled,
+                VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
+                Content = listBox
+            };
+
+            // 标题固定在顶部
+            var titleText = new TextBlock
+            {
+                Text = $"找到 {pluginItems.Count} 个可用插件，选择一个进行安装：",
+                FontSize = 13,
+                Margin = new Avalonia.Thickness(0, 0, 0, 10)
+            };
+
+            var contentPanel = new StackPanel
+            {
+                Spacing = 0,
+                Children = { titleText, scrollViewer }
+            };
+
+            // 显示对话框
+            var dialogResult = await UniversalUtils.ShowCustomDialogAsync(
+                "安装插件",
+                contentPanel,
+                "安装",
+                "取消"
+            );
+
+            if (dialogResult == FluentAvalonia.UI.Controls.ContentDialogResult.Primary)
+            {
+                var selectedItem = listBox.SelectedItem as RemotePluginListItem;
+                if (selectedItem == null)
+                {
+                    ShowNotification("提示", "请先选择一个插件", AppNotificationType.Warning);
+                    return;
+                }
+
+                await DownloadAndInstallPluginAsync(selectedItem.Name, selectedItem.DisplayName);
+            }
+        }
+        catch (Exception ex)
+        {
+            ServiceLocator.Get<EventService>().Publish(new HideLoadingMessage());
+            Log.Error(ex, "获取插件列表失败");
+            ShowNotification("获取失败", ex.Message, AppNotificationType.Error);
+        }
+    }
+
+    /// <summary>
+    /// 下载并安装插件
+    /// </summary>
+    private async Task DownloadAndInstallPluginAsync(string pluginName, string displayName)
+    {
+        ServiceLocator.Get<EventService>().Publish(new ShowLoadingMessage($"正在下载 {displayName}..."));
+
+        try
+        {
+            // 下载插件
+            var (success, message, data) = await PluginServerApiClient.DownloadPluginAsync(pluginName);
+
+            if (!success || data == null)
+            {
+                ServiceLocator.Get<EventService>().Publish(new HideLoadingMessage());
+                ShowNotification("下载失败", message, AppNotificationType.Error);
+                return;
+            }
+
+            // 保存到临时文件
+            string tempZipPath = Path.Combine(Path.GetTempPath(), $"plugin_install_{pluginName}_{DateTime.Now:yyyyMMddHHmmss}.zip");
+            await File.WriteAllBytesAsync(tempZipPath, data);
+
+            ServiceLocator.Get<EventService>().Publish(new ShowLoadingMessage($"正在安装 {displayName}..."));
+
+            try
+            {
+                // 调用 PluginService 导入插件
+                string pluginDirectory = Path.Combine(AppConfig.ROOT_PATH, "plugins");
+                PluginService pluginLoader = ServiceLocator.Get<PluginService>();
+                var (installSuccess, installMessage, installedPluginName) = await pluginLoader.ImportPluginAsync(tempZipPath, pluginDirectory);
+
+                ServiceLocator.Get<EventService>().Publish(new HideLoadingMessage());
+
+                if (installSuccess)
+                {
+                    ShowNotification("安装成功", installMessage, AppNotificationType.Success);
+
+                    // 刷新插件列表
+                    LoadPluginSettings();
+
+                    // 发布插件导入事件
+                    if (!string.IsNullOrEmpty(installedPluginName))
+                    {
+                        ServiceLocator.Get<EventService>().Publish(new PluginImportedMessage { PluginName = installedPluginName });
+                    }
+                }
+                else
+                {
+                    ShowNotification("安装失败", installMessage, AppNotificationType.Error);
+                }
+            }
+            finally
+            {
+                // 清理临时文件
+                if (File.Exists(tempZipPath))
+                {
+                    try { File.Delete(tempZipPath); } catch { }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            ServiceLocator.Get<EventService>().Publish(new HideLoadingMessage());
+            Log.Error(ex, "下载安装插件失败: {PluginName}", pluginName);
+            ShowNotification("安装失败", ex.Message, AppNotificationType.Error);
+        }
+    }
+
+    /// <summary>
+    /// 创建插件列表项模板
+    /// </summary>
+    private static Avalonia.Controls.Templates.FuncDataTemplate<RemotePluginListItem> CreatePluginListItemTemplate()
+    {
+        return new Avalonia.Controls.Templates.FuncDataTemplate<RemotePluginListItem>((item, _) =>
+        {
+            var border = new Border
+            {
+                Padding = new Avalonia.Thickness(10, 8),
+                Margin = new Avalonia.Thickness(2),
+                CornerRadius = new Avalonia.CornerRadius(6),
+                Background = Avalonia.Media.Brushes.Transparent
+            };
+
+            var grid = new Grid
+            {
+                ColumnDefinitions = new ColumnDefinitions("*, Auto")
+            };
+
+            var leftPanel = new StackPanel { Spacing = 2 };
+
+            var namePanel = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 8 };
+            var nameText = new TextBlock
+            {
+                FontWeight = Avalonia.Media.FontWeight.SemiBold,
+                FontSize = 14
+            };
+            nameText.Bind(TextBlock.TextProperty, new Avalonia.Data.Binding("DisplayName"));
+            namePanel.Children.Add(nameText);
+
+            // 已安装/可更新标签
+            var installedBadge = new Border
+            {
+                Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#22C55E")),
+                CornerRadius = new Avalonia.CornerRadius(3),
+                Padding = new Avalonia.Thickness(6, 2),
+                Child = new TextBlock
+                {
+                    Text = "已安装",
+                    FontSize = 10,
+                    Foreground = Avalonia.Media.Brushes.White
+                }
+            };
+            installedBadge.Bind(Border.IsVisibleProperty, new Avalonia.Data.Binding("IsInstalled"));
+            namePanel.Children.Add(installedBadge);
+
+            var updateBadge = new Border
+            {
+                Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#3B82F6")),
+                CornerRadius = new Avalonia.CornerRadius(3),
+                Padding = new Avalonia.Thickness(6, 2),
+                Child = new TextBlock
+                {
+                    Text = "可更新",
+                    FontSize = 10,
+                    Foreground = Avalonia.Media.Brushes.White
+                }
+            };
+            updateBadge.Bind(Border.IsVisibleProperty, new Avalonia.Data.Binding("NeedsUpdate"));
+            namePanel.Children.Add(updateBadge);
+
+            leftPanel.Children.Add(namePanel);
+
+            var descText = new TextBlock
+            {
+                FontSize = 12,
+                Opacity = 0.7,
+                TextTrimming = Avalonia.Media.TextTrimming.CharacterEllipsis,
+                MaxWidth = 350
+            };
+            descText.Bind(TextBlock.TextProperty, new Avalonia.Data.Binding("Description"));
+            leftPanel.Children.Add(descText);
+
+            var infoPanel = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 12 };
+            var authorText = new TextBlock { FontSize = 11, Opacity = 0.6 };
+            authorText.Bind(TextBlock.TextProperty, new Avalonia.Data.Binding("Author") { StringFormat = "作者: {0}" });
+            infoPanel.Children.Add(authorText);
+
+            var versionText = new TextBlock { FontSize = 11, Opacity = 0.6 };
+            versionText.Bind(TextBlock.TextProperty, new Avalonia.Data.Binding("Version") { StringFormat = "v{0}" });
+            infoPanel.Children.Add(versionText);
+
+            leftPanel.Children.Add(infoPanel);
+
+            Grid.SetColumn(leftPanel, 0);
+            grid.Children.Add(leftPanel);
+
+            border.Child = grid;
+            return border;
+        });
     }
 
     /// <summary>
@@ -953,4 +1237,17 @@ public class SettingsTabViewModel : ViewModelBase
 
 }
 
-
+/// <summary>
+/// 远程插件列表项（用于对话框显示）
+/// </summary>
+public class RemotePluginListItem
+{
+    public string Name { get; set; } = string.Empty;
+    public string DisplayName { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string Author { get; set; } = string.Empty;
+    public string Version { get; set; } = string.Empty;
+    public bool IsInstalled { get; set; }
+    public bool NeedsUpdate { get; set; }
+    public string? InstalledVersion { get; set; }
+}

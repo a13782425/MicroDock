@@ -527,8 +527,7 @@ public class PluginSettingItem : ViewModelBase
 
             ServiceLocator.Get<EventService>().Publish(new ShowLoadingMessage($"正在备份 {PluginName} 数据..."));
 
-            var backupService = new BackupService();
-            var (success, message) = await backupService.BackupPluginDataAsync(UniqueName, dataPath);
+            var (success, message) = await PluginServerApiClient.BackupPluginDataAsync(UniqueName, dataPath);
 
             ServiceLocator.Get<EventService>().Publish(new HideLoadingMessage());
 
@@ -582,8 +581,7 @@ public class PluginSettingItem : ViewModelBase
 
             ServiceLocator.Get<EventService>().Publish(new ShowLoadingMessage($"正在恢复 {PluginName} 数据..."));
 
-            var backupService = new BackupService();
-            var (success, message) = await backupService.RestorePluginDataAsync(UniqueName, dataPath);
+            var (success, message) = await PluginServerApiClient.RestorePluginDataAsync(UniqueName, dataPath);
 
             ServiceLocator.Get<EventService>().Publish(new HideLoadingMessage());
 
@@ -641,8 +639,7 @@ public class PluginSettingItem : ViewModelBase
 
             ServiceLocator.Get<EventService>().Publish(new ShowLoadingMessage($"正在上传 {PluginName}..."));
 
-            var uploadService = new PluginUploadService();
-            var (success, message) = await uploadService.UploadPluginAsync(UniqueName, pluginFolder, uploadKey);
+            var (success, message) = await PluginServerApiClient.UploadPluginAsync(pluginFolder, uploadKey);
 
             ServiceLocator.Get<EventService>().Publish(new HideLoadingMessage());
 

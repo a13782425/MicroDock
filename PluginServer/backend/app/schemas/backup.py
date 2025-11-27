@@ -22,6 +22,7 @@ class BackupResponse(BaseModel):
     id: int
     user_key: str
     backup_type: str
+    plugin_name: Optional[str] = None
     file_name: str
     file_size: int
     file_hash: str

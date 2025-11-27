@@ -41,8 +41,9 @@ PluginServer/
 │   │   ├── config.py        # 配置管理 (Pydantic Settings)
 │   │   ├── database.py      # 异步数据库连接
 │   │   ├── api/             # API 路由层
-│   │   │   ├── plugins.py   # 插件 CRUD API
-│   │   │   ├── versions.py  # 版本管理 API
+│   │   │   ├── plugins.py   # 插件和版本管理 API
+│   │   │   ├── backups.py   # 用户备份 API
+│   │   │   ├── auth.py      # 认证 API
 │   │   │   └── system.py    # 系统 API (健康检查)
 │   │   ├── models/          # SQLAlchemy ORM 模型
 │   │   │   ├── plugin.py    # Plugin 模型
@@ -93,10 +94,9 @@ PluginServer/
 ### Plugin (插件)
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| id | Integer | 主键 |
-| name | String | 唯一标识符 (反向域名格式) |
+| **name** | String | **主键**，唯一标识符 (反向域名格式) |
 | display_name | String | 显示名称 |
-| version_number | String | 当前版本号 |
+| current_version | String | 当前版本号 |
 | description | String | 描述 |
 | author | String | 作者 |
 | license | String | 许可证 |
@@ -105,17 +105,16 @@ PluginServer/
 | entry_class | String | 入口类完全限定名 |
 | is_enabled | Boolean | 是否启用 |
 | is_deprecated | Boolean | 是否过时 |
-| current_version_id | Integer | 当前版本 FK |
+| upload_key | String | 上传密钥 (绑定) |
 | created_at | DateTime | 创建时间 |
 | updated_at | DateTime | 更新时间 |
 
 ### PluginVersion (插件版本)
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| id | Integer | 主键 |
-| plugin_id | Integer | 所属插件 FK |
-| version | String | 版本号 |
-| file_name | String | 文件名 |
+| **plugin_name** | String | **联合主键**，所属插件名 (FK → Plugin.name) |
+| **version** | String | **联合主键**，版本号 |
+| file_name | String | 文件名 (格式: `插件名@版本.zip`) |
 | file_path | String | 存储路径 |
 | file_size | Integer | 文件大小 (字节) |
 | file_hash | String | SHA256 哈希 |
@@ -176,21 +175,21 @@ PluginServer/
 | 方法 | 端点 | 说明 | 请求体 |
 |------|------|------|--------|
 | GET | `/api/plugins/list` | 获取插件列表 | 无 |
-| POST | `/api/plugins/detail` | 获取插件详情 | `{"id": 1}` |
-| POST | `/api/plugins/upload` | 上传新插件 | `multipart/form-data` |
-| POST | `/api/plugins/enable` | 启用插件 | `{"id": 1}` |
-| POST | `/api/plugins/disable` | 禁用插件 | `{"id": 1}` |
-| POST | `/api/plugins/deprecate` | 标记过时 | `{"id": 1}` |
-| POST | `/api/plugins/delete` | 删除插件 | `{"id": 1}` |
-| POST | `/api/plugins/download` | 下载当前版本 | `{"id": 1}` |
-| POST | `/api/plugins/versions` | 获取版本列表 | `{"id": 1}` |
+| POST | `/api/plugins/detail` | 获取插件详情 | `{"name": "com.example.plugin"}` |
+| POST | `/api/plugins/upload` | 上传新插件 | `multipart/form-data` (file, plugin_key) |
+| POST | `/api/plugins/enable` | 启用插件 (管理员) | `{"name": "com.example.plugin"}` |
+| POST | `/api/plugins/disable` | 禁用插件 (管理员) | `{"name": "com.example.plugin"}` |
+| POST | `/api/plugins/deprecate` | 标记过时 (管理员) | `{"name": "com.example.plugin"}` |
+| POST | `/api/plugins/delete` | 删除插件 (管理员) | `{"name": "com.example.plugin"}` |
+| POST | `/api/plugins/download` | 下载当前版本 | `{"name": "com.example.plugin"}` |
 
-### 版本管理
+### 版本管理 (使用插件名 + 版本号)
 | 方法 | 端点 | 说明 | 请求体 |
 |------|------|------|--------|
-| POST | `/api/versions/detail` | 获取版本详情 | `{"id": 1}` |
-| POST | `/api/versions/download` | 下载指定版本 | `{"id": 1}` |
-| POST | `/api/versions/deprecate` | 标记版本过时 | `{"id": 1}` |
+| POST | `/api/plugins/versions` | 获取版本列表 | `{"name": "com.example.plugin"}` |
+| POST | `/api/plugins/version/detail` | 获取版本详情 | `{"name": "com.example.plugin", "version": "1.0.0"}` |
+| POST | `/api/plugins/version/download` | 下载指定版本 | `{"name": "com.example.plugin", "version": "1.0.0"}` |
+| POST | `/api/plugins/version/deprecate` | 标记版本过时 (管理员) | `{"name": "com.example.plugin", "version": "1.0.0"}` |
 
 ### 系统
 | 方法 | 端点 | 说明 | 请求体 |
@@ -203,25 +202,44 @@ PluginServer/
 // 获取插件列表 (GET 无参数)
 GET /api/plugins/list
 
-// 获取插件详情 (POST 带参数)
+// 获取插件详情 (POST 带参数，使用插件名)
 POST /api/plugins/detail
 Content-Type: application/json
-{"id": 1}
+{"name": "com.example.plugin"}
 
-// 上传插件 (POST 文件上传)
+// 上传插件 (POST 文件上传，需要 plugin_key)
 POST /api/plugins/upload
 Content-Type: multipart/form-data
 file: <plugin.zip>
+plugin_key: "my_secret_key_123"
 
-// 启用插件 (POST 带参数)
+// 启用插件 (POST 带参数，需要管理员登录)
 POST /api/plugins/enable
 Content-Type: application/json
-{"id": 1}
+Authorization: Bearer <token>
+{"name": "com.example.plugin"}
 
-// 删除插件 (POST 带参数)
+// 删除插件 (需要管理员登录)
 POST /api/plugins/delete
 Content-Type: application/json
-{"id": 1}
+Authorization: Bearer <token>
+{"name": "com.example.plugin"}
+
+// 获取版本列表 (使用插件名)
+POST /api/plugins/versions
+Content-Type: application/json
+{"name": "com.example.plugin"}
+
+// 下载指定版本 (使用插件名 + 版本号)
+POST /api/plugins/version/download
+Content-Type: application/json
+{"name": "com.example.plugin", "version": "1.0.0"}
+
+// 标记版本过时 (需要管理员登录)
+POST /api/plugins/version/deprecate
+Content-Type: application/json
+Authorization: Bearer <token>
+{"name": "com.example.plugin", "version": "1.0.0"}
 ```
 
 ## plugin.json 格式
@@ -323,10 +341,11 @@ server: {
 
 ## 注意事项
 
-1. **文件存储**: 上传的插件文件存储在 `data/uploads/{plugin_id}/` 目录
-2. **版本唯一性**: 同一插件的版本号不能重复 (数据库唯一约束)
-3. **删除级联**: 删除插件会同时删除所有版本和文件
+1. **文件存储**: 上传的插件文件存储在 `data/uploads/{plugin_name}/` 目录，文件名格式为 `插件名@版本.zip`
+2. **版本唯一性**: 同一插件的版本号不能重复 (联合主键约束)
+3. **删除级联**: 删除插件会同时删除所有版本记录和文件 (cascade)
 4. **哈希校验**: 使用 SHA256 计算文件哈希确保完整性
+5. **插件不可改名**: 插件名作为主键，改名即为创建新插件
 
 ## 常见问题
 

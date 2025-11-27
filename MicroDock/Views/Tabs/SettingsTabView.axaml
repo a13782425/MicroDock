@@ -142,7 +142,9 @@
 						<Button Content="打开插件文件夹"
 								Command="{Binding OpenPluginsFolderCommand}"/>
 						<Button Content="导入插件"
-								Command="{Binding ImportPluginCommand}"
+								Command="{Binding ImportPluginCommand}"/>
+						<Button Content="安装插件"
+								Command="{Binding InstallPluginCommand}"
 								Classes="accent"/>
 					</StackPanel>
 				</fa:SettingsExpander.Footer>

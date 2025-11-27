@@ -26,10 +26,10 @@
                     </tr>
                   </thead>
                   <tbody class="bg-white divide-y divide-gray-200">
-                    <tr v-for="version in versions" :key="version.id">
+                    <tr v-for="version in versions" :key="version.version">
                       <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         {{ version.version }}
-                        <span v-if="version.id === plugin.current_version_id" class="ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                        <span v-if="version.version === plugin?.current_version" class="ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
                           当前
                         </span>
                       </td>
@@ -111,7 +111,8 @@ watch(() => props.modelValue, async (newVal) => {
 
 async function loadVersions() {
   try {
-    versions.value = await pluginService.getPluginVersions(props.plugin.id)
+    // 使用插件名查询版本列表
+    versions.value = await pluginService.getPluginVersions(props.plugin.name)
   } catch (error) {
     console.error('加载版本失败:', error)
   }
@@ -135,12 +136,13 @@ function formatDate(dateString) {
 
 async function downloadVersion(version) {
   try {
-    const blob = await pluginService.downloadVersion(version.id)
+    // 使用插件名 + 版本号下载
+    const blob = await pluginService.downloadVersion(props.plugin.name, version.version)
     
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `${props.plugin.name}-${version.version}.zip`
+    a.download = `${props.plugin.name}@${version.version}.zip`
     a.click()
     window.URL.revokeObjectURL(url)
   } catch (error) {
@@ -152,7 +154,8 @@ async function deprecateVersion(version) {
   if (!confirm(`确定要将版本 ${version.version} 标记为过时吗？`)) return
   
   try {
-    await pluginService.deprecateVersion(version.id)
+    // 使用插件名 + 版本号标记为过时
+    await pluginService.deprecateVersion(props.plugin.name, version.version)
     await loadVersions() // 刷新列表
   } catch (error) {
     alert('操作失败: ' + error.message)

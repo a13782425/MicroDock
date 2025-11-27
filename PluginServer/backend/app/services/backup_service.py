@@ -25,8 +25,16 @@ class BackupService:
     """备份服务"""
     
     @staticmethod
-    def _get_backup_dir(user_key: str, backup_type: str) -> Path:
-        """获取用户备份目录"""
+    def _get_backup_dir(user_key: str, backup_type: str, plugin_name: Optional[str] = None) -> Path:
+        """
+        获取用户备份目录
+        
+        目录结构:
+        - program: backups/{user_key}/program/
+        - plugin:  backups/{user_key}/plugin/{plugin_name}/
+        """
+        if backup_type == "plugin" and plugin_name:
+            return BACKUP_DIR / user_key / backup_type / plugin_name
         return BACKUP_DIR / user_key / backup_type
     
     @staticmethod
@@ -35,6 +43,15 @@ class BackupService:
         result = await db.execute(
             select(Backup)
             .where(Backup.user_key == user_key)
+            .order_by(Backup.created_at.desc())
+        )
+        return list(result.scalars().all())
+    
+    @staticmethod
+    async def get_all_backups(db: AsyncSession) -> List[Backup]:
+        """获取所有用户的备份（管理员用）"""
+        result = await db.execute(
+            select(Backup)
             .order_by(Backup.created_at.desc())
         )
         return list(result.scalars().all())
@@ -51,7 +68,8 @@ class BackupService:
         user_key: str,
         backup_type: str,
         file: UploadFile,
-        description: str = ""
+        description: str = "",
+        plugin_name: Optional[str] = None
     ) -> Backup:
         """
         创建备份
@@ -62,6 +80,7 @@ class BackupService:
             backup_type: 备份类型 (program | plugin)
             file: 上传的文件
             description: 备份描述
+            plugin_name: 插件名称（仅 plugin 类型需要）
             
         Returns:
             Backup: 创建的备份对象
@@ -76,34 +95,45 @@ class BackupService:
                 detail=f"无效的备份类型，只允许: {', '.join(ALLOWED_BACKUP_TYPES)}"
             )
         
-        # 3. 验证文件
+        # 3. 验证 plugin 类型必须提供 plugin_name
+        if backup_type == "plugin" and not plugin_name:
+            raise HTTPException(
+                status_code=400,
+                detail="备份插件时必须提供插件名称 (plugin_name)"
+            )
+        
+        # 4. 验证文件
         if not file.filename:
             raise HTTPException(status_code=400, detail="文件名不能为空")
         
-        # 4. 创建备份目录
-        backup_dir = BackupService._get_backup_dir(user_key, backup_type)
+        # 5. 创建备份目录
+        backup_dir = BackupService._get_backup_dir(user_key, backup_type, plugin_name)
         backup_dir.mkdir(parents=True, exist_ok=True)
         
-        # 5. 生成文件路径（使用时间戳避免冲突）
-        from datetime import datetime
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        safe_filename = f"{timestamp}_{file.filename}"
-        file_path = backup_dir / safe_filename
-        
-        # 6. 保存文件
+        # 6. 先保存到临时文件以计算哈希
+        temp_path = backup_dir / f"temp_{file.filename}"
         file_size = 0
-        async with aiofiles.open(file_path, 'wb') as f:
+        async with aiofiles.open(temp_path, 'wb') as f:
             while chunk := await file.read(8192):
                 await f.write(chunk)
                 file_size += len(chunk)
         
         # 7. 计算文件哈希
-        file_hash = await calculate_file_hash(file_path)
+        file_hash = await calculate_file_hash(temp_path)
         
-        # 8. 创建数据库记录
+        # 8. 使用哈希前8位作为文件名（简洁且唯一）
+        ext = Path(file.filename).suffix or ".zip"
+        safe_filename = f"{file_hash[:8]}{ext}"
+        file_path = backup_dir / safe_filename
+        
+        # 9. 重命名临时文件为最终文件名
+        temp_path.rename(file_path)
+        
+        # 10. 创建数据库记录
         backup = Backup(
             user_key=user_key,
             backup_type=backup_type,
+            plugin_name=plugin_name,
             file_name=file.filename,
             file_path=str(file_path),
             file_size=file_size,

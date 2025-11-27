@@ -14,9 +14,8 @@ class VersionBase(BaseModel):
 
 class VersionResponse(BaseModel):
     """版本响应 schema"""
-    id: int
-    plugin_id: int
-    version: str
+    plugin_name: str  # 联合主键之一
+    version: str      # 联合主键之一
     file_name: str
     file_size: int
     file_hash: str

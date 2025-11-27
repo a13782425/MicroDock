@@ -34,10 +34,9 @@ class PluginUpdate(BaseModel):
 
 class PluginResponse(BaseModel):
     """插件响应 schema"""
-    id: int
-    name: str
+    name: str  # 主键
     display_name: str
-    version_number: str
+    current_version: Optional[str]  # 当前版本号
     description: str
     author: str
     license: str

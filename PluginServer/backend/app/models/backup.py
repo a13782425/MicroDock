@@ -20,6 +20,9 @@ class Backup(Base):
     # 备份类型
     backup_type = Column(String(20), nullable=False, comment="备份类型: program | plugin")
     
+    # 插件名称（仅当 backup_type = 'plugin' 时使用）
+    plugin_name = Column(String, nullable=True, index=True, comment="插件名称（仅 plugin 类型）")
+    
     # 文件信息
     file_name = Column(String, nullable=False, comment="原文件名")
     file_path = Column(String, nullable=False, comment="存储路径")
@@ -33,5 +36,5 @@ class Backup(Base):
     created_at = Column(DateTime, server_default=func.now(), comment="创建时间")
     
     def __repr__(self):
-        return f"<Backup(id={self.id}, user_key='{self.user_key}', type='{self.backup_type}', file='{self.file_name}')>"
+        return f"<Backup(id={self.id}, user_key='{self.user_key}', type='{self.backup_type}', plugin='{self.plugin_name}')>"
 

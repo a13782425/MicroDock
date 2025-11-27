@@ -27,7 +27,7 @@
          class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       <div
         v-for="plugin in pluginStore.plugins"
-        :key="plugin.id"
+        :key="plugin.name"
         class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition"
       >
         <div class="flex justify-between items-start mb-4">
@@ -46,7 +46,7 @@
         <div class="space-y-2 text-sm text-gray-600 mb-4">
           <div class="flex justify-between">
             <span>版本:</span>
-            <span class="font-mono">{{ plugin.version_number }}</span>
+            <span class="font-mono">{{ plugin.current_version }}</span>
           </div>
           <div class="flex justify-between">
             <span>作者:</span>
@@ -59,7 +59,9 @@
         </div>
 
         <div class="flex gap-2">
+          <!-- 启用/禁用按钮（需要管理员） -->
           <button
+            v-if="authStore.isLoggedIn"
             @click="togglePlugin(plugin)"
             class="flex-1 px-3 py-2 rounded text-sm transition"
             :class="plugin.is_enabled 
@@ -80,7 +82,9 @@
           >
             下载
           </button>
+          <!-- 删除按钮（需要管理员） -->
           <button
+            v-if="authStore.isLoggedIn"
             @click="deletePlugin(plugin)"
             class="px-3 py-2 bg-red-100 hover:bg-red-200 rounded text-sm transition"
           >
@@ -119,12 +123,14 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { usePluginStore } from '../stores/plugin'
+import { useAuthStore } from '../stores/auth'
 import UploadDialog from '../components/UploadDialog.vue'
 import VersionDialog from '../components/VersionDialog.vue'
 import { pluginService } from '../services/pluginService'
 import { useNotify } from '../utils/toast'
 
 const pluginStore = usePluginStore()
+const authStore = useAuthStore()
 const showUploadDialog = ref(false)
 const showVersionDialog = ref(false)
 const selectedPlugin = ref(null)
@@ -136,7 +142,7 @@ onMounted(() => {
 
 async function togglePlugin(plugin) {
   try {
-    await pluginStore.togglePlugin(plugin.id, !plugin.is_enabled)
+    await pluginStore.togglePlugin(plugin.name, !plugin.is_enabled)
     notify.success(plugin.is_enabled ? '插件已禁用' : '插件已启用')
   } catch (error) {
     notify.error('操作失败: ' + error.message)
@@ -150,11 +156,11 @@ function viewVersions(plugin) {
 
 async function downloadPlugin(plugin) {
   try {
-    const blob = await pluginService.downloadPlugin(plugin.id)
+    const blob = await pluginService.downloadPlugin(plugin.name)
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `${plugin.name}-${plugin.version_number}.zip`
+    a.download = `${plugin.name}@${plugin.current_version}.zip`
     a.click()
     window.URL.revokeObjectURL(url)
     notify.success('下载已开始')
@@ -169,7 +175,7 @@ async function deletePlugin(plugin) {
   }
   
   try {
-    await pluginStore.deletePlugin(plugin.id)
+    await pluginStore.deletePlugin(plugin.name)
     notify.success('插件已删除')
   } catch (error) {
     notify.error('删除失败: ' + error.message)

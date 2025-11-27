@@ -19,15 +19,20 @@ from pathlib import Path
 
 # ==================== 配置加载 ====================
 
-def load_env_file(env_path: str = ".env"):
+def load_env_file(env_path: str, override: bool = False) -> dict:
     """
     加载 .env 文件中的环境变量
     
     Args:
         env_path: .env 文件路径
+        override: 是否覆盖已存在的环境变量
+    
+    Returns:
+        dict: 解析出的键值对
     """
+    result = {}
     if not os.path.exists(env_path):
-        return
+        return result
     
     with open(env_path, 'r', encoding='utf-8') as f:
         for line in f:
@@ -40,18 +45,38 @@ def load_env_file(env_path: str = ".env"):
                 key, value = line.split('=', 1)
                 key = key.strip()
                 value = value.strip().strip('"').strip("'")
-                # 只设置未定义的环境变量（环境变量优先级高于 .env 文件）
-                if key not in os.environ:
+                result[key] = value
+                # 根据 override 决定是否覆盖
+                if override or key not in os.environ:
                     os.environ[key] = value
+    
+    return result
 
 
 def get_config():
     """
     获取配置项
     
+    优先级: 前后端目录 .env > 根目录 .env > 默认值
+    
     Returns:
         dict: 配置字典
     """
+    # 1. 先加载根目录配置（作为默认值/后备）
+    load_env_file(".env", override=False)
+    
+    # 2. 加载后端配置（优先级更高，会覆盖根目录配置）
+    backend_config = load_env_file("backend/.env", override=False)
+    if 'HOST' in backend_config:
+        os.environ['BACKEND_HOST'] = backend_config['HOST']
+    if 'PORT' in backend_config:
+        os.environ['BACKEND_PORT'] = backend_config['PORT']
+    
+    # 3. 加载前端配置（优先级更高，会覆盖根目录配置）
+    frontend_config = load_env_file("frontend/.env", override=False)
+    if 'VITE_PORT' in frontend_config:
+        os.environ['FRONTEND_PORT'] = frontend_config['VITE_PORT']
+    
     return {
         # 后端监听地址
         'backend_host': os.getenv('BACKEND_HOST', '0.0.0.0'),
@@ -220,8 +245,7 @@ def main():
     print("MicroDock 插件管理系统 - 一键启动")
     print("=" * 60)
     
-    # 加载环境变量
-    load_env_file(".env")
+    # 获取配置（内部已处理配置加载，优先级: 前后端 .env > 根目录 .env > 默认值）
     config = get_config()
     
     # 打印配置信息

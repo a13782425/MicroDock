@@ -104,6 +104,31 @@ class Settings(BaseSettings):
         description="允许的跨域来源列表"
     )
     
+    # ==================== 管理员认证配置 ====================
+    # 管理员用户名
+    ADMIN_USERNAME: str = Field(
+        default="admin",
+        description="管理员用户名"
+    )
+    
+    # 管理员密码
+    ADMIN_PASSWORD: str = Field(
+        default="admin",
+        description="管理员密码"
+    )
+    
+    # JWT 密钥（生产环境务必修改！）
+    JWT_SECRET_KEY: str = Field(
+        default="microdock-plugin-server-secret-key-change-in-production",
+        description="JWT 签名密钥，生产环境务必修改"
+    )
+    
+    # JWT 过期时间（分钟），默认 24 小时
+    JWT_EXPIRE_MINUTES: int = Field(
+        default=60 * 24,
+        description="JWT 过期时间（分钟），默认 24 小时"
+    )
+    
     class Config:
         # 环境变量文件路径
         env_file = ".env"

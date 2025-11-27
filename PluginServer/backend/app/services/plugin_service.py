@@ -5,7 +5,7 @@ import json
 from typing import List, Optional
 from pathlib import Path
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select
 from fastapi import HTTPException, UploadFile
 
 from app.models.plugin import Plugin
@@ -26,14 +26,8 @@ class PluginService:
         return list(result.scalars().all())
     
     @staticmethod
-    async def get_plugin_by_id(db: AsyncSession, plugin_id: int) -> Optional[Plugin]:
-        """根据ID获取插件"""
-        result = await db.execute(select(Plugin).where(Plugin.id == plugin_id))
-        return result.scalar_one_or_none()
-    
-    @staticmethod
     async def get_plugin_by_name(db: AsyncSession, name: str) -> Optional[Plugin]:
-        """根据名称获取插件"""
+        """根据名称获取插件（主键查询）"""
         result = await db.execute(select(Plugin).where(Plugin.name == name))
         return result.scalar_one_or_none()
     
@@ -72,9 +66,11 @@ class PluginService:
             
             # 4. 解析 plugin.json
             plugin_data = await FileService.parse_plugin_json(temp_path)
+            plugin_name = plugin_data['name']
+            plugin_version = plugin_data['version']
             
             # 5. 检查插件是否已存在
-            existing_plugin = await PluginService.get_plugin_by_name(db, plugin_data['name'])
+            existing_plugin = await PluginService.get_plugin_by_name(db, plugin_name)
             if existing_plugin:
                 # 验证 plugin_key 是否匹配
                 if existing_plugin.upload_key != plugin_key:
@@ -83,13 +79,11 @@ class PluginService:
                         detail="插件密钥不匹配，无权更新此插件"
                     )
                 # 检查版本是否存在
-                exists = await VersionService.check_version_exists(
-                    db, existing_plugin.id, plugin_data['version']
-                )
+                exists = await VersionService.check_version_exists(db, plugin_name, plugin_version)
                 if exists:
                     raise HTTPException(
                         status_code=409,
-                        detail=f"插件 '{plugin_data['name']}' 的版本 '{plugin_data['version']}' 已存在"
+                        detail=f"插件 '{plugin_name}' 的版本 '{plugin_version}' 已存在"
                     )
             
             # 6. 创建或更新插件
@@ -97,32 +91,36 @@ class PluginService:
                 plugin = existing_plugin
             else:
                 plugin = Plugin(
-                    name=plugin_data['name'],
-                    display_name=plugin_data.get('displayName', plugin_data['name']),
-                    version_number=plugin_data['version'],
+                    name=plugin_name,
+                    display_name=plugin_data.get('displayName', plugin_name),
                     description=plugin_data.get('description', ''),
                     author=plugin_data.get('author', ''),
                     license=plugin_data.get('license', ''),
                     homepage=plugin_data.get('homepage', ''),
                     main_dll=plugin_data['main'],
                     entry_class=plugin_data['entryClass'],
-                    upload_key=plugin_key,  # 首次上传绑定密钥
+                    upload_key=plugin_key,
                 )
                 db.add(plugin)
-                await db.flush()  # 刷新以获取ID
+                await db.flush()
             
-            # 6. 重置文件指针并保存
+            # 7. 重置文件指针并保存（使用插件名和版本号命名）
             file.file.seek(0)
-            file_path, file_size = await FileService.save_upload_file(file, plugin.id, 0)
+            file_path, file_size = await FileService.save_upload_file(
+                file, plugin_name, plugin_version
+            )
             
-            # 7. 计算文件哈希
+            # 8. 计算文件哈希
             file_hash = await calculate_file_hash(file_path)
             
-            # 8. 创建版本记录
+            # 9. 生成规范的文件名：{plugin_name}@{version}.zip
+            formatted_file_name = f"{plugin_name}@{plugin_version}.zip"
+            
+            # 10. 创建版本记录
             version = PluginVersion(
-                plugin_id=plugin.id,
-                version=plugin_data['version'],
-                file_name=file.filename,
+                plugin_name=plugin_name,
+                version=plugin_version,
+                file_name=formatted_file_name,
                 file_path=str(file_path),
                 file_size=file_size,
                 file_hash=file_hash,
@@ -131,16 +129,9 @@ class PluginService:
                 engines=json.dumps(plugin_data.get('engines', {})),
             )
             db.add(version)
-            await db.flush()
             
-            # 9. 更新插件的当前版本
-            plugin.current_version_id = version.id
-            plugin.version_number = version.version
-            
-            # 10. 重命名文件（使用正确的version_id）
-            new_file_path = file_path.parent / f"{version.id}_{file.filename}"
-            file_path.rename(new_file_path)
-            version.file_path = str(new_file_path)
+            # 11. 更新插件的当前版本
+            plugin.current_version = plugin_version
             
             await db.commit()
             await db.refresh(plugin)
@@ -155,12 +146,12 @@ class PluginService:
     @staticmethod
     async def update_plugin(
         db: AsyncSession,
-        plugin_id: int,
+        name: str,
         is_enabled: Optional[bool] = None,
         is_deprecated: Optional[bool] = None
     ) -> Plugin:
-        """更新插件信息"""
-        plugin = await PluginService.get_plugin_by_id(db, plugin_id)
+        """更新插件信息（使用插件名）"""
+        plugin = await PluginService.get_plugin_by_name(db, name)
         if not plugin:
             raise HTTPException(status_code=404, detail="插件不存在")
         
@@ -174,15 +165,15 @@ class PluginService:
         return plugin
     
     @staticmethod
-    async def delete_plugin(db: AsyncSession, plugin_id: int) -> None:
-        """删除插件（包括所有版本和文件）"""
-        plugin = await PluginService.get_plugin_by_id(db, plugin_id)
+    async def delete_plugin(db: AsyncSession, name: str) -> None:
+        """删除插件（使用插件名，包括所有版本和文件）"""
+        plugin = await PluginService.get_plugin_by_name(db, name)
         if not plugin:
             raise HTTPException(status_code=404, detail="插件不存在")
         
-        # 删除所有文件
-        await FileService.delete_plugin_directory(plugin_id)
+        # 1. 删除所有文件
+        await FileService.delete_plugin_directory(name)
         
-        # 删除数据库记录
+        # 2. 删除插件（版本会通过级联删除自动删除）
         await db.delete(plugin)
         await db.commit()

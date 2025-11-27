@@ -9,10 +9,11 @@ from pathlib import Path
 
 from app.database import get_db
 from app.schemas.plugin import PluginResponse, PluginDetailResponse
-from app.schemas.version import VersionResponse
-from app.schemas.common import SuccessResponse, IdRequest
+from app.schemas.version import VersionResponse, VersionDetailResponse
+from app.schemas.common import SuccessResponse, PluginNameRequest, PluginVersionRequest
 from app.services.plugin_service import PluginService
 from app.services.version_service import VersionService
+from app.utils.auth import require_admin, TokenData
 
 router = APIRouter(prefix="/api/plugins", tags=["plugins"])
 
@@ -25,14 +26,14 @@ async def get_plugins(db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/detail", response_model=PluginDetailResponse)
-async def get_plugin(request: IdRequest, db: AsyncSession = Depends(get_db)):
+async def get_plugin(request: PluginNameRequest, db: AsyncSession = Depends(get_db)):
     """获取插件详情（包含版本列表）"""
-    plugin = await PluginService.get_plugin_by_id(db, request.id)
+    plugin = await PluginService.get_plugin_by_name(db, request.name)
     if not plugin:
         raise HTTPException(status_code=404, detail="插件不存在")
     
     # 加载版本列表
-    versions = await VersionService.get_plugin_versions(db, request.id)
+    versions = await VersionService.get_versions_by_plugin_name(db, request.name)
     plugin.versions = versions
     
     return plugin
@@ -50,41 +51,57 @@ async def upload_plugin(
 
 
 @router.post("/enable", response_model=PluginResponse)
-async def enable_plugin(request: IdRequest, db: AsyncSession = Depends(get_db)):
-    """启用插件"""
-    plugin = await PluginService.update_plugin(db, request.id, is_enabled=True)
+async def enable_plugin(
+    request: PluginNameRequest, 
+    db: AsyncSession = Depends(get_db),
+    admin: TokenData = Depends(require_admin)
+):
+    """启用插件（需要管理员权限）"""
+    plugin = await PluginService.update_plugin(db, request.name, is_enabled=True)
     return plugin
 
 
 @router.post("/disable", response_model=PluginResponse)
-async def disable_plugin(request: IdRequest, db: AsyncSession = Depends(get_db)):
-    """禁用插件"""
-    plugin = await PluginService.update_plugin(db, request.id, is_enabled=False)
+async def disable_plugin(
+    request: PluginNameRequest, 
+    db: AsyncSession = Depends(get_db),
+    admin: TokenData = Depends(require_admin)
+):
+    """禁用插件（需要管理员权限）"""
+    plugin = await PluginService.update_plugin(db, request.name, is_enabled=False)
     return plugin
 
 
 @router.post("/deprecate", response_model=PluginResponse)
-async def deprecate_plugin(request: IdRequest, db: AsyncSession = Depends(get_db)):
-    """标记插件为过时"""
-    plugin = await PluginService.update_plugin(db, request.id, is_deprecated=True)
+async def deprecate_plugin(
+    request: PluginNameRequest, 
+    db: AsyncSession = Depends(get_db),
+    admin: TokenData = Depends(require_admin)
+):
+    """标记插件为过时（需要管理员权限）"""
+    plugin = await PluginService.update_plugin(db, request.name, is_deprecated=True)
     return plugin
 
 
 @router.post("/delete", response_model=SuccessResponse)
-async def delete_plugin(request: IdRequest, db: AsyncSession = Depends(get_db)):
-    """删除插件"""
-    await PluginService.delete_plugin(db, request.id)
+async def delete_plugin(
+    request: PluginNameRequest, 
+    db: AsyncSession = Depends(get_db),
+    admin: TokenData = Depends(require_admin)
+):
+    """删除插件（需要管理员权限）"""
+    await PluginService.delete_plugin(db, request.name)
     return SuccessResponse(message="插件已删除")
 
 
 @router.post("/download")
-async def download_plugin(request: IdRequest, db: AsyncSession = Depends(get_db)):
+async def download_plugin(request: PluginNameRequest, db: AsyncSession = Depends(get_db)):
     """下载插件当前版本"""
-    plugin = await PluginService.get_plugin_by_id(db, request.id)
-    if not plugin or not plugin.current_version_id:
+    plugin = await PluginService.get_plugin_by_name(db, request.name)
+    if not plugin or not plugin.current_version:
         raise HTTPException(status_code=404, detail="插件或版本不存在")
     
-    version = await VersionService.get_version_by_id(db, plugin.current_version_id)
+    version = await VersionService.get_version(db, request.name, plugin.current_version)
     if not version:
         raise HTTPException(status_code=404, detail="版本不存在")
     
@@ -93,7 +110,7 @@ async def download_plugin(request: IdRequest, db: AsyncSession = Depends(get_db)
         raise HTTPException(status_code=404, detail="文件不存在")
     
     # 增加下载次数
-    await VersionService.increment_download_count(db, version.id)
+    await VersionService.increment_download_count(db, request.name, plugin.current_version)
     
     return FileResponse(
         path=file_path,
@@ -103,7 +120,58 @@ async def download_plugin(request: IdRequest, db: AsyncSession = Depends(get_db)
 
 
 @router.post("/versions", response_model=List[VersionResponse])
-async def get_plugin_versions(request: IdRequest, db: AsyncSession = Depends(get_db)):
+async def get_plugin_versions(request: PluginNameRequest, db: AsyncSession = Depends(get_db)):
     """获取插件的所有版本列表"""
-    versions = await VersionService.get_plugin_versions(db, request.id)
+    plugin = await PluginService.get_plugin_by_name(db, request.name)
+    if not plugin:
+        raise HTTPException(status_code=404, detail=f"插件 '{request.name}' 不存在")
+    
+    versions = await VersionService.get_versions_by_plugin_name(db, request.name)
     return versions
+
+
+@router.post("/version/detail", response_model=VersionDetailResponse)
+async def get_version_detail(request: PluginVersionRequest, db: AsyncSession = Depends(get_db)):
+    """获取指定版本详情"""
+    version = await VersionService.get_version(db, request.name, request.version)
+    if not version:
+        raise HTTPException(
+            status_code=404, 
+            detail=f"插件 '{request.name}' 的版本 '{request.version}' 不存在"
+        )
+    return version
+
+
+@router.post("/version/deprecate", response_model=VersionResponse)
+async def deprecate_version(
+    request: PluginVersionRequest, 
+    db: AsyncSession = Depends(get_db),
+    admin: TokenData = Depends(require_admin)
+):
+    """标记版本为过时（需要管理员权限）"""
+    version = await VersionService.mark_version_deprecated(db, request.name, request.version)
+    return version
+
+
+@router.post("/version/download")
+async def download_version(request: PluginVersionRequest, db: AsyncSession = Depends(get_db)):
+    """下载指定版本"""
+    version = await VersionService.get_version(db, request.name, request.version)
+    if not version:
+        raise HTTPException(
+            status_code=404, 
+            detail=f"插件 '{request.name}' 的版本 '{request.version}' 不存在"
+        )
+    
+    file_path = Path(version.file_path)
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="文件不存在")
+    
+    # 增加下载次数
+    await VersionService.increment_download_count(db, request.name, request.version)
+    
+    return FileResponse(
+        path=file_path,
+        filename=version.file_name,
+        media_type='application/zip'
+    )

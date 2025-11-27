@@ -17,24 +17,24 @@ class FileService:
     """文件处理服务"""
     
     @staticmethod
-    async def save_upload_file(file: UploadFile, plugin_id: int, version_id: int) -> Tuple[Path, int]:
+    async def save_upload_file(file: UploadFile, plugin_name: str, version: str) -> Tuple[Path, int]:
         """
         保存上传的文件
         
         Args:
             file: 上传的文件
-            plugin_id: 插件ID
-            version_id: 版本ID
+            plugin_name: 插件名称
+            version: 版本号
             
         Returns:
             Tuple[Path, int]: (文件路径, 文件大小)
         """
-        # 创建插件目录
-        plugin_dir = settings.UPLOAD_DIR / str(plugin_id)
+        # 创建插件目录（使用插件名作为目录名）
+        plugin_dir = settings.UPLOAD_DIR / plugin_name
         plugin_dir.mkdir(parents=True, exist_ok=True)
         
-        # 生成文件名：{version_id}_{original_filename}
-        file_name = f"{version_id}_{file.filename}"
+        # 生成文件名：{plugin_name}@{version}.zip
+        file_name = f"{plugin_name}@{version}.zip"
         file_path = plugin_dir / file_name
         
         # 保存文件
@@ -117,13 +117,13 @@ class FileService:
             file_path.unlink()
     
     @staticmethod
-    async def delete_plugin_directory(plugin_id: int) -> None:
+    async def delete_plugin_directory(plugin_name: str) -> None:
         """
         删除插件的所有文件
         
         Args:
-            plugin_id: 插件ID
+            plugin_name: 插件名称
         """
-        plugin_dir = settings.UPLOAD_DIR / str(plugin_id)
+        plugin_dir = settings.UPLOAD_DIR / plugin_name
         if plugin_dir.exists():
             shutil.rmtree(plugin_dir)

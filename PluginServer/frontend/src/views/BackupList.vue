@@ -34,6 +34,25 @@
         >
           + 上传备份
         </button>
+        <!-- 查看所有备份（管理员功能） -->
+        <button
+          v-if="authStore.isLoggedIn"
+          @click="loadAllBackups"
+          :disabled="loading"
+          class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {{ loading && viewingAll ? '加载中...' : '查看所有' }}
+        </button>
+      </div>
+      <!-- 当前查看模式提示 -->
+      <div v-if="viewingAll && hasSearched" class="mt-3 text-sm text-purple-600">
+        <span class="inline-flex items-center px-2 py-1 bg-purple-100 rounded">
+          <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+          </svg>
+          正在查看所有用户的备份（管理员模式）
+        </span>
       </div>
     </div>
 
@@ -47,6 +66,8 @@
       <table class="min-w-full divide-y divide-gray-200">
         <thead class="bg-gray-50">
           <tr>
+            <!-- 管理员模式下显示用户Key列 -->
+            <th v-if="viewingAll" scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">用户Key</th>
             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">文件名</th>
             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">类型</th>
             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">大小</th>
@@ -57,6 +78,10 @@
         </thead>
         <tbody class="bg-white divide-y divide-gray-200">
           <tr v-for="backup in backups" :key="backup.id">
+            <!-- 管理员模式下显示用户Key -->
+            <td v-if="viewingAll" class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">
+              {{ backup.user_key }}
+            </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
               {{ backup.file_name }}
             </td>
@@ -84,7 +109,9 @@
               >
                 下载
               </button>
+              <!-- 删除按钮仅管理员可见 -->
               <button 
+                v-if="authStore.isLoggedIn"
                 @click="deleteBackup(backup)"
                 class="text-red-600 hover:text-red-900"
               >
@@ -119,15 +146,19 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { backupService } from '../services/pluginService'
+import { useAuthStore } from '../stores/auth'
 import BackupUploadDialog from '../components/BackupUploadDialog.vue'
 import { useNotify } from '../utils/toast'
+import api from '../services/api'
 
+const authStore = useAuthStore()
 const userKey = ref('')
 const backups = ref([])
 const loading = ref(false)
 const error = ref(null)
 const hasSearched = ref(false)
 const showUploadDialog = ref(false)
+const viewingAll = ref(false)  // 是否正在查看所有备份
 const notify = useNotify()
 
 const isValidKey = computed(() => {
@@ -140,12 +171,30 @@ async function loadBackups() {
   loading.value = true
   error.value = null
   hasSearched.value = true
+  viewingAll.value = false
   
   try {
     const response = await backupService.getBackups(userKey.value)
     backups.value = response.backups || []
   } catch (e) {
     error.value = e.message || '加载备份列表失败'
+    backups.value = []
+  } finally {
+    loading.value = false
+  }
+}
+
+async function loadAllBackups() {
+  loading.value = true
+  error.value = null
+  hasSearched.value = true
+  viewingAll.value = true
+  
+  try {
+    const response = await api.get('/backups/list-all')
+    backups.value = response.backups || []
+  } catch (e) {
+    error.value = e.message || '加载所有备份失败'
     backups.value = []
   } finally {
     loading.value = false
@@ -166,7 +215,9 @@ function formatDate(dateString) {
 
 async function downloadBackup(backup) {
   try {
-    const blob = await backupService.downloadBackup(userKey.value, backup.id)
+    // 管理员模式下使用备份的 user_key
+    const key = viewingAll.value ? backup.user_key : userKey.value
+    const blob = await backupService.downloadBackup(key, backup.id)
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
@@ -183,9 +234,16 @@ async function deleteBackup(backup) {
   if (!confirm(`确定要删除备份 "${backup.file_name}" 吗？`)) return
   
   try {
-    await backupService.deleteBackup(userKey.value, backup.id)
+    // 管理员模式下使用备份的 user_key
+    const key = viewingAll.value ? backup.user_key : userKey.value
+    await backupService.deleteBackup(key, backup.id)
     notify.success('备份已删除')
-    await loadBackups()
+    // 根据当前模式刷新列表
+    if (viewingAll.value) {
+      await loadAllBackups()
+    } else {
+      await loadBackups()
+    }
   } catch (e) {
     notify.error('删除失败: ' + e.message)
   }

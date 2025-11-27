@@ -41,6 +41,21 @@
                   </div>
                 </div>
 
+                <!-- 插件名称（仅 plugin 类型显示） -->
+                <div v-if="backupType === 'plugin'">
+                  <label for="plugin-name" class="block text-sm font-medium text-gray-700">
+                    插件名称 <span class="text-red-500">*</span>
+                  </label>
+                  <input 
+                    id="plugin-name"
+                    v-model="pluginName"
+                    type="text" 
+                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    placeholder="例如：com.example.myplugin"
+                  >
+                  <p class="mt-1 text-xs text-gray-500">请输入要备份的插件名称</p>
+                </div>
+
                 <!-- 备份描述 -->
                 <div>
                   <label for="backup-desc" class="block text-sm font-medium text-gray-700">
@@ -165,12 +180,17 @@ const notify = useNotify()
 const fileInput = ref(null)
 const selectedFile = ref(null)
 const backupType = ref('program')
+const pluginName = ref('')
 const description = ref('')
 const uploading = ref(false)
 const uploadProgress = ref(0)
 const error = ref(null)
 
 const canUpload = computed(() => {
+  // plugin 类型需要填写插件名
+  if (backupType.value === 'plugin' && !pluginName.value.trim()) {
+    return false
+  }
   return selectedFile.value && backupType.value && props.userKey
 })
 
@@ -183,6 +203,7 @@ function close() {
 function reset() {
   selectedFile.value = null
   backupType.value = 'program'
+  pluginName.value = ''
   description.value = ''
   error.value = null
   uploadProgress.value = 0
@@ -228,6 +249,7 @@ async function upload() {
       props.userKey,
       backupType.value,
       description.value,
+      backupType.value === 'plugin' ? pluginName.value.trim() : null,
       (progressEvent) => {
         uploadProgress.value = Math.round((progressEvent.loaded * 100) / progressEvent.total)
       }

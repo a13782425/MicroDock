@@ -1,0 +1,1914 @@
+{
+	"info": {
+		"_postman_id": "microdock-pluginserver-api",
+		"name": "MicroDock PluginServer API",
+		"description": "完整的 MicroDock PluginServer API 测试集合，包含认证、插件管理、版本管理、备份管理和系统监控的所有接口。",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "🔐 Authentication (认证)",
+			"item": [
+				{
+					"name": "📝 Admin Login (管理员登录)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    if (response.success && response.token) {",
+									"        pm.environment.set('access_token', response.token);",
+									"        pm.environment.set('token_type', response.token_type || 'bearer');",
+									"        pm.environment.set('expires_in', response.expires_in || 86400);",
+									"        pm.globals.set('is_admin_logged_in', true);",
+									"        pm.test('✅ Login successful - Token saved to environment');",
+									"        pm.test('✅ Token format is valid', () => {",
+									"            pm.expect(response.token).to.be.a('string');",
+									"            pm.expect(response.token.length).to.be.above(20);",
+									"        });",
+									"    } else {",
+									"        pm.test('❌ Login failed', () => {",
+									"            pm.expect(response.success).to.be.false;",
+									"        });",
+									"    }",
+									"} else {",
+									"    pm.test('❌ Login failed with status code ' + pm.response.code);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username\": \"{{admin_username}}\",\n  \"password\": \"{{admin_password}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "Successful Login",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"username\": \"admin\",\n  \"password\": \"admin\"\n}"
+								},
+								"url": {
+									"raw": "http://localhost:8000/api/auth/login",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "8000",
+									"path": [
+										"api",
+										"auth",
+										"login"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								},
+								{
+									"key": "Content-Length",
+									"value": "199"
+								}
+							],
+							"cookie": [],
+							"body": "{\n  \"success\": true,\n  \"message\": \"登录成功\",\n  \"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n  \"token_type\": \"bearer\",\n  \"expires_in\": 86400\n}"
+						}
+					]
+				},
+				{
+					"name": "👤 Get Auth Status (获取认证状态)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    pm.test('✅ Auth status retrieved successfully');",
+									"    pm.test('Response contains success field', () => {",
+									"        pm.expect(response).to.have.property('success');",
+									"    });",
+									"    pm.test('Response contains data field', () => {",
+									"        pm.expect(response).to.have.property('data');",
+									"    });",
+									"    ",
+									"    if (response.data) {",
+									"        pm.test('✅ Authentication info:', () => {",
+									"            pm.expect(response.data).to.have.property('is_logged_in');",
+									"            if (response.data.is_logged_in) {",
+									"                pm.expect(response.data).to.have.property('is_admin');",
+									"            }",
+									"        });",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "{{token_type}} {{access_token}}",
+								"type": "text",
+								"disabled": true
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/auth/me",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"me"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "🚪 Admin Logout (管理员登出)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    if (response.success) {",
+									"        pm.environment.unset('access_token');",
+									"        pm.environment.unset('token_type');",
+									"        pm.environment.unset('expires_in');",
+									"        pm.globals.set('is_admin_logged_in', false);",
+									"        pm.test('✅ Logout successful - Token cleared from environment');",
+									"    }",
+									"} else {",
+									"    pm.test('❌ Logout failed');",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "{{token_type}} {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/auth/logout",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"logout"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"description": "管理员认证相关接口，包括登录、登出和状态检查。"
+		},
+		{
+			"name": "🔌 Plugin Management (插件管理)",
+			"item": [
+				{
+					"name": "📋 Get Plugin List (获取插件列表)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    if (response.success) {",
+									"        pm.test('✅ Plugin list retrieved successfully');",
+									"        pm.test('Response is an array', () => {",
+									"            pm.expect(response.data).to.be.an('array');",
+									"        });",
+									"        ",
+									"        if (response.data && response.data.length > 0) {",
+									"            const firstPlugin = response.data[0];",
+									"            pm.environment.set('test_plugin_name', firstPlugin.name);",
+									"            pm.test('✅ Sample plugin name saved:', () => {",
+									"                pm.expect(firstPlugin).to.have.property('name');",
+									"                pm.expect(firstPlugin).to.have.property('display_name');",
+									"                pm.expect(firstPlugin).to.have.property('current_version');",
+									"            });",
+									"        }",
+									"    } else {",
+									"        pm.test('❌ Failed to get plugin list');",
+									"    }",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/plugins/list",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"plugins",
+								"list"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "🔍 Get Plugin Detail (获取插件详情)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    if (response.success) {",
+									"        pm.test('✅ Plugin detail retrieved successfully');",
+									"        pm.test('Plugin detail structure is valid', () => {",
+									"            pm.expect(response.data).to.have.property('plugin');",
+									"            pm.expect(response.data).to.have.property('versions');",
+									"            pm.expect(response.data.plugin).to.have.property('name');",
+									"            pm.expect(response.data.versions).to.be.an('array');",
+									"        });",
+									"    } else if (pm.response.code === 404) {",
+									"        pm.test('⚠️ Plugin not found - this is expected for testing');",
+									"    } else {",
+									"        pm.test('❌ Failed to get plugin detail');",
+									"    }",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"{{test_plugin_name}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/plugins/detail",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"plugins",
+								"detail"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "📤 Upload Plugin (上传插件)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    if (response.success) {",
+									"        pm.test('✅ Plugin uploaded successfully');",
+									"        pm.test('Plugin data structure is valid', () => {",
+									"            pm.expect(response.data).to.have.property('name');",
+									"            pm.expect(response.data).to.have.property('display_name');",
+									"            pm.expect(response.data).to.have.property('current_version');",
+									"        });",
+									"        ",
+									"        if (response.data) {",
+									"            pm.environment.set('test_plugin_name', response.data.name);",
+									"            pm.environment.set('test_plugin_version', response.data.current_version);",
+									"        }",
+									"    } else {",
+									"        pm.test('❌ Plugin upload failed');",
+									"    }",
+									"} else if (pm.response.code === 409) {",
+									"    pm.test('⚠️ Plugin version already exists - expected for re-upload tests');",
+									"} else if (pm.response.code === 400) {",
+									"    pm.test('❌ Invalid plugin format or missing plugin.json');",
+									"} else {",
+									"    pm.test('❌ Upload failed with status code ' + pm.response.code);",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": [],
+									"disabled": true,
+									"description": "选择要上传的插件 ZIP 文件"
+								},
+								{
+									"key": "plugin_key",
+									"value": "{{plugin_upload_key}}",
+									"type": "text",
+									"description": "插件上传密钥，用于验证上传权限"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/plugins/upload",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"plugins",
+								"upload"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "✅ Enable Plugin (启用插件)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    if (response.success) {",
+									"        pm.test('✅ Plugin enabled successfully');",
+									"        pm.test('Plugin is now enabled', () => {",
+									"            pm.expect(response.data.is_enabled).to.be.true;",
+									"        });",
+									"    } else {",
+									"        pm.test('❌ Failed to enable plugin');",
+									"    }",
+									"} else if (pm.response.code === 401) {",
+									"    pm.test('❌ Authentication required for enabling plugin');",
+									"} else if (pm.response.code === 404) {",
+									"    pm.test('⚠️ Plugin not found');",
+									"} else {",
+									"    pm.test('❌ Enable plugin failed with status code ' + pm.response.code);",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "{{token_type}} {{access_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"{{test_plugin_name}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/plugins/enable",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"plugins",
+								"enable"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "❌ Disable Plugin (禁用插件)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    if (response.success) {",
+									"        pm.test('✅ Plugin disabled successfully');",
+									"        pm.test('Plugin is now disabled', () => {",
+									"            pm.expect(response.data.is_enabled).to.be.false;",
+									"        });",
+									"    } else {",
+									"        pm.test('❌ Failed to disable plugin');",
+									"    }",
+									"} else if (pm.response.code === 401) {",
+									"    pm.test('❌ Authentication required for disabling plugin');",
+									"} else if (pm.response.code === 404) {",
+									"    pm.test('⚠️ Plugin not found');",
+									"} else {",
+									"    pm.test('❌ Disable plugin failed with status code ' + pm.response.code);",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "{{token_type}} {{access_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"{{test_plugin_name}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/plugins/disable",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"plugins",
+								"disable"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "⚠️ Deprecate Plugin (标记插件过时)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    if (response.success) {",
+									"        pm.test('✅ Plugin deprecated successfully');",
+									"        pm.test('Plugin is now deprecated', () => {",
+									"            pm.expect(response.data.is_deprecated).to.be.true;",
+									"        });",
+									"    } else {",
+									"        pm.test('❌ Failed to deprecate plugin');",
+									"    }",
+									"} else if (pm.response.code === 401) {",
+									"    pm.test('❌ Authentication required for deprecating plugin');",
+									"} else if (pm.response.code === 404) {",
+									"    pm.test('⚠️ Plugin not found');",
+									"} else {",
+									"    pm.test('❌ Deprecate plugin failed with status code ' + pm.response.code);",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "{{token_type}} {{access_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"{{test_plugin_name}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/plugins/deprecate",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"plugins",
+								"deprecate"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "🗑️ Delete Plugin (删除插件)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    if (response.success) {",
+									"        pm.test('✅ Plugin deleted successfully');",
+									"        pm.environment.unset('test_plugin_name');",
+									"        pm.environment.unset('test_plugin_version');",
+									"        pm.test('⚠️ WARNING: Plugin data has been permanently removed');",
+									"    } else {",
+									"        pm.test('❌ Failed to delete plugin');",
+									"    }",
+									"} else if (pm.response.code === 401) {",
+									"    pm.test('❌ Authentication required for deleting plugin');",
+									"} else if (pm.response.code === 404) {",
+									"    pm.test('⚠️ Plugin not found');",
+									"} else {",
+									"    pm.test('❌ Delete plugin failed with status code ' + pm.response.code);",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "{{token_type}} {{access_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"{{test_plugin_name}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/plugins/delete",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"plugins",
+								"delete"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "⬇️ Download Plugin (下载插件)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    pm.test('✅ Plugin downloaded successfully');",
+									"    pm.test('Response is binary file', () => {",
+									"        pm.expect(pm.response.headers.get('Content-Type')).to.include('zip') || pm.expect(pm.response.headers.get('Content-Type')).to.include('octet-stream');",
+									"    });",
+									"    pm.test('Content-Disposition header is present', () => {",
+									"        const contentDisposition = pm.response.headers.get('Content-Disposition');",
+									"        pm.expect(contentDisposition).to.include('attachment');",
+									"    });",
+									"} else if (pm.response.code === 404) {",
+									"    pm.test('⚠️ Plugin not found for download');",
+									"} else {",
+									"    pm.test('❌ Download failed with status code ' + pm.response.code);",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"{{test_plugin_name}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/plugins/download",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"plugins",
+								"download"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"description": "插件管理相关接口，包括上传、启用、禁用、删除、下载等功能。"
+		},
+		{
+			"name": "🏷️ Version Management (版本管理)",
+			"item": [
+				{
+					"name": "📋 Get Plugin Versions (获取插件版本列表)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    if (response.success) {",
+									"        pm.test('✅ Plugin versions retrieved successfully');",
+									"        pm.test('Versions is an array', () => {",
+									"            pm.expect(response.data).to.be.an('array');",
+									"        });",
+									"        ",
+									"        if (response.data && response.data.length > 0) {",
+									"            const firstVersion = response.data[0];",
+									"            pm.environment.set('test_plugin_version', firstVersion.version);",
+									"            pm.test('✅ Sample version saved:', () => {",
+									"                pm.expect(firstVersion).to.have.property('version');",
+									"                pm.expect(firstVersion).to.have.property('file_size');",
+									"                pm.expect(firstVersion).to.have.property('download_count');",
+									"            });",
+									"        }",
+									"    } else {",
+									"        pm.test('❌ Failed to get plugin versions');",
+									"    }",
+									"} else if (pm.response.code === 404) {",
+									"    pm.test('⚠️ Plugin not found for version list');",
+									"} else {",
+									"    pm.test('❌ Get versions failed with status code ' + pm.response.code);",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"{{test_plugin_name}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/plugins/versions",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"plugins",
+								"versions"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "🔍 Get Version Detail (获取版本详情)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    if (response.success) {",
+									"        pm.test('✅ Version detail retrieved successfully');",
+									"        pm.test('Version detail structure is valid', () => {",
+									"            pm.expect(response.data).to.have.property('version');",
+									"            pm.expect(response.data).to.have.property('file_size');",
+									"            pm.expect(response.data).to.have.property('download_count');",
+									"            pm.expect(response.data).to.have.property('created_at');",
+									"        });",
+									"    } else {",
+									"        pm.test('❌ Failed to get version detail');",
+									"    }",
+									"} else if (pm.response.code === 404) {",
+									"    pm.test('⚠️ Plugin or version not found');",
+									"} else {",
+									"    pm.test('❌ Get version detail failed with status code ' + pm.response.code);",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"{{test_plugin_name}}\",\n  \"version\": \"{{test_plugin_version}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/plugins/version/detail",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"plugins",
+								"version",
+								"detail"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "⚠️ Deprecate Version (标记版本过时)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    if (response.success) {",
+									"        pm.test('✅ Version deprecated successfully');",
+									"        pm.test('Version is now deprecated', () => {",
+									"            pm.expect(response.data.is_deprecated).to.be.true;",
+									"        });",
+									"    } else {",
+									"        pm.test('❌ Failed to deprecate version');",
+									"    }",
+									"} else if (pm.response.code === 401) {",
+									"    pm.test('❌ Authentication required for deprecating version');",
+									"} else if (pm.response.code === 404) {",
+									"    pm.test('⚠️ Plugin or version not found');",
+									"} else {",
+									"    pm.test('❌ Deprecate version failed with status code ' + pm.response.code);",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "{{token_type}} {{access_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"{{test_plugin_name}}\",\n  \"version\": \"{{test_plugin_version}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/plugins/version/deprecate",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"plugins",
+								"version",
+								"deprecate"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "⬇️ Download Version (下载指定版本)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    pm.test('✅ Version downloaded successfully');",
+									"    pm.test('Response is binary file', () => {",
+									"        pm.expect(pm.response.headers.get('Content-Type')).to.include('zip') || pm.expect(pm.response.headers.get('Content-Type')).to.include('octet-stream');",
+									"    });",
+									"    pm.test('Content-Disposition header is present', () => {",
+									"        const contentDisposition = pm.response.headers.get('Content-Disposition');",
+									"        pm.expect(contentDisposition).to.include('attachment');",
+									"    });",
+									"} else if (pm.response.code === 404) {",
+									"    pm.test('⚠️ Plugin or version not found for download');",
+									"} else {",
+									"    pm.test('❌ Download version failed with status code ' + pm.response.code);",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"{{test_plugin_name}}\",\n  \"version\": \"{{test_plugin_version}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/plugins/version/download",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"plugins",
+								"version",
+								"download"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"description": "插件版本管理相关接口，包括版本列表、版本详情、标记过时和版本下载。"
+		},
+		{
+			"name": "💾 Backup Management (备份管理)",
+			"item": [
+				{
+					"name": "📤 Upload Backup (上传备份)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    if (response.success) {",
+									"        pm.test('✅ Backup uploaded successfully');",
+									"        pm.test('Backup data structure is valid', () => {",
+									"            pm.expect(response.data).to.have.property('id');",
+									"            pm.expect(response.data).to.have.property('user_key');",
+									"            pm.expect(response.data).to.have.property('backup_type');",
+									"            pm.expect(response.data).to.have.property('file_size');",
+									"        });",
+									"        ",
+									"        if (response.data) {",
+									"            pm.environment.set('test_backup_id', response.data.id);",
+									"        }",
+									"    } else {",
+									"        pm.test('❌ Backup upload failed');",
+									"    }",
+									"} else if (pm.response.code === 400) {",
+									"    pm.test('❌ Invalid backup format or parameters');",
+									"} else if (pm.response.code === 413) {",
+									"    pm.test('❌ File size exceeds limit');",
+									"} else {",
+									"    pm.test('❌ Upload failed with status code ' + pm.response.code);",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": [],
+									"disabled": true,
+									"description": "选择要上传的备份文件"
+								},
+								{
+									"key": "user_key",
+									"value": "{{test_user_key}}",
+									"type": "text",
+									"description": "用户密钥，用于标识用户"
+								},
+								{
+									"key": "backup_type",
+									"value": "{{backup_type}}",
+									"type": "text",
+									"description": "备份类型: program 或 plugin"
+								},
+								{
+									"key": "description",
+									"value": "{{backup_description}}",
+									"type": "text",
+									"disabled": true,
+									"description": "备份描述（可选）"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/backups/upload",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"backups",
+								"upload"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "📋 Get User Backup List (获取用户备份列表)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    if (response.success) {",
+									"        pm.test('✅ User backup list retrieved successfully');",
+									"        pm.test('Backup list structure is valid', () => {",
+									"            pm.expect(response.data).to.have.property('total');",
+									"            pm.expect(response.data).to.have.property('backups');",
+									"            pm.expect(response.data.backups).to.be.an('array');",
+									"        });",
+									"        ",
+									"        if (response.data.backups && response.data.backups.length > 0) {",
+									"            const firstBackup = response.data.backups[0];",
+									"            pm.test('✅ Sample backup data:', () => {",
+									"                pm.expect(firstBackup).to.have.property('id');",
+									"                pm.expect(firstBackup).to.have.property('backup_type');",
+									"                pm.expect(firstBackup).to.have.property('file_size');",
+									"            });",
+									"        }",
+									"    } else {",
+									"        pm.test('❌ Failed to get user backup list');",
+									"    }",
+									"} else {",
+									"    pm.test('❌ Get backup list failed with status code ' + pm.response.code);",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"user_key\": \"{{test_user_key}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/backups/list",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"backups",
+								"list"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "📋 Get All Backup List (获取所有备份列表)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    if (response.success) {",
+									"        pm.test('✅ All backup list retrieved successfully');",
+									"        pm.test('All backup list structure is valid', () => {",
+									"            pm.expect(response.data).to.have.property('total');",
+									"            pm.expect(response.data).to.have.property('backups');",
+									"            pm.expect(response.data.backups).to.be.an('array');",
+									"        });",
+									"        pm.test('✅ Admin access verified for backup list');",
+									"    } else {",
+									"        pm.test('❌ Failed to get all backup list');",
+									"    }",
+									"} else if (pm.response.code === 401) {",
+									"    pm.test('❌ Authentication required for admin backup list');",
+									"} else if (pm.response.code === 403) {",
+									"    pm.test('❌ Admin privileges required');",
+									"} else {",
+									"    pm.test('❌ Get all backup list failed with status code ' + pm.response.code);",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "{{token_type}} {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/backups/list-all",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"backups",
+								"list-all"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "⬇️ Download Backup (下载备份)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    pm.test('✅ Backup downloaded successfully');",
+									"    pm.test('Response is binary file', () => {",
+									"        pm.expect(pm.response.headers.get('Content-Type')).to.include('octet-stream') || pm.expect(pm.response.headers.get('Content-Type')).to.include('zip');",
+									"    });",
+									"    pm.test('Content-Disposition header is present', () => {",
+									"        const contentDisposition = pm.response.headers.get('Content-Disposition');",
+									"        pm.expect(contentDisposition).to.include('attachment');",
+									"    });",
+									"} else if (pm.response.code === 404) {",
+									"    pm.test('⚠️ Backup not found for download');",
+									"} else {",
+									"    pm.test('❌ Download backup failed with status code ' + pm.response.code);",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"user_key\": \"{{test_user_key}}\",\n  \"id\": {{test_backup_id}}\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/backups/download",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"backups",
+								"download"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "🗑️ Delete Backup (删除备份)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    if (response.success) {",
+									"        pm.test('✅ Backup deleted successfully');",
+									"        pm.environment.unset('test_backup_id');",
+									"        pm.test('⚠️ WARNING: Backup file has been permanently removed');",
+									"    } else {",
+									"        pm.test('❌ Failed to delete backup');",
+									"    }",
+									"} else if (pm.response.code === 401) {",
+									"    pm.test('❌ Authentication required for deleting backup');",
+									"} else if (pm.response.code === 403) {",
+									"    pm.test('❌ Admin privileges required');",
+									"} else if (pm.response.code === 404) {",
+									"    pm.test('⚠️ Backup not found');",
+									"} else {",
+									"    pm.test('❌ Delete backup failed with status code ' + pm.response.code);",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "{{token_type}} {{access_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"user_key\": \"{{test_user_key}}\",\n  \"id\": {{test_backup_id}}\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/backups/delete",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"backups",
+								"delete"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"description": "用户备份管理相关接口，包括备份上传、列表查看、下载和删除。"
+		},
+		{
+			"name": "⚙️ System (系统监控)",
+			"item": [
+				{
+					"name": "💓 Health Check (健康检查)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    if (response.success) {",
+									"        pm.test('✅ Server is healthy');",
+									"        pm.test('Health check structure is valid', () => {",
+									"            pm.expect(response.data).to.have.property('status');",
+									"            pm.expect(response.data).to.have.property('version');",
+									"            pm.expect(response.data).to.have.property('database');",
+									"        });",
+									"        pm.test('Server status is healthy', () => {",
+									"            pm.expect(response.data.status).to.equal('healthy');",
+									"        });",
+									"        pm.test('Database is connected', () => {",
+									"            pm.expect(response.data.database).to.equal('connected');",
+									"        });",
+									"        ",
+									"        const version = response.data.version;",
+									"        pm.environment.set('server_version', version);",
+									"        pm.test('✅ Server version: ' + version);",
+									"    } else {",
+									"        pm.test('❌ Server health check failed');",
+									"    }",
+									"} else {",
+									"    pm.test('❌ Health check failed with status code ' + pm.response.code);",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/health",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"health"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "🏠 Server Info (服务器信息)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    if (response.success) {",
+									"        pm.test('✅ Server info retrieved successfully');",
+									"        pm.test('Server info structure is valid', () => {",
+									"            pm.expect(response.data).to.have.property('message');",
+									"            pm.expect(response.data).to.have.property('version');",
+									"            pm.expect(response.data).to.have.property('docs');",
+									"            pm.expect(response.data).to.have.property('health');",
+									"        });",
+									"        ",
+									"        const serverInfo = response.data;",
+									"        pm.test('✅ Server message: ' + serverInfo.message);",
+									"        pm.test('✅ API docs endpoint: ' + serverInfo.docs);",
+									"        pm.test('✅ Health endpoint: ' + serverInfo.health);",
+									"    } else {",
+									"        pm.test('❌ Failed to get server info');",
+									"    }",
+									"} else {",
+									"    pm.test('❌ Server info failed with status code ' + pm.response.code);",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								""
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"description": "系统监控和健康检查相关接口。"
+		},
+		{
+			"name": "🔄 Complete Workflow (完整工作流)",
+			"item": [
+				{
+					"name": "1️⃣ Full Plugin Lifecycle (完整插件生命周期)",
+					"description": "从插件上传到删除的完整测试流程",
+					"item": [
+						{
+							"name": "1. 🚀 Start - Admin Login (开始 - 管理员登录)",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"// 设置测试开始时间",
+											"pm.globals.set('workflow_start_time', new Date().toISOString());",
+											"pm.test('🚀 Starting complete plugin workflow...');"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"username\": \"{{admin_username}}\",\n  \"password\": \"{{admin_password}}\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/auth/login",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"auth",
+										"login"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "2. 📊 Check Server Health (检查服务器健康)",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/health",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"health"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "3. 📋 Get Initial Plugin List (获取初始插件列表)",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/plugins/list",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"plugins",
+										"list"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "4. 📤 Upload New Plugin (上传新插件)",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "file",
+											"type": "file",
+											"src": [],
+											"disabled": true
+										},
+										{
+											"key": "plugin_key",
+											"value": "{{plugin_upload_key}}",
+											"type": "text"
+										}
+									]
+								},
+								"url": {
+									"raw": "{{base_url}}/api/plugins/upload",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"plugins",
+										"upload"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "5. 🔍 Get Plugin Detail (获取插件详情)",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"name\": \"{{test_plugin_name}}\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/plugins/detail",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"plugins",
+										"detail"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "6. 📋 Get Plugin Versions (获取插件版本列表)",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"name\": \"{{test_plugin_name}}\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/plugins/versions",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"plugins",
+										"versions"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "7. ✅ Enable Plugin (启用插件)",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "{{token_type}} {{access_token}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"name\": \"{{test_plugin_name}}\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/plugins/enable",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"plugins",
+										"enable"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "8. ⬇️ Download Plugin (下载插件)",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"name\": \"{{test_plugin_name}}\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/plugins/download",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"plugins",
+										"download"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "9. ❌ Disable Plugin (禁用插件)",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "{{token_type}} {{access_token}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"name\": \"{{test_plugin_name}}\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/plugins/disable",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"plugins",
+										"disable"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "10. 🚪 Admin Logout (管理员登出)",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"// 计算工作流执行时间",
+											"const startTime = pm.globals.get('workflow_start_time');",
+											"if (startTime) {",
+											"    const endTime = new Date();",
+											"    const duration = new Date(endTime) - new Date(startTime);",
+											"    pm.test(`✅ Complete plugin workflow finished in ${duration}ms`);",
+											"} else {",
+											"    pm.test('✅ Complete plugin workflow finished');",
+											"}",
+											"pm.globals.unset('workflow_start_time');"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "{{token_type}} {{access_token}}"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/auth/logout",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"auth",
+										"logout"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "2️⃣ Backup Workflow (备份工作流)",
+					"description": "用户备份管理的完整测试流程",
+					"item": [
+						{
+							"name": "1. 📤 Upload Program Backup (上传程序备份)",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"pm.globals.set('backup_workflow_start_time', new Date().toISOString());",
+											"pm.test('🔄 Starting backup workflow...');"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "file",
+											"type": "file",
+											"src": [],
+											"disabled": true
+										},
+										{
+											"key": "user_key",
+											"value": "{{test_user_key}}",
+											"type": "text"
+										},
+										{
+											"key": "backup_type",
+											"value": "program",
+											"type": "text"
+										},
+										{
+											"key": "description",
+											"value": "程序配置备份 - " + new Date().toISOString(),
+											"type": "text"
+										}
+									]
+								},
+								"url": {
+									"raw": "{{base_url}}/api/backups/upload",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"backups",
+										"upload"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "2. 📋 Get User Backup List (获取用户备份列表)",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"user_key\": \"{{test_user_key}}\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/backups/list",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"backups",
+										"list"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "3. 📤 Upload Plugin Backup (上传插件备份)",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "file",
+											"type": "file",
+											"src": [],
+											"disabled": true
+										},
+										{
+											"key": "user_key",
+											"value": "{{test_user_key}}",
+											"type": "text"
+										},
+										{
+											"key": "backup_type",
+											"value": "plugin",
+											"type": "text"
+										},
+										{
+											"key": "description",
+											"value": "插件配置备份 - " + new Date().toISOString(),
+											"type": "text"
+										}
+									]
+								},
+								"url": {
+									"raw": "{{base_url}}/api/backups/upload",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"backups",
+										"upload"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "4. ⬇️ Download Backup (下载备份)",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"user_key\": \"{{test_user_key}}\",\n  \"id\": {{test_backup_id}}\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/backups/download",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"backups",
+										"download"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "5. ✅ Workflow Complete (工作流完成)",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"const startTime = pm.globals.get('backup_workflow_start_time');",
+											"if (startTime) {",
+											"    const endTime = new Date();",
+											"    const duration = new Date(endTime) - new Date(startTime);",
+											"    pm.test(`✅ Backup workflow completed in ${duration}ms`);",
+											"} else {",
+											"    pm.test('✅ Backup workflow completed');",
+											"}",
+											"pm.globals.unset('backup_workflow_start_time');"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/health",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"health"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				}
+			],
+			"description": "完整的 API 工作流测试，包括插件生命周期和备份管理流程。"
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8000",
+			"description": "API 服务器基础 URL"
+		},
+		{
+			"key": "admin_username",
+			"value": "admin",
+			"description": "管理员用户名"
+		},
+		{
+			"key": "admin_password",
+			"value": "admin",
+			"description": "管理员密码"
+		},
+		{
+			"key": "plugin_upload_key",
+			"value": "test_upload_key_123",
+			"description": "插件上传密钥"
+		},
+		{
+			"key": "test_user_key",
+			"value": "user123abc",
+			"description": "测试用户密钥"
+		},
+		{
+			"key": "backup_type",
+			"value": "program",
+			"description": "备份类型: program 或 plugin"
+		},
+		{
+			"key": "backup_description",
+			"value": "测试备份文件",
+			"description": "备份文件描述"
+		}
+	]
+}

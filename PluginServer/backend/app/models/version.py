@@ -1,7 +1,7 @@
 """
 插件版本数据模型
 """
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, UniqueConstraint, Text
+from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Integer, Text, PrimaryKeyConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
@@ -12,14 +12,9 @@ class PluginVersion(Base):
     
     __tablename__ = "plugin_versions"
     
-    # 主键
-    id = Column(Integer, primary_key=True, index=True)
-    
-    # 插件关联
-    plugin_id = Column(Integer, ForeignKey("plugins.id", ondelete="CASCADE"), nullable=False, index=True, comment="所属插件ID")
-    
-    # 版本信息
-    version = Column(String, nullable=False, index=True, comment="版本号")
+    # 联合主键：插件名 + 版本号
+    plugin_name = Column(String, ForeignKey("plugins.name", ondelete="CASCADE"), nullable=False, comment="所属插件名称")
+    version = Column(String, nullable=False, comment="版本号")
     
     # 文件信息
     file_name = Column(String, nullable=False, comment="文件名")
@@ -40,12 +35,12 @@ class PluginVersion(Base):
     created_at = Column(DateTime, server_default=func.now(), comment="创建时间")
     
     # 关系
-    plugin = relationship("Plugin", back_populates="versions", foreign_keys=[plugin_id])
+    plugin = relationship("Plugin", back_populates="versions")
     
-    # 唯一性约束：同一插件的版本号不能重复
+    # 联合主键约束
     __table_args__ = (
-        UniqueConstraint('plugin_id', 'version', name='uq_plugin_version'),
+        PrimaryKeyConstraint('plugin_name', 'version', name='pk_plugin_version'),
     )
     
     def __repr__(self):
-        return f"<PluginVersion(id={self.id}, plugin_id={self.plugin_id}, version='{self.version}')>"
+        return f"<PluginVersion(plugin='{self.plugin_name}', version='{self.version}')>"

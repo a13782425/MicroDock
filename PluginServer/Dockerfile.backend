@@ -9,11 +9,12 @@ ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 
-# 安装系统依赖
+# 安装系统依赖（包括 bcrypt 编译所需）
 RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
     curl \
+    libffi-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # 复制依赖文件
@@ -24,20 +25,17 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
 # 复制后端代码
-COPY backend/ .
+COPY backend/app ./app
 
 # 创建数据目录
-RUN mkdir -p /app/data/plugins /app/data/backups /app/data/uploads
-
-# 设置权限
-RUN chmod +x /app/main.py
+RUN mkdir -p /app/data/uploads /app/data/backups /app/data/temp
 
 # 暴露端口
 EXPOSE 8000
 
 # 健康检查
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+    CMD curl -f http://localhost:8000/api/health || exit 1
 
 # 启动命令
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

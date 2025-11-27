@@ -5,11 +5,6 @@ from pydantic import BaseModel, Field
 from typing import Any, Optional
 
 
-class IdRequest(BaseModel):
-    """通用 ID 请求"""
-    id: int = Field(..., description="资源ID")
-
-
 class SuccessResponse(BaseModel):
     """成功响应"""
     success: bool = True
@@ -29,3 +24,14 @@ class HealthResponse(BaseModel):
     status: str
     version: str
     database: str
+
+
+class PluginNameRequest(BaseModel):
+    """插件名查询请求"""
+    name: str = Field(..., description="插件名称")
+
+
+class PluginVersionRequest(BaseModel):
+    """插件名 + 版本号查询请求"""
+    name: str = Field(..., description="插件名称")
+    version: str = Field(..., description="版本号")

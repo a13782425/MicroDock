@@ -1,0 +1,1399 @@
+openapi: 3.0.3
+info:
+  title: MicroDock PluginServer API
+  version: 2.0.0
+  description: |
+    MicroDock PluginServer是一个功能完整的插件管理服务器API，提供插件上传、版本管理、备份恢复等核心功能。
+
+    ## 核心特性
+    - 插件管理：上传、启用、禁用、删除插件
+    - 版本控制：管理插件的多个版本，支持版本回溯
+    - 备份管理：用户数据备份和恢复
+    - 安全认证：基于JWT的管理员权限控制
+    - 文件操作：安全的文件上传下载，支持SHA256校验
+
+    ## API设计原则
+    - 仅使用GET和POST方法，确保兼容性
+    - URL路径不携带动态参数，提高安全性
+    - 统一的JSON响应格式
+    - 完整的错误处理机制
+  contact:
+    name: MicroDock Team
+    email: support@microdock.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8000
+    description: 开发环境服务器
+  - url: https://api.microdock.com
+    description: 生产环境服务器
+
+tags:
+  - name: Authentication
+    description: 管理员认证和授权管理
+  - name: Plugins
+    description: 插件管理相关操作
+  - name: Versions
+    description: 插件版本管理
+  - name: Backups
+    description: 用户备份管理
+  - name: System
+    description: 系统监控和健康检查
+
+paths:
+  # Authentication endpoints
+  /api/auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: 管理员登录
+      description: |
+        管理员使用用户名和密码登录，获取JWT访问令牌。
+        令牌有效期为24小时，需要在需要管理员权限的API请求中携带。
+      operationId: loginAdmin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            examples:
+              adminLogin:
+                summary: 管理员登录示例
+                value:
+                  username: "admin"
+                  password: "admin"
+      responses:
+        '200':
+          description: 登录成功，返回JWT令牌
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/auth/me:
+    get:
+      tags:
+        - Authentication
+      summary: 获取当前认证状态
+      description: 获取当前用户的认证信息和权限状态。可以携带token进行管理员身份验证，也可以不携带token查看公开状态。
+      operationId: getCurrentAuthStatus
+      security:
+        - bearerAuth: []  # 可选认证
+      responses:
+        '200':
+          description: 返回认证状态信息
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthStatusResponse'
+
+  /api/auth/logout:
+    post:
+      tags:
+        - Authentication
+      summary: 管理员登出
+      description: 登出当前会话，使JWT令牌失效（客户端删除令牌）
+      operationId: logoutAdmin
+      responses:
+        '200':
+          description: 登出成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+
+  # Plugin management endpoints
+  /api/plugins/list:
+    get:
+      tags:
+        - Plugins
+      summary: 获取插件列表
+      description: 获取系统中所有插件的基本信息列表，包括插件名称、显示名称、当前版本、启用状态等。
+      operationId: listPlugins
+      responses:
+        '200':
+          description: 插件列表获取成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PluginListResponse'
+
+  /api/plugins/detail:
+    post:
+      tags:
+        - Plugins
+      summary: 获取插件详情
+      description: 根据插件名称获取插件的详细信息，包括插件基本信息和所有版本列表。
+      operationId: getPluginDetail
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PluginDetailRequest'
+            examples:
+              pluginDetail:
+                summary: 获取插件详情示例
+                value:
+                  name: "com.example.myplugin"
+      responses:
+        '200':
+          description: 插件详情获取成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PluginDetailResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/plugins/upload:
+    post:
+      tags:
+        - Plugins
+      summary: 上传新插件
+      description: |
+        上传新的插件ZIP文件。插件包必须包含plugin.json配置文件，用于描述插件的基本信息和入口点。
+
+        **重要说明：**
+        - 文件格式：ZIP压缩包
+        - 文件大小限制：100MB
+        - 必须包含plugin.json配置文件
+        - 使用upload_key进行身份验证
+        - 相同插件名+版本不能重复上传
+      operationId: uploadPlugin
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PluginUploadRequest'
+      responses:
+        '200':
+          description: 插件上传成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PluginResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '413':
+          $ref: '#/components/responses/RequestEntityTooLarge'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/plugins/enable:
+    post:
+      tags:
+        - Plugins
+      summary: 启用插件
+      description: 启用指定的插件，使其在系统中可用。需要管理员权限。
+      operationId: enablePlugin
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PluginActionRequest'
+            examples:
+              enablePlugin:
+                summary: 启用插件示例
+                value:
+                  name: "com.example.myplugin"
+      responses:
+        '200':
+          description: 插件启用成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PluginResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/plugins/disable:
+    post:
+      tags:
+        - Plugins
+      summary: 禁用插件
+      description: 禁用指定的插件，使其在系统中不可用。需要管理员权限。
+      operationId: disablePlugin
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PluginActionRequest'
+            examples:
+              disablePlugin:
+                summary: 禁用插件示例
+                value:
+                  name: "com.example.myplugin"
+      responses:
+        '200':
+          description: 插件禁用成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PluginResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/plugins/deprecate:
+    post:
+      tags:
+        - Plugins
+      summary: 标记插件过时
+      description: 将指定插件标记为过时状态。过时的插件仍然可以下载，但建议用户使用更新的版本。需要管理员权限。
+      operationId: deprecatePlugin
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PluginActionRequest'
+            examples:
+              deprecatePlugin:
+                summary: 标记插件过时示例
+                value:
+                  name: "com.example.myplugin"
+      responses:
+        '200':
+          description: 插件标记过时成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PluginResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/plugins/delete:
+    post:
+      tags:
+        - Plugins
+      summary: 删除插件
+      description: |
+        完全删除指定的插件及其所有版本文件。此操作不可逆，请谨慎使用。
+
+        **警告：** 删除插件将同时删除：
+        - 插件的所有版本记录
+        - 所有相关的ZIP文件
+        - 下载统计数据
+        需要管理员权限。
+      operationId: deletePlugin
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PluginActionRequest'
+            examples:
+              deletePlugin:
+                summary: 删除插件示例
+                value:
+                  name: "com.example.myplugin"
+      responses:
+        '200':
+          description: 插件删除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/plugins/download:
+    post:
+      tags:
+        - Plugins
+      summary: 下载插件当前版本
+      description: 下载指定插件的当前版本ZIP文件。下载后会自动统计下载次数。
+      operationId: downloadPlugin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PluginDownloadRequest'
+            examples:
+              downloadPlugin:
+                summary: 下载插件示例
+                value:
+                  name: "com.example.myplugin"
+      responses:
+        '200':
+          description: 插件文件下载成功
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+          headers:
+            Content-Disposition:
+              description: 文件下载的标头信息
+              schema:
+                type: string
+                example: "attachment; filename=\"myplugin@1.0.0.zip\""
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  # Plugin version management endpoints
+  /api/plugins/versions:
+    post:
+      tags:
+        - Versions
+      summary: 获取插件版本列表
+      description: 获取指定插件的所有版本信息，包括版本号、文件大小、创建时间、下载次数等。
+      operationId: getPluginVersions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PluginVersionsRequest'
+            examples:
+              getVersions:
+                summary: 获取版本列表示例
+                value:
+                  name: "com.example.myplugin"
+      responses:
+        '200':
+          description: 版本列表获取成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PluginVersionsResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/plugins/version/detail:
+    post:
+      tags:
+        - Versions
+      summary: 获取版本详情
+      description: 获取指定插件版本的详细信息，包括文件信息、更新日志、依赖关系等。
+      operationId: getVersionDetail
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VersionDetailRequest'
+            examples:
+              versionDetail:
+                summary: 获取版本详情示例
+                value:
+                  name: "com.example.myplugin"
+                  version: "1.0.0"
+      responses:
+        '200':
+          description: 版本详情获取成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VersionDetailResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/plugins/version/deprecate:
+    post:
+      tags:
+        - Versions
+      summary: 标记版本过时
+      description: 将指定插件版本标记为过时状态。需要管理员权限。
+      operationId: deprecateVersion
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VersionDetailRequest'
+            examples:
+              deprecateVersion:
+                summary: 标记版本过时示例
+                value:
+                  name: "com.example.myplugin"
+                  version: "1.0.0"
+      responses:
+        '200':
+          description: 版本标记过时成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VersionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/plugins/version/download:
+    post:
+      tags:
+        - Versions
+      summary: 下载指定版本
+      description: 下载指定插件的特定版本ZIP文件。下载后会自动统计该版本的下载次数。
+      operationId: downloadVersion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VersionDetailRequest'
+            examples:
+              downloadVersion:
+                summary: 下载指定版本示例
+                value:
+                  name: "com.example.myplugin"
+                  version: "1.0.0"
+      responses:
+        '200':
+          description: 版本文件下载成功
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+          headers:
+            Content-Disposition:
+              description: 文件下载的标头信息
+              schema:
+                type: string
+                example: "attachment; filename=\"myplugin@1.0.0.zip\""
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  # Backup management endpoints
+  /api/backups/upload:
+    post:
+      tags:
+        - Backups
+      summary: 上传备份文件
+      description: |
+        用户上传备份文件到服务器。支持程序备份和插件备份两种类型。
+
+        **备份类型说明：**
+        - program: MicroDock主程序配置和数据备份
+        - plugin: 插件相关数据和配置备份
+      operationId: uploadBackup
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/BackupUploadRequest'
+      responses:
+        '200':
+          description: 备份文件上传成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BackupResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '413':
+          $ref: '#/components/responses/RequestEntityTooLarge'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/backups/list:
+    post:
+      tags:
+        - Backups
+      summary: 获取用户备份列表
+      description: 根据用户密钥获取该用户的所有备份文件列表。
+      operationId: listUserBackups
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BackupListRequest'
+            examples:
+              listBackups:
+                summary: 获取用户备份列表示例
+                value:
+                  user_key: "user123abc"
+      responses:
+        '200':
+          description: 备份列表获取成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BackupListResponse'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/backups/list-all:
+    get:
+      tags:
+        - Backups
+      summary: 获取所有备份列表
+      description: 获取系统中所有用户的备份文件列表。需要管理员权限。
+      operationId: listAllBackups
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 所有备份列表获取成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BackupListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/backups/download:
+    post:
+      tags:
+        - Backups
+      summary: 下载备份文件
+      description: 根据用户密钥和备份ID下载指定的备份文件。
+      operationId: downloadBackup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BackupDownloadRequest'
+            examples:
+              downloadBackup:
+                summary: 下载备份文件示例
+                value:
+                  user_key: "user123abc"
+                  id: 123
+      responses:
+        '200':
+          description: 备份文件下载成功
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+          headers:
+            Content-Disposition:
+              description: 文件下载的标头信息
+              schema:
+                type: string
+                example: "attachment; filename=\"backup_program_20231201_143022.zip\""
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/backups/delete:
+    post:
+      tags:
+        - Backups
+      summary: 删除备份文件
+      description: 删除指定的备份文件。此操作不可逆，请谨慎使用。需要管理员权限。
+      operationId: deleteBackup
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BackupDeleteRequest'
+            examples:
+              deleteBackup:
+                summary: 删除备份文件示例
+                value:
+                  user_key: "user123abc"
+                  id: 123
+      responses:
+        '200':
+          description: 备份文件删除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  # System endpoints
+  /api/health:
+    get:
+      tags:
+        - System
+      summary: 健康检查
+      description: 检查服务器运行状态和数据库连接状态，用于监控和负载均衡。
+      operationId: healthCheck
+      responses:
+        '200':
+          description: 服务器健康状态正常
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /:
+    get:
+      tags:
+        - System
+      summary: 根路径信息
+      description: 获取API服务器的基本信息和访问入口。
+      operationId: getRootInfo
+      responses:
+        '200':
+          description: 服务器基本信息
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RootResponse'
+
+components:
+  # Security schemes
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT (JSON Web Token) 认证方案
+
+        **获取令牌：** 使用 POST /api/auth/login 获取令牌
+        **使用方法：** 在请求头中添加 `Authorization: Bearer <token>`
+        **有效期：** 24小时
+        **权限说明：** 管理员令牌可以访问所有API，普通用户只能访问公开API
+
+  # Schemas
+  schemas:
+    # Request schemas
+    LoginRequest:
+      type: object
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+          description: 管理员用户名
+          example: "admin"
+        password:
+          type: string
+          description: 管理员密码
+          example: "admin"
+          format: password
+
+    PluginDetailRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: 插件唯一标识符（反向域名格式）
+          example: "com.example.myplugin"
+          pattern: '^[a-zA-Z0-9._-]+$'
+
+    PluginActionRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: 插件唯一标识符
+          example: "com.example.myplugin"
+          pattern: '^[a-zA-Z0-9._-]+$'
+
+    PluginDownloadRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: 插件唯一标识符
+          example: "com.example.myplugin"
+          pattern: '^[a-zA-Z0-9._-]+$'
+
+    PluginVersionsRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: 插件唯一标识符
+          example: "com.example.myplugin"
+          pattern: '^[a-zA-Z0-9._-]+$'
+
+    VersionDetailRequest:
+      type: object
+      required:
+        - name
+        - version
+      properties:
+        name:
+          type: string
+          description: 插件唯一标识符
+          example: "com.example.myplugin"
+          pattern: '^[a-zA-Z0-9._-]+$'
+        version:
+          type: string
+          description: 插件版本号（语义化版本）
+          example: "1.0.0"
+          pattern: '^\d+\.\d+\.\d+(-[a-zA-Z0-9-]+)?$'
+
+    BackupListRequest:
+      type: object
+      required:
+        - user_key
+      properties:
+        user_key:
+          type: string
+          description: 用户密钥
+          example: "user123abc"
+          pattern: '^[a-zA-Z0-9._-]+$'
+
+    BackupDownloadRequest:
+      type: object
+      required:
+        - user_key
+        - id
+      properties:
+        user_key:
+          type: string
+          description: 用户密钥
+          example: "user123abc"
+          pattern: '^[a-zA-Z0-9._-]+$'
+        id:
+          type: integer
+          description: 备份文件ID
+          example: 123
+          minimum: 1
+
+    BackupDeleteRequest:
+      type: object
+      required:
+        - user_key
+        - id
+      properties:
+        user_key:
+          type: string
+          description: 用户密钥
+          example: "user123abc"
+          pattern: '^[a-zA-Z0-9._-]+$'
+        id:
+          type: integer
+          description: 备份文件ID
+          example: 123
+          minimum: 1
+
+    # Multipart form data schemas
+    PluginUploadRequest:
+      type: object
+      required:
+        - file
+        - plugin_key
+      properties:
+        file:
+          type: string
+          format: binary
+          description: 插件ZIP文件（最大100MB）
+        plugin_key:
+          type: string
+          description: 插件上传密钥，用于验证上传权限
+          example: "my_secret_key_123"
+          pattern: '^[a-zA-Z0-9._-]+$'
+
+    BackupUploadRequest:
+      type: object
+      required:
+        - file
+        - user_key
+        - backup_type
+      properties:
+        file:
+          type: string
+          format: binary
+          description: 备份文件（最大100MB）
+        user_key:
+          type: string
+          description: 用户密钥
+          example: "user123abc"
+          pattern: '^[a-zA-Z0-9._-]+$'
+        backup_type:
+          type: string
+          description: 备份类型
+          enum: [program, plugin]
+          example: "program"
+        description:
+          type: string
+          description: 备份描述（可选）
+          example: "程序配置备份"
+
+    # Response schemas
+    LoginResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "登录成功"
+        token:
+          type: string
+          description: JWT访问令牌
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        token_type:
+          type: string
+          example: "bearer"
+        expires_in:
+          type: integer
+          description: 令牌有效期（秒）
+          example: 86400
+
+    AuthStatusResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            is_logged_in:
+              type: boolean
+              description: 是否已登录
+              example: true
+            username:
+              type: string
+              description: 当前登录用户名（仅管理员可见）
+              example: "admin"
+            is_admin:
+              type: boolean
+              description: 是否为管理员
+              example: true
+        message:
+          type: string
+          example: "认证状态获取成功"
+
+    StandardResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "操作成功"
+
+    # Plugin-related response schemas
+    Plugin:
+      type: object
+      properties:
+        name:
+          type: string
+          description: 插件唯一标识符
+          example: "com.example.myplugin"
+        display_name:
+          type: string
+          description: 插件显示名称
+          example: "我的插件"
+        description:
+          type: string
+          description: 插件描述
+          example: "这是一个示例插件"
+        author:
+          type: string
+          description: 插件作者
+          example: "开发者姓名"
+        license:
+          type: string
+          description: 许可证类型
+          example: "MIT"
+        homepage:
+          type: string
+          description: 插件主页URL
+          example: "https://example.com/myplugin"
+        main_dll:
+          type: string
+          description: 主DLL文件名
+          example: "MyPlugin.dll"
+        entry_class:
+          type: string
+          description: 入口类完全限定名
+          example: "MyPlugin.PluginEntry"
+        current_version:
+          type: string
+          description: 当前版本号
+          example: "1.0.0"
+        is_enabled:
+          type: boolean
+          description: 是否启用
+          example: true
+        is_deprecated:
+          type: boolean
+          description: 是否已标记为过时
+          example: false
+        created_at:
+          type: string
+          format: date-time
+          description: 创建时间
+          example: "2023-12-01T14:30:22Z"
+        updated_at:
+          type: string
+          format: date-time
+          description: 更新时间
+          example: "2023-12-01T14:30:22Z"
+
+    PluginResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "操作成功"
+        data:
+          $ref: '#/components/schemas/Plugin'
+
+    PluginListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "插件列表获取成功"
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Plugin'
+
+    PluginDetailResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "插件详情获取成功"
+        data:
+          type: object
+          properties:
+            plugin:
+              $ref: '#/components/schemas/Plugin'
+            versions:
+              type: array
+              items:
+                $ref: '#/components/schemas/PluginVersion'
+
+    # Plugin version schemas
+    PluginVersion:
+      type: object
+      properties:
+        plugin_name:
+          type: string
+          description: 所属插件名称
+          example: "com.example.myplugin"
+        version:
+          type: string
+          description: 版本号
+          example: "1.0.0"
+        file_name:
+          type: string
+          description: 文件名
+          example: "myplugin@1.0.0.zip"
+        file_path:
+          type: string
+          description: 文件存储路径
+          example: "./data/uploads/com.example.myplugin/myplugin@1.0.0.zip"
+        file_size:
+          type: integer
+          description: 文件大小（字节）
+          example: 1048576
+        file_hash:
+          type: string
+          description: SHA256文件哈希
+          example: "a1b2c3d4e5f6..."
+        changelog:
+          type: string
+          description: 更新日志
+          example: "修复了一些bug，添加了新功能"
+        dependencies:
+          type: object
+          description: 依赖关系（JSON对象）
+          example: {"com.other.plugin": ">=1.0.0"}
+        engines:
+          type: object
+          description: 引擎要求（JSON对象）
+          example: {"MicroDock": ">=2.0.0"}
+        is_deprecated:
+          type: boolean
+          description: 是否已标记为过时
+          example: false
+        download_count:
+          type: integer
+          description: 下载次数
+          example: 42
+        created_at:
+          type: string
+          format: date-time
+          description: 创建时间
+          example: "2023-12-01T14:30:22Z"
+
+    VersionResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "操作成功"
+        data:
+          $ref: '#/components/schemas/PluginVersion'
+
+    PluginVersionsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "版本列表获取成功"
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/PluginVersion'
+
+    VersionDetailResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "版本详情获取成功"
+        data:
+          $ref: '#/components/schemas/PluginVersion'
+
+    # Backup-related schemas
+    Backup:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: 备份ID
+          example: 123
+        user_key:
+          type: string
+          description: 用户密钥
+          example: "user123abc"
+        backup_type:
+          type: string
+          description: 备份类型
+          enum: [program, plugin]
+          example: "program"
+        file_name:
+          type: string
+          description: 原始文件名
+          example: "backup.zip"
+        file_path:
+          type: string
+          description: 存储路径
+          example: "./data/backups/user123abc/program/1701420622_backup.zip"
+        file_size:
+          type: integer
+          description: 文件大小（字节）
+          example: 2097152
+        file_hash:
+          type: string
+          description: SHA256文件哈希
+          example: "f1e2d3c4b5a6..."
+        description:
+          type: string
+          description: 备份描述
+          example: "程序配置备份"
+        created_at:
+          type: string
+          format: date-time
+          description: 创建时间
+          example: "2023-12-01T14:30:22Z"
+
+    BackupResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "备份上传成功"
+        data:
+          $ref: '#/components/schemas/Backup'
+
+    BackupListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "备份列表获取成功"
+        data:
+          type: object
+          properties:
+            total:
+              type: integer
+              description: 备份总数
+              example: 5
+            backups:
+              type: array
+              items:
+                $ref: '#/components/schemas/Backup'
+
+    # System response schemas
+    HealthResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            status:
+              type: string
+              description: 服务状态
+              example: "healthy"
+            version:
+              type: string
+              description: 服务器版本
+              example: "2.0.0"
+            database:
+              type: string
+              description: 数据库连接状态
+              example: "connected"
+        message:
+          type: string
+          example: "服务器运行正常"
+
+    RootResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            message:
+              type: string
+              example: "MicroDock PluginServer API"
+            version:
+              type: string
+              example: "2.0.0"
+            docs:
+              type: string
+              description: API文档地址
+              example: "/docs"
+            health:
+              type: string
+              description: 健康检查地址
+              example: "/api/health"
+        message:
+          type: string
+          example: "API服务运行中"
+
+  # Common responses
+  responses:
+    BadRequest:
+      description: 请求参数错误或文件格式不支持
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              error:
+                type: string
+                description: 错误详细信息
+                example: "文件格式不支持，仅支持.zip格式"
+              message:
+                type: string
+                example: "请求处理失败"
+
+    Unauthorized:
+      description: 未授权访问或令牌无效
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              error:
+                type: string
+                description: 错误详细信息
+                example: "令牌无效或已过期"
+              message:
+                type: string
+                example: "认证失败"
+
+    Forbidden:
+      description: 权限不足
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              error:
+                type: string
+                description: 错误详细信息
+                example: "需要管理员权限"
+              message:
+                type: string
+                example: "权限不足"
+
+    NotFound:
+      description: 资源不存在
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              error:
+                type: string
+                description: 错误详细信息
+                example: "插件不存在"
+              message:
+                type: string
+                example: "资源未找到"
+
+    Conflict:
+      description: 资源冲突（如版本已存在）
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              error:
+                type: string
+                description: 错误详细信息
+                example: "插件版本1.0.0已存在"
+              message:
+                type: string
+                example: "资源冲突"
+
+    RequestEntityTooLarge:
+      description: 文件过大
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              error:
+                type: string
+                description: 错误详细信息
+                example: "文件大小超过100MB限制"
+              message:
+                type: string
+                example: "文件过大"
+
+    ValidationError:
+      description: 请求参数验证失败
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              error:
+                type: string
+                description: 错误详细信息
+                example: "插件名称格式不正确"
+              message:
+                type: string
+                example: "参数验证失败"
