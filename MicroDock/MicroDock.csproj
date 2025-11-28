@@ -59,7 +59,7 @@
 	<ItemGroup>
 		<!-- 引用 Restarter 输出，发布时自动复制 -->
 		<None Include="..\MicroDock.Restarter\bin\Release\net8.0\publish\win-x64\Restarter.exe"
-			  Link="Restarter.exe"
+			  Link="Utils/Restarter.exe"
 			  CopyToOutputDirectory="PreserveNewest"
 			  CopyToPublishDirectory="PreserveNewest" />
 	</ItemGroup>

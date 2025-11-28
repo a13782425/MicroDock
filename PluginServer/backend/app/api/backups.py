@@ -77,9 +77,8 @@ async def download_backup(
 @router.post("/delete", response_model=ApiResponse[None])
 async def delete_backup(
     request: BackupDownloadRequest,
-    db: AsyncSession = Depends(get_db),
-    admin: TokenData = Depends(require_admin)
+    db: AsyncSession = Depends(get_db)
 ):
-    """删除备份（需要管理员权限）"""
+    """删除备份（用户可删除自己的备份，通过 user_key 验证）"""
     await BackupService.delete_backup(db, request.user_key, request.id)
     return ApiResponse.ok(message="备份已删除")

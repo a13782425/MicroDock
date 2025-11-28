@@ -62,6 +62,11 @@ internal class SettingDB
     public string ServerAddress { get; set; } = string.Empty;
 
     /// <summary>
+    /// 备份服务器地址（专用于数据备份，可选，为空时使用 ServerAddress）
+    /// </summary>
+    public string BackupServerAddress { get; set; } = string.Empty;
+
+    /// <summary>
     /// 备份密码（用于数据备份和恢复）
     /// </summary>
     public string BackupPassword { get; set; } = string.Empty;

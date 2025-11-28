@@ -399,6 +399,18 @@
 								Command="{Binding TestConnectionCommand}"
 								Grid.Column="2"/>
 					</Grid>
+					<Grid Margin="0,4">
+						<Grid.ColumnDefinitions>
+							<ColumnDefinition Width="100"/>
+							<ColumnDefinition Width="*"/>
+						</Grid.ColumnDefinitions>
+						<TextBlock Text="备份地址"
+								   VerticalAlignment="Center"
+								   Grid.Column="0"/>
+						<TextBox Text="{Binding BackupServerAddress, Mode=TwoWay}"
+								 Watermark="可选，为空时使用服务器地址"
+								 Grid.Column="1"/>
+					</Grid>
 
 					<!-- 数据备份 -->
 					<TextBlock Text="数据备份"

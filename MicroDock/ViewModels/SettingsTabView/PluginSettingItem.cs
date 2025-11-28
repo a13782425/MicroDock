@@ -1,11 +1,14 @@
 ﻿using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using MicroDock.Plugin;
 using MicroDock.Service;
+using MicroDock.Utils;
 using ReactiveUI;
 using System;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Reactive;
 using System.Threading.Tasks;
 
@@ -557,9 +560,9 @@ public class PluginSettingItem : ViewModelBase
         {
             var settings = Database.DBContext.GetSetting();
             
-            if (string.IsNullOrEmpty(settings.ServerAddress))
+            if (string.IsNullOrEmpty(settings.ServerAddress) && string.IsNullOrEmpty(settings.BackupServerAddress))
             {
-                ShowNotification("恢复失败", "请先在高级设置中配置服务器地址", AppNotificationType.Warning);
+                ShowNotification("恢复失败", "请先在高级设置中配置服务器地址或备份地址", AppNotificationType.Warning);
                 return;
             }
 
@@ -569,19 +572,66 @@ public class PluginSettingItem : ViewModelBase
                 return;
             }
 
-            string dataPath = GetPluginDataPath();
+            ServiceLocator.Get<EventService>().Publish(new ShowLoadingMessage("正在获取备份列表..."));
 
+            // 获取备份列表
+            var response = await PluginServerApiClient.GetBackupListAsync();
+
+            ServiceLocator.Get<EventService>().Publish(new HideLoadingMessage());
+
+            if (!response.Success || response.Data?.Backups == null)
+            {
+                ShowNotification("获取失败", response.Message ?? "无法获取备份列表", AppNotificationType.Error);
+                return;
+            }
+
+            // 筛选该插件的备份
+            var pluginBackups = response.Data.Backups
+                .Where(b => b.BackupType == "plugin" && (b.Description?.Contains(UniqueName) ?? false))
+                .OrderByDescending(b => b.CreatedAt)
+                .ToList();
+
+            if (pluginBackups.Count == 0)
+            {
+                ShowNotification("提示", $"服务器上暂无插件 \"{PluginName}\" 的备份", AppNotificationType.Information);
+                return;
+            }
+
+            // 转换为列表项
+            var backupItems = new ObservableCollection<BackupListItem>(
+                pluginBackups.Select(b => new BackupListItem
+                {
+                    Id = b.Id,
+                    BackupType = b.BackupType,
+                    Description = b.Description ?? "",
+                    CreatedAt = b.CreatedAt ?? "",
+                    FileSize = b.FileSize,
+                    PluginName = UniqueName
+                })
+            );
+
+            // 显示备份列表对话框
+            var selectedBackup = await ShowPluginBackupListDialogAsync($"恢复插件数据: {PluginName}", backupItems);
+
+            if (selectedBackup == null)
+            {
+                return; // 用户取消
+            }
+
+            // 确认恢复
             bool confirm = await ShowConfirmDialogAsync(
-                $"恢复插件数据",
-                $"确定要从服务器恢复插件 \"{PluginName}\" 的数据吗？",
+                "确认恢复",
+                $"确定要恢复此备份吗？\n\n{selectedBackup.DisplayName}\n创建时间: {selectedBackup.FormattedCreatedAt}",
                 "这将覆盖当前的插件数据，建议先手动备份重要数据。"
             );
 
             if (!confirm) return;
 
+            string dataPath = GetPluginDataPath();
+
             ServiceLocator.Get<EventService>().Publish(new ShowLoadingMessage($"正在恢复 {PluginName} 数据..."));
 
-            var (success, message) = await PluginServerApiClient.RestorePluginDataAsync(UniqueName, dataPath);
+            var (success, message) = await PluginServerApiClient.RestorePluginDataAsync(UniqueName, dataPath, selectedBackup.Id);
 
             ServiceLocator.Get<EventService>().Publish(new HideLoadingMessage());
 
@@ -600,6 +650,202 @@ public class PluginSettingItem : ViewModelBase
             Serilog.Log.Error(ex, "恢复插件数据失败: {PluginName}", PluginName);
             ShowNotification("恢复失败", ex.Message, AppNotificationType.Error);
         }
+    }
+
+    /// <summary>
+    /// 显示插件备份列表对话框
+    /// </summary>
+    private async Task<BackupListItem?> ShowPluginBackupListDialogAsync(string title, ObservableCollection<BackupListItem> backupItems)
+    {
+        bool needRefresh = false;
+
+        while (true)
+        {
+            if (needRefresh)
+            {
+                // 重新获取备份列表
+                ServiceLocator.Get<EventService>().Publish(new ShowLoadingMessage("正在刷新备份列表..."));
+                var response = await PluginServerApiClient.GetBackupListAsync();
+                ServiceLocator.Get<EventService>().Publish(new HideLoadingMessage());
+
+                if (response.Success && response.Data?.Backups != null)
+                {
+                    backupItems.Clear();
+                    var filteredBackups = response.Data.Backups
+                        .Where(b => b.BackupType == "plugin" && (b.Description?.Contains(UniqueName) ?? false))
+                        .OrderByDescending(b => b.CreatedAt)
+                        .ToList();
+
+                    foreach (var b in filteredBackups)
+                    {
+                        backupItems.Add(new BackupListItem
+                        {
+                            Id = b.Id,
+                            BackupType = b.BackupType,
+                            Description = b.Description ?? "",
+                            CreatedAt = b.CreatedAt ?? "",
+                            FileSize = b.FileSize,
+                            PluginName = UniqueName
+                        });
+                    }
+                }
+                needRefresh = false;
+            }
+
+            if (backupItems.Count == 0)
+            {
+                ShowNotification("提示", "没有可用的备份", AppNotificationType.Information);
+                return null;
+            }
+
+            // 创建列表
+            var listBox = new ListBox
+            {
+                MinWidth = 450,
+                SelectionMode = SelectionMode.Single,
+                ItemsSource = backupItems,
+                ItemTemplate = CreateBackupListItemTemplate()
+            };
+
+            var scrollViewer = new ScrollViewer
+            {
+                MaxHeight = 350,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                Content = listBox
+            };
+
+            var titleText = new TextBlock
+            {
+                Text = $"找到 {backupItems.Count} 个备份，选择一个进行操作：",
+                FontSize = 13,
+                Margin = new Avalonia.Thickness(0, 0, 0, 10)
+            };
+
+            // 删除按钮
+            var deleteButton = new Button
+            {
+                Content = "删除选中",
+                Margin = new Avalonia.Thickness(0, 10, 0, 0),
+                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left
+            };
+
+            var contentPanel = new StackPanel
+            {
+                Spacing = 0,
+                Children = { titleText, scrollViewer, deleteButton }
+            };
+
+            // 用于跟踪是否需要删除
+            bool deleteRequested = false;
+            deleteButton.Click += (s, e) => { deleteRequested = true; };
+
+            // 显示对话框
+            var dialogResult = await UniversalUtils.ShowCustomDialogAsync(
+                title,
+                contentPanel,
+                "恢复",
+                "取消"
+            );
+
+            if (deleteRequested && listBox.SelectedItem is BackupListItem itemToDelete)
+            {
+                // 用户点击了删除按钮
+                bool confirmDelete = await ShowConfirmDialogAsync(
+                    "确认删除",
+                    $"确定要删除此备份吗？\n\n{itemToDelete.DisplayName}\n创建时间: {itemToDelete.FormattedCreatedAt}",
+                    "此操作不可撤销。"
+                );
+
+                if (confirmDelete)
+                {
+                    ServiceLocator.Get<EventService>().Publish(new ShowLoadingMessage("正在删除备份..."));
+                    var (success, message) = await PluginServerApiClient.DeleteBackupAsync(itemToDelete.Id);
+                    ServiceLocator.Get<EventService>().Publish(new HideLoadingMessage());
+
+                    if (success)
+                    {
+                        ShowNotification("删除成功", "备份已删除", AppNotificationType.Success);
+                        needRefresh = true;
+                        continue; // 刷新列表并重新显示对话框
+                    }
+                    else
+                    {
+                        ShowNotification("删除失败", message, AppNotificationType.Error);
+                        continue; // 重新显示对话框
+                    }
+                }
+                else
+                {
+                    continue; // 重新显示对话框
+                }
+            }
+
+            if (dialogResult == FluentAvalonia.UI.Controls.ContentDialogResult.Primary)
+            {
+                var selectedBackup = listBox.SelectedItem as BackupListItem;
+                if (selectedBackup == null)
+                {
+                    ShowNotification("提示", "请先选择一个备份", AppNotificationType.Warning);
+                    continue; // 重新显示对话框
+                }
+                return selectedBackup;
+            }
+
+            // 用户取消
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// 创建备份列表项模板
+    /// </summary>
+    private static Avalonia.Controls.Templates.FuncDataTemplate<BackupListItem> CreateBackupListItemTemplate()
+    {
+        return new Avalonia.Controls.Templates.FuncDataTemplate<BackupListItem>((item, _) =>
+        {
+            var border = new Border
+            {
+                Padding = new Avalonia.Thickness(10, 8),
+                Margin = new Avalonia.Thickness(2),
+                CornerRadius = new Avalonia.CornerRadius(6),
+                Background = Avalonia.Media.Brushes.Transparent
+            };
+
+            var grid = new Grid
+            {
+                ColumnDefinitions = new ColumnDefinitions("*, Auto")
+            };
+
+            var leftPanel = new StackPanel { Spacing = 2 };
+
+            // 描述/名称
+            var nameText = new TextBlock
+            {
+                FontWeight = Avalonia.Media.FontWeight.SemiBold,
+                FontSize = 14
+            };
+            nameText.Bind(TextBlock.TextProperty, new Avalonia.Data.Binding("DisplayName"));
+            leftPanel.Children.Add(nameText);
+
+            // 创建时间和文件大小
+            var infoPanel = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 12 };
+            var timeText = new TextBlock { FontSize = 11, Opacity = 0.6 };
+            timeText.Bind(TextBlock.TextProperty, new Avalonia.Data.Binding("FormattedCreatedAt") { StringFormat = "创建时间: {0}" });
+            infoPanel.Children.Add(timeText);
+
+            var sizeText = new TextBlock { FontSize = 11, Opacity = 0.6 };
+            sizeText.Bind(TextBlock.TextProperty, new Avalonia.Data.Binding("FormattedFileSize") { StringFormat = "大小: {0}" });
+            infoPanel.Children.Add(sizeText);
+
+            leftPanel.Children.Add(infoPanel);
+
+            Grid.SetColumn(leftPanel, 0);
+            grid.Children.Add(leftPanel);
+
+            border.Child = grid;
+            return border;
+        });
     }
 
     /// <summary>

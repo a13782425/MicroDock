@@ -217,6 +217,20 @@ public class PluginServerApiClient
     }
 
     /// <summary>
+    /// 获取备份服务器地址（如果配置了备份地址则使用备份地址，否则使用主服务器地址）
+    /// </summary>
+    private static string GetBackupServerAddress()
+    {
+        var settings = DBContext.GetSetting();
+        var backupAddress = settings.BackupServerAddress ?? string.Empty;
+        if (!string.IsNullOrWhiteSpace(backupAddress))
+        {
+            return backupAddress;
+        }
+        return settings.ServerAddress ?? string.Empty;
+    }
+
+    /// <summary>
     /// 获取用户密钥（使用备份密码）
     /// </summary>
     private static string GetUserKey()
@@ -230,6 +244,15 @@ public class PluginServerApiClient
     private static string BuildUrl(string endpoint)
     {
         string serverAddress = GetServerAddress();
+        return $"{serverAddress.TrimEnd('/')}{endpoint}";
+    }
+
+    /// <summary>
+    /// 构建备份相关的完整 URL（使用备份服务器地址）
+    /// </summary>
+    private static string BuildBackupUrl(string endpoint)
+    {
+        string serverAddress = GetBackupServerAddress();
         return $"{serverAddress.TrimEnd('/')}{endpoint}";
     }
 
@@ -415,11 +438,12 @@ public class PluginServerApiClient
     /// <summary>
     /// 发送 POST 请求（JSON 体，期望 ApiResponse 包装响应）
     /// </summary>
-    private static async Task<ApiResponse<T>> PostJsonAsync<T>(string endpoint, object body)
+    /// <param name="useBackupServer">是否使用备份服务器地址</param>
+    private static async Task<ApiResponse<T>> PostJsonAsync<T>(string endpoint, object body, bool useBackupServer = false)
     {
         try
         {
-            string url = BuildUrl(endpoint);
+            string url = useBackupServer ? BuildBackupUrl(endpoint) : BuildUrl(endpoint);
             string json = JsonSerializer.Serialize(body, _jsonOptions);
             Log.Debug("[{Tag}] POST {Url} Body: {Body}", LOG_TAG, url, json);
 
@@ -457,11 +481,12 @@ public class PluginServerApiClient
     /// <summary>
     /// 发送 POST 请求下载文件
     /// </summary>
-    private static async Task<(bool success, string message, byte[]? data)> PostDownloadAsync(string endpoint, object body)
+    /// <param name="useBackupServer">是否使用备份服务器地址</param>
+    private static async Task<(bool success, string message, byte[]? data)> PostDownloadAsync(string endpoint, object body, bool useBackupServer = false)
     {
         try
         {
-            string url = BuildUrl(endpoint);
+            string url = useBackupServer ? BuildBackupUrl(endpoint) : BuildUrl(endpoint);
             string json = JsonSerializer.Serialize(body, _jsonOptions);
             Log.Debug("[{Tag}] POST Download {Url}", LOG_TAG, url);
 
@@ -784,12 +809,12 @@ public class PluginServerApiClient
     /// <returns>上传结果</returns>
     public static async Task<(bool success, string message)> UploadBackupAsync(string pluginName, string zipFilePath, string backupType, string? description = null)
     {
-        string serverAddress = GetServerAddress();
+        string serverAddress = GetBackupServerAddress();
         string userKey = GetUserKey();
 
         if (string.IsNullOrEmpty(serverAddress))
         {
-            return (false, "请先在高级设置中配置服务器地址");
+            return (false, "请先在高级设置中配置服务器地址或备份地址");
         }
 
         if (string.IsNullOrEmpty(userKey))
@@ -853,7 +878,7 @@ public class PluginServerApiClient
             return new ApiResponse<BackupListData> { Success = false, Message = "请先在高级设置中配置备份密码" };
         }
 
-        return await PostJsonAsync<BackupListData>("/api/backups/list", new { user_key = userKey });
+        return await PostJsonAsync<BackupListData>("/api/backups/list", new { user_key = userKey }, useBackupServer: true);
     }
 
     /// <summary>
@@ -870,7 +895,25 @@ public class PluginServerApiClient
             return (false, "请先在高级设置中配置备份密码", null);
         }
 
-        return await PostDownloadAsync("/api/backups/download", new { user_key = userKey, id = backupId });
+        return await PostDownloadAsync("/api/backups/download", new { user_key = userKey, id = backupId }, useBackupServer: true);
+    }
+
+    /// <summary>
+    /// 删除备份文件
+    /// </summary>
+    /// <param name="backupId">备份 ID</param>
+    /// <returns>删除结果</returns>
+    public static async Task<(bool success, string message)> DeleteBackupAsync(int backupId)
+    {
+        string userKey = GetUserKey();
+
+        if (string.IsNullOrEmpty(userKey))
+        {
+            return (false, "请先在高级设置中配置备份密码");
+        }
+
+        var response = await PostJsonAsync<object>("/api/backups/delete", new { user_key = userKey, id = backupId }, useBackupServer: true);
+        return (response.Success, response.Message ?? (response.Success ? "删除成功" : "删除失败"));
     }
 
     #endregion
@@ -930,24 +973,37 @@ public class PluginServerApiClient
     /// </summary>
     /// <param name="pluginName">插件唯一名称</param>
     /// <param name="dataFolderPath">插件 data 文件夹路径</param>
-    public static async Task<(bool success, string message)> RestorePluginDataAsync(string pluginName, string dataFolderPath)
+    /// <param name="backupId">指定的备份 ID（如果为 null，则自动选择最新备份）</param>
+    public static async Task<(bool success, string message)> RestorePluginDataAsync(string pluginName, string dataFolderPath, int? backupId = null)
     {
-        // 首先获取备份列表，找到该插件的最新备份
-        var listResponse = await GetBackupListAsync();
-        if (!listResponse.Success || listResponse.Data?.Backups == null)
+        int targetBackupId;
+
+        if (backupId.HasValue)
         {
-            return (false, listResponse.Message ?? "获取备份列表失败");
+            // 使用指定的备份 ID
+            targetBackupId = backupId.Value;
         }
-
-        // 查找该插件的最新备份（按创建时间倒序）
-        var pluginBackup = listResponse.Data.Backups
-            .Where(b => b.BackupType == "plugin" && (b.Description?.Contains(pluginName) ?? false))
-            .OrderByDescending(b => b.CreatedAt)
-            .FirstOrDefault();
-
-        if (pluginBackup == null)
+        else
         {
-            return (false, "服务器上没有找到该插件的备份数据");
+            // 首先获取备份列表，找到该插件的最新备份
+            var listResponse = await GetBackupListAsync();
+            if (!listResponse.Success || listResponse.Data?.Backups == null)
+            {
+                return (false, listResponse.Message ?? "获取备份列表失败");
+            }
+
+            // 查找该插件的最新备份（按创建时间倒序）
+            var pluginBackup = listResponse.Data.Backups
+                .Where(b => b.BackupType == "plugin" && (b.Description?.Contains(pluginName) ?? false))
+                .OrderByDescending(b => b.CreatedAt)
+                .FirstOrDefault();
+
+            if (pluginBackup == null)
+            {
+                return (false, "服务器上没有找到该插件的备份数据");
+            }
+
+            targetBackupId = pluginBackup.Id;
         }
 
         string? tempZipPath = null;
@@ -958,7 +1014,7 @@ public class PluginServerApiClient
             // 下载备份文件
             tempZipPath = Path.Combine(AppConfig.TEMP_BACKUP_FOLDER, $"plugin_restore_{pluginName}_{DateTime.Now:yyyyMMddHHmmss}.zip");
 
-            var (downloadSuccess, downloadMessage, data) = await DownloadBackupAsync(pluginBackup.Id);
+            var (downloadSuccess, downloadMessage, data) = await DownloadBackupAsync(targetBackupId);
             if (!downloadSuccess || data == null)
             {
                 return (false, downloadMessage);
@@ -1094,24 +1150,37 @@ public class PluginServerApiClient
     /// 从服务器恢复主程序数据库
     /// 由于数据库文件在运行时被占用，恢复操作会保存到临时位置，重启后生效
     /// </summary>
-    public static async Task<(bool success, string message)> RestoreAppDataAsync()
+    /// <param name="backupId">指定的备份 ID（如果为 null，则自动选择最新备份）</param>
+    public static async Task<(bool success, string message)> RestoreAppDataAsync(int? backupId = null)
     {
-        // 首先获取备份列表，找到主程序的最新备份
-        var listResponse = await GetBackupListAsync();
-        if (!listResponse.Success || listResponse.Data?.Backups == null)
+        int targetBackupId;
+
+        if (backupId.HasValue)
         {
-            return (false, listResponse.Message ?? "获取备份列表失败");
+            // 使用指定的备份 ID
+            targetBackupId = backupId.Value;
         }
-
-        // 查找主程序的最新备份
-        var appBackup = listResponse.Data.Backups
-            .Where(b => b.BackupType == "program")
-            .OrderByDescending(b => b.CreatedAt)
-            .FirstOrDefault();
-
-        if (appBackup == null)
+        else
         {
-            return (false, "服务器上没有找到主程序备份数据");
+            // 首先获取备份列表，找到主程序的最新备份
+            var listResponse = await GetBackupListAsync();
+            if (!listResponse.Success || listResponse.Data?.Backups == null)
+            {
+                return (false, listResponse.Message ?? "获取备份列表失败");
+            }
+
+            // 查找主程序的最新备份
+            var appBackup = listResponse.Data.Backups
+                .Where(b => b.BackupType == "program")
+                .OrderByDescending(b => b.CreatedAt)
+                .FirstOrDefault();
+
+            if (appBackup == null)
+            {
+                return (false, "服务器上没有找到主程序备份数据");
+            }
+
+            targetBackupId = appBackup.Id;
         }
 
         string? tempZipPath = null;
@@ -1121,7 +1190,7 @@ public class PluginServerApiClient
             // 下载备份文件
             tempZipPath = Path.Combine(AppConfig.TEMP_BACKUP_FOLDER, $"app_restore_{DateTime.Now:yyyyMMddHHmmss}.zip");
 
-            (bool downloadSuccess, string downloadMessage, byte[] data) = await DownloadBackupAsync(appBackup.Id);
+            (bool downloadSuccess, string downloadMessage, byte[] data) = await DownloadBackupAsync(targetBackupId);
             if (!downloadSuccess || data == null)
             {
                 return (false, downloadMessage);
