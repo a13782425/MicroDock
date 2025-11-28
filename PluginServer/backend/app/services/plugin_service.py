@@ -5,7 +5,7 @@ import json
 from typing import List, Optional
 from pathlib import Path
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 from fastapi import HTTPException, UploadFile
 
 from app.models.plugin import Plugin
@@ -20,10 +20,43 @@ class PluginService:
     """插件服务"""
     
     @staticmethod
-    async def get_all_plugins(db: AsyncSession) -> List[Plugin]:
-        """获取所有插件"""
+    async def get_all_plugins(db: AsyncSession) -> List[dict]:
+        """获取所有插件（包含总下载次数）"""
+        # 1. 获取所有插件
         result = await db.execute(select(Plugin).order_by(Plugin.created_at.desc()))
-        return list(result.scalars().all())
+        plugins = list(result.scalars().all())
+        
+        # 2. 获取每个插件的下载次数总和
+        download_counts_query = select(
+            PluginVersion.plugin_name,
+            func.sum(PluginVersion.download_count).label('total_download_count')
+        ).group_by(PluginVersion.plugin_name)
+        
+        download_result = await db.execute(download_counts_query)
+        download_counts = {row.plugin_name: row.total_download_count or 0 for row in download_result}
+        
+        # 3. 将下载次数附加到插件对象
+        plugins_with_downloads = []
+        for plugin in plugins:
+            plugin_dict = {
+                'name': plugin.name,
+                'display_name': plugin.display_name,
+                'current_version': plugin.current_version,
+                'description': plugin.description,
+                'author': plugin.author,
+                'license': plugin.license,
+                'homepage': plugin.homepage,
+                'main_dll': plugin.main_dll,
+                'entry_class': plugin.entry_class,
+                'is_enabled': plugin.is_enabled,
+                'is_deprecated': plugin.is_deprecated,
+                'total_download_count': download_counts.get(plugin.name, 0),
+                'created_at': plugin.created_at,
+                'updated_at': plugin.updated_at,
+            }
+            plugins_with_downloads.append(plugin_dict)
+        
+        return plugins_with_downloads
     
     @staticmethod
     async def get_plugin_by_name(db: AsyncSession, name: str) -> Optional[Plugin]:

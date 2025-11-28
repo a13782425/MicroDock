@@ -56,6 +56,10 @@
             <span>DLL:</span>
             <span class="font-mono text-xs">{{ plugin.main_dll }}</span>
           </div>
+          <div class="flex justify-between">
+            <span>下载:</span>
+            <span>{{ plugin.total_download_count || 0 }}</span>
+          </div>
         </div>
 
         <div class="flex gap-2">

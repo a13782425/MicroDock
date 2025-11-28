@@ -45,6 +45,7 @@ class PluginResponse(BaseModel):
     entry_class: str
     is_enabled: bool
     is_deprecated: bool
+    total_download_count: int = 0  # 所有版本下载次数总和
     created_at: datetime
     updated_at: datetime
     
