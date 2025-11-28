@@ -58,5 +58,3 @@ nunit-*.xml
 .vs
 .idea
 .claude
-*.pubxml
-*.user
