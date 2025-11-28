@@ -31,6 +31,16 @@ public class NavigationTabDB : IDatabase
     /// </summary>
     public string? ShortcutKey { get; set; }
 
+    /// <summary>
+    /// 是否启用密码锁定
+    /// </summary>
+    public bool IsLocked { get; set; } = false;
+
+    /// <summary>
+    /// 密码哈希值 (SHA256)
+    /// </summary>
+    public string? PasswordHash { get; set; }
+
     public static Dictionary<string, NavigationTabDB> Cache = new Dictionary<string, NavigationTabDB>();
 
     private NavigationTabDto? _dto;

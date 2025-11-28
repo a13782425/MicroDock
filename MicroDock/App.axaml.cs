@@ -92,6 +92,7 @@ namespace MicroDock
                     ServiceLocator.GetService<TopMostService>()?.Dispose();
                     ServiceLocator.GetService<DelayStorageService>()?.Dispose();
                     ServiceLocator.GetService<PluginService>()?.Dispose();
+                    ServiceLocator.GetService<TabLockService>()?.Dispose();
                     DBContext.Close();
                     ServiceLocator.Clear();
                 };

@@ -29,6 +29,8 @@ public partial class MainWindow : AppWindow
         SubscribeToMessages();
         // 在窗口打开后初始化设置
         this.Opened += OnWindowOpened;
+        // 监听窗口状态变化（用于页签锁定）
+        this.PropertyChanged += OnWindowPropertyChanged;
         // 恢复窗口位置和大小（需要在窗口显示前设置）
         RestoreWindowState();
         //m_initSettings();
@@ -36,6 +38,40 @@ public partial class MainWindow : AppWindow
         splashViewModel.LoadingCompleted += OnSplashLoadingCompleted;
         SplashScreen = splashViewModel;
 
+    }
+
+    /// <summary>
+    /// 窗口属性变化事件处理
+    /// </summary>
+    private void OnWindowPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
+    {
+        // 监听 WindowState 变化
+        if (e.Property == WindowStateProperty)
+        {
+            var newState = (WindowState?)e.NewValue;
+            if (newState == WindowState.Minimized)
+            {
+                // 窗口最小化时，锁定所有已解锁的页签
+                OnWindowMinimized();
+            }
+        }
+    }
+
+    /// <summary>
+    /// 窗口最小化时的处理
+    /// </summary>
+    private void OnWindowMinimized()
+    {
+        try
+        {
+            var tabLockService = ServiceLocator.GetService<TabLockService>();
+            tabLockService?.LockAll();
+            Log.Debug("窗口最小化，已锁定所有页签");
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "窗口最小化时锁定页签失败");
+        }
     }
     private void OnSplashLoadingCompleted(object? sender, EventArgs e)
     {

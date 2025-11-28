@@ -1,0 +1,69 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:MicroDock.ViewModels"
+             xmlns:fa="clr-namespace:FluentAvalonia.UI.Controls;assembly=FluentAvalonia"
+             mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="300"
+             x:Class="MicroDock.Views.LockScreenView"
+             x:DataType="vm:LockScreenViewModel">
+    <Design.DataContext>
+        <vm:LockScreenViewModel />
+    </Design.DataContext>
+
+    <Grid HorizontalAlignment="Center" 
+          VerticalAlignment="Center"
+          MinWidth="320">
+        <Border Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                CornerRadius="8"
+                Padding="32">
+            <StackPanel Spacing="20">
+                <!-- 锁图标 -->
+                <fa:SymbolIcon Symbol="Ruler"
+                               FontSize="48"
+                               HorizontalAlignment="Center"
+                               Foreground="{DynamicResource AccentFillColorDefaultBrush}"/>
+
+                <!-- 标题 -->
+                <StackPanel Spacing="4" HorizontalAlignment="Center">
+                    <TextBlock Text="页签已锁定"
+                               FontSize="18"
+                               FontWeight="SemiBold"
+                               HorizontalAlignment="Center"/>
+                    <TextBlock Text="{Binding TabTitle}"
+                               FontSize="14"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                               HorizontalAlignment="Center"/>
+                </StackPanel>
+
+                <!-- 密码输入 -->
+                <StackPanel Spacing="8">
+                    <TextBox x:Name="PasswordBox"
+                             Text="{Binding Password, Mode=TwoWay}"
+                             Watermark="请输入密码"
+                             PasswordChar="●"
+                             MinWidth="250"
+                             HorizontalAlignment="Stretch"
+                             KeyDown="PasswordBox_KeyDown"/>
+                    
+                    <!-- 错误提示 -->
+                    <TextBlock Text="{Binding ErrorMessage}"
+                               Foreground="OrangeRed"
+                               FontSize="12"
+                               IsVisible="{Binding HasError}"
+                               HorizontalAlignment="Center"/>
+                </StackPanel>
+
+                <!-- 解锁按钮 -->
+                <Button Content="解锁"
+                        Command="{Binding UnlockCommand}"
+                        HorizontalAlignment="Stretch"
+                        Classes="accent"
+                        Padding="16,10"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>
+

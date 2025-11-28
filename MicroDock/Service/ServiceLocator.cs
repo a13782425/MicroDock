@@ -41,6 +41,7 @@ public static class ServiceLocator
         Register(new PluginService());
         Register(new ToolRegistry());
         Register(new ThemeService());
+        Register(new TabLockService());
     }
 
     /// <summary>

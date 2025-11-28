@@ -11,13 +11,19 @@ public class NavigationTabDto : BaseDatabaseDto<NavigationTabDB>
     private string _id;
     private int _orderIndex;
     private bool _isVisible;
+    private bool _isLocked;
+    private string? _passwordHash;
+
     public NavigationTabDto(NavigationTabDB data) : base(data)
     {
         // 初始化时加载数据
         _id = DBEntity.Id;
         _orderIndex = DBEntity.OrderIndex;
         _isVisible = DBEntity.IsVisible;
+        _isLocked = DBEntity.IsLocked;
+        _passwordHash = DBEntity.PasswordHash;
     }
+
     /// <summary>
     /// 唯一ID (主键) - 只读，不允许修改
     /// </summary>
@@ -58,11 +64,46 @@ public class NavigationTabDto : BaseDatabaseDto<NavigationTabDB>
             }
         }
     }
+
+    /// <summary>
+    /// 是否启用密码锁定
+    /// </summary>
+    public bool IsLocked
+    {
+        get => _isLocked;
+        set
+        {
+            if (_isLocked != value)
+            {
+                this.RaiseAndSetIfChanged(ref _isLocked, value);
+                MarkDirty();
+            }
+        }
+    }
+
+    /// <summary>
+    /// 密码哈希值 (SHA256)
+    /// </summary>
+    public string? PasswordHash
+    {
+        get => _passwordHash;
+        set
+        {
+            if (_passwordHash != value)
+            {
+                this.RaiseAndSetIfChanged(ref _passwordHash, value);
+                MarkDirty();
+            }
+        }
+    }
+
     protected override void SaveToDatabase()
     {
         DBEntity.Id = this.Id;
         DBEntity.OrderIndex = this.OrderIndex;
         DBEntity.IsVisible = this.IsVisible;
+        DBEntity.IsLocked = this.IsLocked;
+        DBEntity.PasswordHash = this.PasswordHash;
         DBContext.UpdateNavigationTab(DBEntity);
     }
 }

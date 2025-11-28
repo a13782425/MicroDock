@@ -153,3 +153,44 @@ public class NavigationTabsConfigurationChangedMessage : IEventMessage
 {
 }
 
+/// <summary>
+/// 页签已加锁消息（超时或手动加锁）
+/// </summary>
+public class TabLockedMessage : IEventMessage
+{
+    public string TabId { get; }
+
+    public TabLockedMessage(string tabId)
+    {
+        TabId = tabId;
+    }
+}
+
+/// <summary>
+/// 页签已解锁消息
+/// </summary>
+public class TabUnlockedMessage : IEventMessage
+{
+    public string TabId { get; }
+
+    public TabUnlockedMessage(string tabId)
+    {
+        TabId = tabId;
+    }
+}
+
+/// <summary>
+/// 页签锁定状态变更消息（设置/移除密码）
+/// </summary>
+public class TabLockStateChangedMessage : IEventMessage
+{
+    public string TabId { get; }
+    public bool IsLocked { get; }
+
+    public TabLockStateChangedMessage(string tabId, bool isLocked)
+    {
+        TabId = tabId;
+        IsLocked = isLocked;
+    }
+}
+

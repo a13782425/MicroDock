@@ -122,6 +122,7 @@ public partial class MainView : UserControl
                 });
             }
         };
+
         // 设置图标
         if (!string.IsNullOrEmpty(navItem.Icon))
         {
@@ -138,6 +139,9 @@ public partial class MainView : UserControl
             }
         }
 
+        // 添加锁定徽章
+        SetupLockBadge(menuItem, navItem);
+
         ToolTip.SetTip(menuItem, navItem.Title);
 
         if (navItem.NavType == NavigationType.Settings || navItem.NavType == NavigationType.System)
@@ -148,6 +152,25 @@ public partial class MainView : UserControl
         {
             MainNav.MenuItems.Add(menuItem);
         }
+    }
+
+    /// <summary>
+    /// 设置导航项的锁定徽章
+    /// </summary>
+    private void SetupLockBadge(NavigationViewItem menuItem, NavigationItemModel navItem)
+    {
+        // 创建锁定徽章
+        var lockBadge = new InfoBadge
+        {
+            IconSource = new SymbolIconSource { Symbol = Symbol.Ruler },
+            IsVisible = navItem.IsLocked
+        };
+
+        // 绑定 IsVisible 到 IsLocked 属性
+        lockBadge.Bind(InfoBadge.IsVisibleProperty, new Binding(nameof(NavigationItemModel.IsLocked)));
+
+        // 设置徽章到导航项
+        menuItem.InfoBadge = lockBadge;
     }
 
     private void OnNavigationItemsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)

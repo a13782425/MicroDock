@@ -286,6 +286,66 @@ internal static class UniversalUtils
     }
 
     /// <summary>
+    /// 显示密码输入对话框
+    /// </summary>
+    /// <param name="title">对话框标题</param>
+    /// <param name="prompt">提示文本</param>
+    /// <returns>用户输入的密码，如果取消则返回 null</returns>
+    public static async Task<string?> ShowPasswordInputDialogAsync(string title, string prompt)
+    {
+        try
+        {
+            return await Dispatcher.UIThread.InvokeAsync(async () =>
+            {
+                var passwordBox = new TextBox
+                {
+                    Watermark = "请输入密码",
+                    MinWidth = 300,
+                    PasswordChar = '●',
+                    RevealPassword = false
+                };
+
+                var content = new StackPanel
+                {
+                    Spacing = 10,
+                    Children =
+                    {
+                        new TextBlock
+                        {
+                            Text = prompt,
+                            TextWrapping = Avalonia.Media.TextWrapping.Wrap
+                        },
+                        passwordBox
+                    }
+                };
+
+                var dialog = new ContentDialog
+                {
+                    Title = title,
+                    Content = content,
+                    PrimaryButtonText = "确定",
+                    CloseButtonText = "取消",
+                    DefaultButton = ContentDialogButton.Primary
+                };
+
+                var result = await dialog.ShowAsync();
+
+                if (result == ContentDialogResult.Primary)
+                {
+                    return passwordBox.Text;
+                }
+
+                return null;
+            });
+        }
+        catch (Exception ex)
+        {
+            LogError($"显示密码输入对话框失败: {title}", DEFAULT_LOG_TAG, ex);
+            return null;
+        }
+    }
+
+    /// <summary>
     /// 显示自定义内容对话框
     /// </summary>
     /// <param name="title">对话框标题</param>

@@ -647,6 +647,65 @@ internal static class DBContext
         _database.Update(tab);
     }
 
+    /// <summary>
+    /// 设置页签锁定密码
+    /// </summary>
+    /// <param name="tabId">页签唯一ID</param>
+    /// <param name="passwordHash">密码哈希值 (SHA256)</param>
+    public static void SetTabLock(string tabId, string passwordHash)
+    {
+        if (string.IsNullOrEmpty(tabId))
+            return;
+
+        var tab = GetNavigationTab(tabId);
+        tab.IsLocked = true;
+        tab.PasswordHash = passwordHash;
+        _database.Update(tab);
+    }
+
+    /// <summary>
+    /// 移除页签锁定
+    /// </summary>
+    /// <param name="tabId">页签唯一ID</param>
+    public static void RemoveTabLock(string tabId)
+    {
+        if (string.IsNullOrEmpty(tabId))
+            return;
+
+        var tab = GetNavigationTab(tabId);
+        tab.IsLocked = false;
+        tab.PasswordHash = null;
+        _database.Update(tab);
+    }
+
+    /// <summary>
+    /// 获取页签的密码哈希
+    /// </summary>
+    /// <param name="tabId">页签唯一ID</param>
+    /// <returns>密码哈希值，如果未设置则返回 null</returns>
+    public static string? GetTabPasswordHash(string tabId)
+    {
+        if (string.IsNullOrEmpty(tabId))
+            return null;
+
+        var tab = GetNavigationTab(tabId);
+        return tab.IsLocked ? tab.PasswordHash : null;
+    }
+
+    /// <summary>
+    /// 检查页签是否已锁定
+    /// </summary>
+    /// <param name="tabId">页签唯一ID</param>
+    /// <returns>是否已锁定</returns>
+    public static bool IsTabLocked(string tabId)
+    {
+        if (string.IsNullOrEmpty(tabId))
+            return false;
+
+        var tab = GetNavigationTab(tabId);
+        return tab.IsLocked && !string.IsNullOrEmpty(tab.PasswordHash);
+    }
+
     #endregion
 
     // 关闭数据库连接

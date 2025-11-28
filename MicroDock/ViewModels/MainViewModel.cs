@@ -20,6 +20,7 @@ public class MainViewModel : ViewModelBase, IDisposable
     private NavigationItemModel? _selectedNavItem;
     private object? _currentView;
     private bool _disposed = false;
+    private LockScreenViewModel? _lockScreenViewModel;
 
     public MainViewModel()
     {
@@ -33,6 +34,10 @@ public class MainViewModel : ViewModelBase, IDisposable
         ServiceLocator.Get<EventService>().Subscribe<PluginDeletedMessage>(OnPluginDeleted);
         ServiceLocator.Get<EventService>().Subscribe<PluginImportedMessage>(OnPluginImported);
         ServiceLocator.Get<EventService>().Subscribe<NavigationTabsConfigurationChangedMessage>(OnNavigationTabsConfigurationChanged);
+        
+        // 订阅页签锁定相关消息
+        ServiceLocator.Get<EventService>().Subscribe<TabLockedMessage>(OnTabLocked);
+        ServiceLocator.Get<EventService>().Subscribe<TabUnlockedMessage>(OnTabUnlocked);
 
         // 初始化NavigationView相关
         InitializeNavigationItems();
@@ -250,8 +255,57 @@ public class MainViewModel : ViewModelBase, IDisposable
     /// </summary>
     private void UpdateCurrentView()
     {
-        if (SelectedNavItem != null)
+        if (SelectedNavItem == null)
+            return;
+
+        // 检查页签是否需要解锁
+        if (SelectedNavItem.NeedsUnlock)
+        {
+            // 显示锁屏界面
+            ShowLockScreen(SelectedNavItem);
+        }
+        else
+        {
+            // 正常显示内容
             CurrentView = SelectedNavItem.Content;
+            
+            // 如果页签已解锁，刷新解锁时间
+            if (SelectedNavItem.IsLocked && SelectedNavItem.IsUnlocked)
+            {
+                ServiceLocator.GetService<TabLockService>()?.RefreshUnlockTime(SelectedNavItem.UniqueId);
+            }
+        }
+    }
+
+    /// <summary>
+    /// 显示锁屏界面
+    /// </summary>
+    private void ShowLockScreen(NavigationItemModel navItem)
+    {
+        _lockScreenViewModel = new LockScreenViewModel(navItem.UniqueId, navItem.Title);
+        _lockScreenViewModel.UnlockSucceeded += OnUnlockSucceeded;
+        CurrentView = new LockScreenView { DataContext = _lockScreenViewModel };
+    }
+
+    /// <summary>
+    /// 解锁成功回调
+    /// </summary>
+    private void OnUnlockSucceeded(object? sender, string tabId)
+    {
+        if (_lockScreenViewModel != null)
+        {
+            _lockScreenViewModel.UnlockSucceeded -= OnUnlockSucceeded;
+            _lockScreenViewModel = null;
+        }
+
+        // 更新视图显示真实内容
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            if (SelectedNavItem?.UniqueId == tabId)
+            {
+                CurrentView = SelectedNavItem.Content;
+            }
+        });
     }
 
     #region 事件处理
@@ -315,6 +369,36 @@ public class MainViewModel : ViewModelBase, IDisposable
                     item.IsVisible = tab.IsVisible;
             }
             SortNavItems();
+        });
+    }
+
+    /// <summary>
+    /// 处理页签加锁消息
+    /// </summary>
+    private void OnTabLocked(TabLockedMessage message)
+    {
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            // 如果当前选中的页签被加锁，显示锁屏
+            if (SelectedNavItem?.UniqueId == message.TabId && SelectedNavItem.IsLocked)
+            {
+                ShowLockScreen(SelectedNavItem);
+            }
+        });
+    }
+
+    /// <summary>
+    /// 处理页签解锁消息
+    /// </summary>
+    private void OnTabUnlocked(TabUnlockedMessage message)
+    {
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            // 如果当前选中的页签被解锁，显示内容
+            if (SelectedNavItem?.UniqueId == message.TabId)
+            {
+                CurrentView = SelectedNavItem.Content;
+            }
         });
     }
 
