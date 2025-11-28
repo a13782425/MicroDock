@@ -49,11 +49,51 @@ MicroDock PluginServer 遵循以下 API 设计原则：
 
 1. **HTTP 方法限制**: 仅使用 `GET` 和 `POST` 两种 HTTP 方法
 2. **URL 设计**: URL 路径中不携带动态参数，所有参数通过请求体传递
-3. **统一响应格式**: 所有 API 响应都采用统一的 JSON 格式
+3. **统一响应格式**: 所有 API 响应都采用 ApiResponse 包装格式
 4. **版本控制**: 支持插件的多版本管理，采用语义化版本号
 5. **安全优先**: 基于 JWT 的管理员权限控制，文件上传安全验证
 
-### 1.4 核心功能
+### 1.4 统一响应格式
+
+所有 API 端点（除文件下载外）都使用统一的 `ApiResponse` 格式：
+
+```json
+{
+  "success": boolean,
+  "message": "操作结果描述",
+  "data": <响应数据>
+}
+```
+
+**字段说明**:
+- `success`: 操作是否成功（`true`/`false`）
+- `message`: 操作结果的详细描述信息
+- `data`: 响应数据（成功时包含具体数据，失败时为 `null`）
+
+**成功响应示例**:
+```json
+{
+  "success": true,
+  "message": "操作成功",
+  "data": {
+    "name": "com.example.myplugin",
+    "display_name": "我的插件"
+  }
+}
+```
+
+**错误响应示例**:
+```json
+{
+  "success": false,
+  "message": "插件不存在",
+  "data": null
+}
+```
+
+**注意**: 文件下载接口（如插件下载、备份下载）直接返回文件流，不使用 ApiResponse 格式。
+
+### 1.5 核心功能
 
 - **插件管理**: 插件的上传、启用、禁用、删除、下载
 - **版本控制**: 插件的多版本管理和版本回溯
@@ -259,9 +299,11 @@ CORS_ORIGINS: List[str] = [
 {
   "success": true,
   "message": "登录成功",
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "token_type": "bearer",
-  "expires_in": 86400
+  "data": {
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "token_type": "bearer",
+    "expires_in": 86400
+  }
 }
 ```
 
@@ -281,12 +323,12 @@ CORS_ORIGINS: List[str] = [
 ```json
 {
   "success": true,
+  "message": "认证状态获取成功",
   "data": {
     "is_logged_in": true,
     "username": "admin",
     "is_admin": true
-  },
-  "message": "认证状态获取成功"
+  }
 }
 ```
 
@@ -294,11 +336,12 @@ CORS_ORIGINS: List[str] = [
 ```json
 {
   "success": true,
+  "message": "认证状态获取成功",
   "data": {
     "is_logged_in": false,
+    "username": null,
     "is_admin": false
-  },
-  "message": "认证状态获取成功"
+  }
 }
 ```
 
@@ -314,7 +357,8 @@ CORS_ORIGINS: List[str] = [
 ```json
 {
   "success": true,
-  "message": "登出成功"
+  "message": "登出成功",
+  "data": null
 }
 ```
 

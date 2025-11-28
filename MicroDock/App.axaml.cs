@@ -86,7 +86,10 @@ namespace MicroDock
                 {
 #if !DEBUG
                     SingleInstanceService.StopPipeServer();
+                    SingleInstanceService.ReleaseMutex();
 #endif
+                    ServiceLocator.GetService<AutoHideService>()?.Dispose();
+                    ServiceLocator.GetService<TopMostService>()?.Dispose();
                     ServiceLocator.GetService<DelayStorageService>()?.Dispose();
                     ServiceLocator.GetService<PluginService>()?.Dispose();
                     DBContext.Close();

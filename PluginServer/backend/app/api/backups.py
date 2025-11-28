@@ -13,14 +13,14 @@ from app.schemas.backup import (
     BackupDownloadRequest,
     BackupListResponse
 )
-from app.schemas.common import SuccessResponse
+from app.schemas.common import ApiResponse
 from app.services.backup_service import BackupService
 from app.utils.auth import require_admin, TokenData
 
 router = APIRouter(prefix="/api/backups", tags=["backups"])
 
 
-@router.post("/upload", response_model=BackupResponse, status_code=201)
+@router.post("/upload", response_model=ApiResponse[BackupResponse], status_code=201)
 async def upload_backup(
     file: UploadFile = File(..., description="备份文件"),
     user_key: str = Form(..., description="用户密钥"),
@@ -33,33 +33,29 @@ async def upload_backup(
     backup = await BackupService.create_backup(
         db, user_key, backup_type, file, description, plugin_name
     )
-    return backup
+    return ApiResponse.ok(data=backup, message="备份上传成功")
 
 
-@router.post("/list", response_model=BackupListResponse)
+@router.post("/list", response_model=ApiResponse[BackupListResponse])
 async def list_backups(
     request: BackupListRequest,
     db: AsyncSession = Depends(get_db)
 ):
     """获取用户的备份列表"""
     backups = await BackupService.get_user_backups(db, request.user_key)
-    return BackupListResponse(
-        total=len(backups),
-        backups=backups
-    )
+    data = BackupListResponse(total=len(backups), backups=backups)
+    return ApiResponse.ok(data=data, message="获取备份列表成功")
 
 
-@router.get("/list-all", response_model=BackupListResponse)
+@router.get("/list-all", response_model=ApiResponse[BackupListResponse])
 async def list_all_backups(
     db: AsyncSession = Depends(get_db),
     admin: TokenData = Depends(require_admin)
 ):
     """获取所有用户的备份列表（需要管理员权限）"""
     backups = await BackupService.get_all_backups(db)
-    return BackupListResponse(
-        total=len(backups),
-        backups=backups
-    )
+    data = BackupListResponse(total=len(backups), backups=backups)
+    return ApiResponse.ok(data=data, message="获取所有备份列表成功")
 
 
 @router.post("/download")
@@ -78,7 +74,7 @@ async def download_backup(
     )
 
 
-@router.post("/delete", response_model=SuccessResponse)
+@router.post("/delete", response_model=ApiResponse[None])
 async def delete_backup(
     request: BackupDownloadRequest,
     db: AsyncSession = Depends(get_db),
@@ -86,5 +82,4 @@ async def delete_backup(
 ):
     """删除备份（需要管理员权限）"""
     await BackupService.delete_backup(db, request.user_key, request.id)
-    return SuccessResponse(message="备份已删除")
-
+    return ApiResponse.ok(message="备份已删除")

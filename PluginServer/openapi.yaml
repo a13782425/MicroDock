@@ -722,6 +722,30 @@ components:
 
   # Schemas
   schemas:
+    # Standard API Response wrapper
+    ApiResponse:
+      type: object
+      description: 标准API响应包装器
+      properties:
+        success:
+          type: boolean
+          description: 操作是否成功
+          example: true
+        message:
+          type: string
+          description: 操作结果消息
+          example: "操作成功"
+        data:
+          description: 响应数据（成功时包含具体数据，失败时为null）
+          nullable: true
+      required:
+        - success
+        - message
+      example:
+        success: true
+        message: "操作成功"
+        data: null
+
     # Request schemas
     LoginRequest:
       type: object
@@ -888,16 +912,10 @@ components:
           description: 备份描述（可选）
           example: "程序配置备份"
 
-    # Response schemas
-    LoginResponse:
+      # Login Data schema (data field content)
+    LoginData:
       type: object
       properties:
-        success:
-          type: boolean
-          example: true
-        message:
-          type: string
-          example: "登录成功"
         token:
           type: string
           description: JWT访问令牌
@@ -909,41 +927,48 @@ components:
           type: integer
           description: 令牌有效期（秒）
           example: 86400
+      required:
+        - token
+        - token_type
+        - expires_in
+
+    # Auth Status Data schema (data field content)
+    AuthStatusData:
+      type: object
+      properties:
+        is_logged_in:
+          type: boolean
+          description: 是否已登录
+          example: true
+        username:
+          type: string
+          description: 当前登录用户名（仅管理员可见）
+          example: "admin"
+        is_admin:
+          type: boolean
+          description: 是否为管理员
+          example: true
+      required:
+        - is_logged_in
 
     AuthStatusResponse:
-      type: object
-      properties:
-        success:
-          type: boolean
-          example: true
-        data:
-          type: object
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - type: object
           properties:
-            is_logged_in:
-              type: boolean
-              description: 是否已登录
-              example: true
-            username:
-              type: string
-              description: 当前登录用户名（仅管理员可见）
-              example: "admin"
-            is_admin:
-              type: boolean
-              description: 是否为管理员
-              example: true
-        message:
-          type: string
-          example: "认证状态获取成功"
+            data:
+              allOf:
+                - $ref: '#/components/schemas/AuthStatusData'
 
     StandardResponse:
-      type: object
-      properties:
-        success:
-          type: boolean
-          example: true
-        message:
-          type: string
-          example: "操作成功"
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - type: object
+          properties:
+            data:
+              type: string
+              description: 操作结果信息
+              example: "操作成功"
 
     # Plugin-related response schemas
     Plugin:
@@ -1005,49 +1030,37 @@ components:
           example: "2023-12-01T14:30:22Z"
 
     PluginResponse:
-      type: object
-      properties:
-        success:
-          type: boolean
-          example: true
-        message:
-          type: string
-          example: "操作成功"
-        data:
-          $ref: '#/components/schemas/Plugin'
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/Plugin'
 
     PluginListResponse:
-      type: object
-      properties:
-        success:
-          type: boolean
-          example: true
-        message:
-          type: string
-          example: "插件列表获取成功"
-        data:
-          type: array
-          items:
-            $ref: '#/components/schemas/Plugin'
-
-    PluginDetailResponse:
-      type: object
-      properties:
-        success:
-          type: boolean
-          example: true
-        message:
-          type: string
-          example: "插件详情获取成功"
-        data:
-          type: object
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - type: object
           properties:
-            plugin:
-              $ref: '#/components/schemas/Plugin'
-            versions:
+            data:
               type: array
               items:
-                $ref: '#/components/schemas/PluginVersion'
+                $ref: '#/components/schemas/Plugin'
+
+    PluginDetailResponse:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                plugin:
+                  $ref: '#/components/schemas/Plugin'
+                versions:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/PluginVersion'
 
     # Plugin version schemas
     PluginVersion:
@@ -1104,42 +1117,30 @@ components:
           example: "2023-12-01T14:30:22Z"
 
     VersionResponse:
-      type: object
-      properties:
-        success:
-          type: boolean
-          example: true
-        message:
-          type: string
-          example: "操作成功"
-        data:
-          $ref: '#/components/schemas/PluginVersion'
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/PluginVersion'
 
     PluginVersionsResponse:
-      type: object
-      properties:
-        success:
-          type: boolean
-          example: true
-        message:
-          type: string
-          example: "版本列表获取成功"
-        data:
-          type: array
-          items:
-            $ref: '#/components/schemas/PluginVersion'
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/PluginVersion'
 
     VersionDetailResponse:
-      type: object
-      properties:
-        success:
-          type: boolean
-          example: true
-        message:
-          type: string
-          example: "版本详情获取成功"
-        data:
-          $ref: '#/components/schemas/PluginVersion'
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/PluginVersion'
 
     # Backup-related schemas
     Backup:
@@ -1185,90 +1186,74 @@ components:
           example: "2023-12-01T14:30:22Z"
 
     BackupResponse:
-      type: object
-      properties:
-        success:
-          type: boolean
-          example: true
-        message:
-          type: string
-          example: "备份上传成功"
-        data:
-          $ref: '#/components/schemas/Backup'
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/Backup'
 
     BackupListResponse:
-      type: object
-      properties:
-        success:
-          type: boolean
-          example: true
-        message:
-          type: string
-          example: "备份列表获取成功"
-        data:
-          type: object
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - type: object
           properties:
-            total:
-              type: integer
-              description: 备份总数
-              example: 5
-            backups:
-              type: array
-              items:
-                $ref: '#/components/schemas/Backup'
+            data:
+              type: object
+              properties:
+                total:
+                  type: integer
+                  description: 备份总数
+                  example: 5
+                backups:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Backup'
 
     # System response schemas
     HealthResponse:
-      type: object
-      properties:
-        success:
-          type: boolean
-          example: true
-        data:
-          type: object
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - type: object
           properties:
-            status:
-              type: string
-              description: 服务状态
-              example: "healthy"
-            version:
-              type: string
-              description: 服务器版本
-              example: "2.0.0"
-            database:
-              type: string
-              description: 数据库连接状态
-              example: "connected"
-        message:
-          type: string
-          example: "服务器运行正常"
+            data:
+              type: object
+              properties:
+                status:
+                  type: string
+                  description: 服务状态
+                  example: "healthy"
+                version:
+                  type: string
+                  description: 服务器版本
+                  example: "2.0.0"
+                database:
+                  type: string
+                  description: 数据库连接状态
+                  example: "connected"
 
     RootResponse:
-      type: object
-      properties:
-        success:
-          type: boolean
-          example: true
-        data:
-          type: object
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - type: object
           properties:
-            message:
-              type: string
-              example: "MicroDock PluginServer API"
-            version:
-              type: string
-              example: "2.0.0"
-            docs:
-              type: string
-              description: API文档地址
-              example: "/docs"
-            health:
-              type: string
-              description: 健康检查地址
-              example: "/api/health"
-        message:
-          type: string
-          example: "API服务运行中"
+            data:
+              type: object
+              properties:
+                message:
+                  type: string
+                  example: "MicroDock PluginServer API"
+                version:
+                  type: string
+                  example: "2.0.0"
+                docs:
+                  type: string
+                  description: API文档地址
+                  example: "/docs"
+                health:
+                  type: string
+                  description: 健康检查地址
+                  example: "/api/health"
 
   # Common responses
   responses:
@@ -1277,123 +1262,123 @@ components:
       content:
         application/json:
           schema:
-            type: object
-            properties:
-              success:
-                type: boolean
-                example: false
-              error:
-                type: string
-                description: 错误详细信息
-                example: "文件格式不支持，仅支持.zip格式"
-              message:
-                type: string
-                example: "请求处理失败"
+            allOf:
+              - $ref: '#/components/schemas/ApiResponse'
+              - type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "请求参数错误或文件格式不支持"
+                  data:
+                    nullable: true
 
     Unauthorized:
       description: 未授权访问或令牌无效
       content:
         application/json:
           schema:
-            type: object
-            properties:
-              success:
-                type: boolean
-                example: false
-              error:
-                type: string
-                description: 错误详细信息
-                example: "令牌无效或已过期"
-              message:
-                type: string
-                example: "认证失败"
+            allOf:
+              - $ref: '#/components/schemas/ApiResponse'
+              - type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "未授权访问或令牌无效"
+                  data:
+                    nullable: true
 
     Forbidden:
       description: 权限不足
       content:
         application/json:
           schema:
-            type: object
-            properties:
-              success:
-                type: boolean
-                example: false
-              error:
-                type: string
-                description: 错误详细信息
-                example: "需要管理员权限"
-              message:
-                type: string
-                example: "权限不足"
+            allOf:
+              - $ref: '#/components/schemas/ApiResponse'
+              - type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "权限不足"
+                  data:
+                    nullable: true
 
     NotFound:
       description: 资源不存在
       content:
         application/json:
           schema:
-            type: object
-            properties:
-              success:
-                type: boolean
-                example: false
-              error:
-                type: string
-                description: 错误详细信息
-                example: "插件不存在"
-              message:
-                type: string
-                example: "资源未找到"
+            allOf:
+              - $ref: '#/components/schemas/ApiResponse'
+              - type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "资源不存在"
+                  data:
+                    nullable: true
 
     Conflict:
       description: 资源冲突（如版本已存在）
       content:
         application/json:
           schema:
-            type: object
-            properties:
-              success:
-                type: boolean
-                example: false
-              error:
-                type: string
-                description: 错误详细信息
-                example: "插件版本1.0.0已存在"
-              message:
-                type: string
-                example: "资源冲突"
+            allOf:
+              - $ref: '#/components/schemas/ApiResponse'
+              - type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "资源冲突"
+                  data:
+                    nullable: true
 
     RequestEntityTooLarge:
       description: 文件过大
       content:
         application/json:
           schema:
-            type: object
-            properties:
-              success:
-                type: boolean
-                example: false
-              error:
-                type: string
-                description: 错误详细信息
-                example: "文件大小超过100MB限制"
-              message:
-                type: string
-                example: "文件过大"
+            allOf:
+              - $ref: '#/components/schemas/ApiResponse'
+              - type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "文件过大"
+                  data:
+                    nullable: true
 
     ValidationError:
       description: 请求参数验证失败
       content:
         application/json:
           schema:
-            type: object
-            properties:
-              success:
-                type: boolean
-                example: false
-              error:
-                type: string
-                description: 错误详细信息
-                example: "插件名称格式不正确"
-              message:
-                type: string
-                example: "参数验证失败"
+            allOf:
+              - $ref: '#/components/schemas/ApiResponse'
+              - type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "请求参数验证失败"
+                  data:
+                    nullable: true

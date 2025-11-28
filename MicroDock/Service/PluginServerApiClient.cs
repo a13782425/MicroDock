@@ -559,7 +559,7 @@ public class PluginServerApiClient
     public static async Task<ApiResponse<List<RemotePluginInfo>>> GetPluginListAsync()
     {
         // 注意：后端直接返回数组，而非 ApiResponse 包装
-        return await GetListDirectAsync<RemotePluginInfo>("/api/plugins/list");
+        return await GetAsync<List<RemotePluginInfo>>("/api/plugins/list");
     }
 
     /// <summary>
@@ -568,7 +568,7 @@ public class PluginServerApiClient
     public static async Task<ApiResponse<PluginDetailData>> GetPluginDetailAsync(string pluginName)
     {
         // 注意：后端直接返回对象，而非 ApiResponse 包装
-        return await PostDirectAsync<PluginDetailData>("/api/plugins/detail", new { name = pluginName });
+        return await PostJsonAsync<PluginDetailData>("/api/plugins/detail", new { name = pluginName });
     }
 
     /// <summary>
@@ -577,7 +577,7 @@ public class PluginServerApiClient
     public static async Task<ApiResponse<List<RemotePluginVersion>>> GetPluginVersionsAsync(string pluginName)
     {
         // 注意：后端直接返回数组，而非 ApiResponse 包装
-        return await PostListDirectAsync<RemotePluginVersion>("/api/plugins/versions", new { name = pluginName });
+        return await PostJsonAsync<List<RemotePluginVersion>>("/api/plugins/versions", new { name = pluginName });
     }
 
     /// <summary>
@@ -629,7 +629,7 @@ public class PluginServerApiClient
             string pluginName = new DirectoryInfo(pluginFolderPath).Name;
 
             // 创建临时 ZIP 文件
-            tempZipPath = Path.Combine(Path.GetTempPath(), $"plugin_upload_{pluginName}_{DateTime.Now:yyyyMMddHHmmss}.zip");
+            tempZipPath = Path.Combine(AppConfig.TEMP_BACKUP_FOLDER, $"plugin_upload_{pluginName}_{DateTime.Now:yyyyMMddHHmmss}.zip");
 
             Log.Information("[{Tag}] 开始压缩插件: {PluginName}", LOG_TAG, pluginName);
 
@@ -894,7 +894,7 @@ public class PluginServerApiClient
         try
         {
             // 创建临时 ZIP 文件
-            tempZipPath = Path.Combine(Path.GetTempPath(), $"plugin_backup_{pluginName}_{DateTime.Now:yyyyMMddHHmmss}.zip");
+            tempZipPath = Path.Combine(AppConfig.TEMP_BACKUP_FOLDER, $"plugin_backup_{pluginName}_{DateTime.Now:yyyyMMddHHmmss}.zip");
 
             Log.Information("[{Tag}] 开始压缩插件数据: {PluginName}", LOG_TAG, pluginName);
 
@@ -956,7 +956,7 @@ public class PluginServerApiClient
         try
         {
             // 下载备份文件
-            tempZipPath = Path.Combine(Path.GetTempPath(), $"plugin_restore_{pluginName}_{DateTime.Now:yyyyMMddHHmmss}.zip");
+            tempZipPath = Path.Combine(AppConfig.TEMP_BACKUP_FOLDER, $"plugin_restore_{pluginName}_{DateTime.Now:yyyyMMddHHmmss}.zip");
 
             var (downloadSuccess, downloadMessage, data) = await DownloadBackupAsync(pluginBackup.Id);
             if (!downloadSuccess || data == null)
@@ -1031,22 +1031,32 @@ public class PluginServerApiClient
         }
 
         string? tempZipPath = null;
+        string? tempDbPath = null;
 
         try
         {
-            // 创建临时 ZIP 文件
-            tempZipPath = Path.Combine(Path.GetTempPath(), $"app_backup_{DateTime.Now:yyyyMMddHHmmss}.zip");
+            // 创建临时文件路径
+            string timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
+            tempZipPath = Path.Combine(AppConfig.TEMP_BACKUP_FOLDER, $"app_backup_{timestamp}.zip");
+            tempDbPath = Path.Combine(AppConfig.TEMP_BACKUP_FOLDER, $"microdock_temp_{timestamp}");
 
             Log.Information("[{Tag}] 开始备份主程序数据", LOG_TAG);
 
-            // 压缩数据库文件
+            // 使用共享读取模式复制数据库文件到临时位置（避免文件锁定冲突）
+            using (var sourceStream = new FileStream(dbPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+            using (var destStream = new FileStream(tempDbPath, FileMode.Create, FileAccess.Write))
+            {
+                await sourceStream.CopyToAsync(destStream);
+            }
+
+            // 压缩临时数据库文件
             using (var archive = ZipFile.Open(tempZipPath, ZipArchiveMode.Create))
             {
-                archive.CreateEntryFromFile(dbPath, "microdock", CompressionLevel.Optimal);
+                archive.CreateEntryFromFile(tempDbPath, "microdock", CompressionLevel.Optimal);
             }
 
             // 上传到服务器
-            var result = await UploadBackupAsync(tempZipPath, "program", "主程序数据库备份");
+            var result = await UploadBackupAsync("", tempZipPath, "program", "主程序数据库备份");
 
             if (result.success)
             {
@@ -1058,7 +1068,7 @@ public class PluginServerApiClient
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "[{Tag}] 备份主程序数据失败", LOG_TAG);
+            LogError("备份主程序数据失败", LOG_TAG, ex);
             return (false, $"备份失败: {ex.Message}");
         }
         finally
@@ -1068,11 +1078,21 @@ public class PluginServerApiClient
             {
                 try { File.Delete(tempZipPath); } catch { }
             }
+            if (tempDbPath != null && File.Exists(tempDbPath))
+            {
+                try { File.Delete(tempDbPath); } catch { }
+            }
         }
     }
 
     /// <summary>
+    /// 待恢复数据库文件路径
+    /// </summary>
+    private static string PendingRestoreDbPath => Path.Combine(AppConfig.TEMP_BACKUP_FOLDER, "pending_restore_microdock");
+
+    /// <summary>
     /// 从服务器恢复主程序数据库
+    /// 由于数据库文件在运行时被占用，恢复操作会保存到临时位置，重启后生效
     /// </summary>
     public static async Task<(bool success, string message)> RestoreAppDataAsync()
     {
@@ -1094,14 +1114,12 @@ public class PluginServerApiClient
             return (false, "服务器上没有找到主程序备份数据");
         }
 
-        string dbPath = Path.Combine(AppConfig.CONFIG_FOLDER, "microdock");
         string? tempZipPath = null;
-        string? backupPath = null;
 
         try
         {
             // 下载备份文件
-            tempZipPath = Path.Combine(Path.GetTempPath(), $"app_restore_{DateTime.Now:yyyyMMddHHmmss}.zip");
+            tempZipPath = Path.Combine(AppConfig.TEMP_BACKUP_FOLDER, $"app_restore_{DateTime.Now:yyyyMMddHHmmss}.zip");
 
             (bool downloadSuccess, string downloadMessage, byte[] data) = await DownloadBackupAsync(appBackup.Id);
             if (!downloadSuccess || data == null)
@@ -1111,10 +1129,56 @@ public class PluginServerApiClient
 
             await File.WriteAllBytesAsync(tempZipPath, data);
 
-            Log.Information("[{Tag}] 开始恢复主程序数据", LOG_TAG);
+            Log.Information("[{Tag}] 开始准备恢复主程序数据", LOG_TAG);
+
+            // 解压到待恢复位置（重启后生效）
+            using (var archive = ZipFile.OpenRead(tempZipPath))
+            {
+                var entry = archive.GetEntry("microdock");
+                if (entry == null)
+                {
+                    return (false, "备份文件格式错误");
+                }
+                // 解压到待恢复位置
+                entry.ExtractToFile(PendingRestoreDbPath, true);
+            }
+
+            Log.Information("[{Tag}] 主程序数据已准备恢复，重启后生效", LOG_TAG);
+            return (true, "恢复数据已准备就绪");
+        }
+        catch (Exception ex)
+        {
+            LogError("恢复主程序数据失败", LOG_TAG, ex);
+            return (false, $"恢复失败: {ex.Message}");
+        }
+        finally
+        {
+            // 清理临时文件
+            if (tempZipPath != null && File.Exists(tempZipPath))
+            {
+                try { File.Delete(tempZipPath); } catch { }
+            }
+        }
+    }
+
+    /// <summary>
+    /// 检查并执行待恢复的数据库（应在程序启动时调用，数据库初始化之前）
+    /// </summary>
+    public static void ApplyPendingRestore()
+    {
+        try
+        {
+            if (!File.Exists(PendingRestoreDbPath))
+            {
+                return;
+            }
+
+            string dbPath = Path.Combine(AppConfig.CONFIG_FOLDER, "microdock");
+            string backupPath = dbPath + "_backup_" + DateTime.Now.ToString("yyyyMMddHHmmss");
+
+            Log.Information("[{Tag}] 检测到待恢复的数据库，开始恢复", LOG_TAG);
 
             // 备份当前数据库
-            backupPath = dbPath + "_backup_" + DateTime.Now.ToString("yyyyMMddHHmmss");
             if (File.Exists(dbPath))
             {
                 File.Copy(dbPath, backupPath, true);
@@ -1122,25 +1186,19 @@ public class PluginServerApiClient
 
             try
             {
-                // 解压并替换数据库
-                using (var archive = ZipFile.OpenRead(tempZipPath))
-                {
-                    var entry = archive.GetEntry("microdock");
-                    if (entry == null)
-                    {
-                        return (false, "备份文件格式错误");
-                    }
-                    entry.ExtractToFile(dbPath, true);
-                }
+                // 用待恢复文件替换当前数据库
+                File.Copy(PendingRestoreDbPath, dbPath, true);
 
-                // 删除临时备份
+                // 删除待恢复文件
+                File.Delete(PendingRestoreDbPath);
+
+                // 删除旧备份
                 if (File.Exists(backupPath))
                 {
                     File.Delete(backupPath);
                 }
 
-                Log.Information("[{Tag}] 主程序数据恢复成功，需要重启应用", LOG_TAG);
-                return (true, "恢复成功，请重启应用以生效");
+                Log.Information("[{Tag}] 主程序数据恢复成功", LOG_TAG);
             }
             catch
             {
@@ -1155,16 +1213,7 @@ public class PluginServerApiClient
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "[{Tag}] 恢复主程序数据失败", LOG_TAG);
-            return (false, $"恢复失败: {ex.Message}");
-        }
-        finally
-        {
-            // 清理临时文件
-            if (tempZipPath != null && File.Exists(tempZipPath))
-            {
-                try { File.Delete(tempZipPath); } catch { }
-            }
+            LogError("应用待恢复数据失败", LOG_TAG, ex);
         }
     }
 

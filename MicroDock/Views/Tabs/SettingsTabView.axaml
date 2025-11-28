@@ -475,7 +475,7 @@
 					<TextBlock Text="关于 MicroDock"
 							   FontSize="14"
 							   FontWeight="SemiBold"/>
-					<TextBlock Text="版本: 0.0.1.0"
+					<TextBlock Text="版本: 0.0.3.0"
 							   FontSize="12"
 							   Opacity="0.7"/>
 					<TextBlock Text="轻量级桌面工具栏应用"

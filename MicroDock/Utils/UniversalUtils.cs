@@ -1,11 +1,14 @@
 ﻿using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Controls.Notifications;
 using Avalonia.Threading;
 using FluentAvalonia.UI.Controls;
 using MicroDock.Service;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using System.Threading.Tasks;
 
 namespace MicroDock.Utils;
@@ -399,4 +402,70 @@ internal static class UniversalUtils
     {
         Dispatcher.UIThread.Post(action, priority);
     }
+
+    #region 应用重启方法
+
+    /// <summary>
+    /// 重启应用程序
+    /// </summary>
+    /// <param name="reason">重启原因，会传递给新实例作为启动参数</param>
+    public static void RestartApplication(string? reason = null)
+    {
+        try
+        {
+            string? exePath = Environment.ProcessPath;
+            if (string.IsNullOrEmpty(exePath))
+            {
+                LogError("无法获取当前程序路径", DEFAULT_LOG_TAG);
+                return;
+            }
+
+            // Restarter 程序与主程序在同一目录
+            string restarterPath = Path.Combine(
+                Path.GetDirectoryName(exePath)!,
+                "Restarter.exe"
+            );
+
+            if (!File.Exists(restarterPath))
+            {
+                LogError($"重启程序不存在: {restarterPath}", DEFAULT_LOG_TAG);
+                ShowNotification("重启失败", "重启程序不存在", AppNotificationType.Error);
+                return;
+            }
+
+            int currentPid = Environment.ProcessId;
+
+            // 构建启动参数
+            string arguments = $"\"{exePath}\" {currentPid}";
+            if (!string.IsNullOrEmpty(reason))
+            {
+                arguments += $" {reason}";
+            }
+
+            LogInformation($"正在启动重启程序: {restarterPath}", DEFAULT_LOG_TAG);
+
+            // 启动重启辅助程序
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = restarterPath,
+                Arguments = arguments,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            });
+            // 退出当前程序
+            if (Avalonia.Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+            {
+                AppConfig.RealExit = true;
+                desktop.Shutdown();
+            }
+            Environment.Exit(0);
+        }
+        catch (Exception ex)
+        {
+            LogError("重启应用失败", DEFAULT_LOG_TAG, ex);
+            ShowNotification("重启失败", ex.Message, AppNotificationType.Error);
+        }
+    }
+
+    #endregion
 }

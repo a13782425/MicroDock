@@ -22,10 +22,24 @@ api.interceptors.request.use(
     }
 )
 
-// 响应拦截器 - 处理错误和 401 状态
+// 响应拦截器 - 解析统一响应格式 { success, message, data }
 api.interceptors.response.use(
     response => {
-        return response.data
+        const result = response.data
+        
+        // 新的统一响应格式: { success, message, data }
+        if (typeof result === 'object' && 'success' in result) {
+            if (result.success) {
+                // 返回 data 字段，保持向后兼容
+                return result.data
+            } else {
+                // success=false，抛出错误
+                return Promise.reject(new Error(result.message || '请求失败'))
+            }
+        }
+        
+        // 兼容旧格式或文件下载等特殊响应
+        return result
     },
     error => {
         // 401 未授权 - token 过期或无效
@@ -38,9 +52,23 @@ api.interceptors.response.use(
             // 但这里只做简单处理，由组件自行决定
         }
         
-        // FastAPI 返回的错误格式是 { "detail": "错误信息" }
-        const detail = error.response?.data?.detail
-        const message = detail || error.response?.data?.message || error.message || '请求失败'
+        // 新的统一错误格式: { success: false, message: "...", data: null }
+        const responseData = error.response?.data
+        let message = '请求失败'
+        
+        if (responseData) {
+            // 优先使用新格式的 message
+            if (responseData.message) {
+                message = responseData.message
+            }
+            // 兼容旧的 detail 格式
+            else if (responseData.detail) {
+                message = responseData.detail
+            }
+        } else if (error.message) {
+            message = error.message
+        }
+        
         console.error('API Error:', message, error.response?.status)
         return Promise.reject(new Error(message))
     }

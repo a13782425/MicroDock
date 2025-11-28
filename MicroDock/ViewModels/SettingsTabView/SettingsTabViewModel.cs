@@ -43,7 +43,7 @@ public class SettingsTabViewModel : ViewModelBase
         BackupAppDataCommand = ReactiveCommand.CreateFromTask(BackupAppData);
         RestoreAppDataCommand = ReactiveCommand.CreateFromTask(RestoreAppData);
         InstallPluginCommand = ReactiveCommand.CreateFromTask(InstallPluginFromServer);
-        
+
         PluginSettings = new ObservableCollection<PluginSettingItem>();
         AvailableThemes = new ObservableCollection<MicroDock.Model.ThemeModel>();
         FlattenedThemeList = new ObservableCollection<object>();
@@ -494,8 +494,6 @@ public class SettingsTabViewModel : ViewModelBase
 
                         if (success)
                         {
-                            ShowNotification("导入成功", message);
-
                             // 刷新插件列表
                             LoadPluginSettings();
 
@@ -503,6 +501,24 @@ public class SettingsTabViewModel : ViewModelBase
                             if (!string.IsNullOrEmpty(pluginName))
                             {
                                 ServiceLocator.Get<EventService>().Publish(new PluginImportedMessage { PluginName = pluginName });
+                            }
+
+                            // 如果是更新插件（消息包含"重启"），询问是否立即重启
+                            if (message.Contains("重启"))
+                            {
+                                bool restart = await ShowConfirmDialogAsync(
+                                    "导入成功",
+                                    message,
+                                    "是否立即重启应用以完成更新？"
+                                );
+                                if (restart)
+                                {
+                                    Utils.UniversalUtils.RestartApplication("plugin_updated");
+                                }
+                            }
+                            else
+                            {
+                                ShowNotification("导入成功", message);
                             }
                         }
                         else
@@ -920,7 +936,16 @@ public class SettingsTabViewModel : ViewModelBase
 
             if (success)
             {
-                ShowNotification("恢复成功", message, AppNotificationType.Success);
+                // 询问用户是否立即重启
+                bool restart = await ShowConfirmDialogAsync(
+                    "恢复成功",
+                    message,
+                    "是否立即重启应用以使更改生效？"
+                );
+                if (restart)
+                {
+                    Utils.UniversalUtils.RestartApplication("backup_restored");
+                }
             }
             else
             {
@@ -930,7 +955,7 @@ public class SettingsTabViewModel : ViewModelBase
         catch (Exception ex)
         {
             ServiceLocator.Get<EventService>().Publish(new HideLoadingMessage());
-            Log.Error(ex, "恢复主程序数据失败");
+            LogError("恢复主程序数据失败", DEFAULT_LOG_TAG, ex);
             ShowNotification("恢复失败", ex.Message, AppNotificationType.Error);
         }
     }
@@ -977,7 +1002,7 @@ public class SettingsTabViewModel : ViewModelBase
             {
                 var isInstalled = installedPlugins.Contains(plugin.Name);
                 var installedPlugin = PluginSettings.FirstOrDefault(p => p.UniqueName == plugin.Name);
-                var needsUpdate = isInstalled && installedPlugin != null && 
+                var needsUpdate = isInstalled && installedPlugin != null &&
                                   !string.IsNullOrEmpty(plugin.CurrentVersion) &&
                                   plugin.CurrentVersion != installedPlugin.Version;
 
@@ -1074,7 +1099,7 @@ public class SettingsTabViewModel : ViewModelBase
             }
 
             // 保存到临时文件
-            string tempZipPath = Path.Combine(Path.GetTempPath(), $"plugin_install_{pluginName}_{DateTime.Now:yyyyMMddHHmmss}.zip");
+            string tempZipPath = Path.Combine(AppConfig.TEMP_BACKUP_FOLDER, $"plugin_install_{pluginName}_{DateTime.Now:yyyyMMddHHmmss}.zip");
             await File.WriteAllBytesAsync(tempZipPath, data);
 
             ServiceLocator.Get<EventService>().Publish(new ShowLoadingMessage($"正在安装 {displayName}..."));
@@ -1090,8 +1115,6 @@ public class SettingsTabViewModel : ViewModelBase
 
                 if (installSuccess)
                 {
-                    ShowNotification("安装成功", installMessage, AppNotificationType.Success);
-
                     // 刷新插件列表
                     LoadPluginSettings();
 
@@ -1099,6 +1122,24 @@ public class SettingsTabViewModel : ViewModelBase
                     if (!string.IsNullOrEmpty(installedPluginName))
                     {
                         ServiceLocator.Get<EventService>().Publish(new PluginImportedMessage { PluginName = installedPluginName });
+                    }
+
+                    // 如果是更新插件（消息包含"重启"），询问是否立即重启
+                    if (installMessage.Contains("重启"))
+                    {
+                        bool restart = await ShowConfirmDialogAsync(
+                            "安装成功",
+                            installMessage,
+                            "是否立即重启应用以完成更新？"
+                        );
+                        if (restart)
+                        {
+                            Utils.UniversalUtils.RestartApplication("plugin_updated");
+                        }
+                    }
+                    else
+                    {
+                        ShowNotification("安装成功", installMessage, AppNotificationType.Success);
                     }
                 }
                 else

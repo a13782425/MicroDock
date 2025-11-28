@@ -55,7 +55,7 @@ namespace MicroDock.Service
                 }
 
                 // 2. 创建临时目录并解压
-                tempDirectory = Path.Combine(Path.GetTempPath(), $"MicroDockPlugin_{Guid.NewGuid()}");
+                tempDirectory = Path.Combine(AppConfig.TEMP_IMPORT_FOLDER, $"MicroDockPlugin_{Guid.NewGuid()}");
                 Directory.CreateDirectory(tempDirectory);
 
                 Log.Information("正在解压插件到临时目录: {TempDir}", tempDirectory);
@@ -99,14 +99,10 @@ namespace MicroDock.Service
                         Log.Information("插件 {PluginName} 版本不同: {CurrentVersion} -> {NewVersion}，标记为待更新",
                             pluginName, currentVersion, newVersion);
 
-                        // 确保 PluginTemp 目录存在
-                        string pluginTempDirectory = Path.Combine(AppConfig.ROOT_PATH, "plugintemp");
-                        if (!Directory.Exists(pluginTempDirectory))
-                        {
-                            Directory.CreateDirectory(pluginTempDirectory);
-                        }
+                        // 使用统一的插件临时目录
+                        string pluginTempDirectory = AppConfig.TEMP_PLUGIN_FOLDER;
 
-                        // 解压到 PluginTemp/[PluginName] 目录
+                        // 解压到 temp/plugin/[PluginName] 目录
                         string tempPluginDir = Path.Combine(pluginTempDirectory, pluginName);
 
                         // 如果临时目录已存在，先删除
@@ -255,7 +251,7 @@ namespace MicroDock.Service
 
                 Log.Information("发现 {Count} 个待更新插件", pendingUpdatePlugins.Count);
 
-                string pluginTempDirectory = Path.Combine(AppConfig.ROOT_PATH, "plugintemp");
+                string pluginTempDirectory = AppConfig.TEMP_PLUGIN_FOLDER;
 
                 foreach (var pluginInfo in pendingUpdatePlugins)
                 {
@@ -411,7 +407,7 @@ namespace MicroDock.Service
                     }
                 }
 
-                // 清理 PluginTemp 目录中的残留文件
+                // 清理临时插件目录中的残留文件
                 if (Directory.Exists(pluginTempDirectory))
                 {
                     try
@@ -432,7 +428,7 @@ namespace MicroDock.Service
                     }
                     catch (Exception ex)
                     {
-                        Log.Warning(ex, "清理 PluginTemp 目录失败");
+                        Log.Warning(ex, "清理临时插件目录失败");
                     }
                 }
             }
@@ -1110,8 +1106,8 @@ namespace MicroDock.Service
                 // 1. 清除数据库中的待更新标记
                 DBContext.CancelPluginUpdate(pluginName);
 
-                // 2. 删除 PluginTemp 目录中的临时文件
-                string pluginTempDirectory = Path.Combine(AppConfig.ROOT_PATH, "plugintemp");
+                // 2. 删除临时插件目录中的临时文件
+                string pluginTempDirectory = AppConfig.TEMP_PLUGIN_FOLDER;
                 string tempPluginDir = Path.Combine(pluginTempDirectory, pluginName);
 
                 if (Directory.Exists(tempPluginDir))
