@@ -21,7 +21,7 @@
                 Padding="32">
             <StackPanel Spacing="20">
                 <!-- 锁图标 -->
-                <fa:SymbolIcon Symbol="Ruler"
+                <fa:SymbolIcon Symbol="Permissions"
                                FontSize="48"
                                HorizontalAlignment="Center"
                                Foreground="{DynamicResource AccentFillColorDefaultBrush}"/>

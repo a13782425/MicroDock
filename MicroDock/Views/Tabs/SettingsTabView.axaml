@@ -134,7 +134,7 @@
 													  VerticalAlignment="Center"
 													  IsVisible="{Binding IsLocked}">
 											<fa:InfoBadge.IconSource>
-												<fa:SymbolIconSource Symbol="Ruler"/>
+												<fa:SymbolIconSource Symbol="Permissions"/>
 											</fa:InfoBadge.IconSource>
 										</fa:InfoBadge>
 										

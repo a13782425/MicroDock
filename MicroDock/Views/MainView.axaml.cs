@@ -162,7 +162,7 @@ public partial class MainView : UserControl
         // 创建锁定徽章
         var lockBadge = new InfoBadge
         {
-            IconSource = new SymbolIconSource { Symbol = Symbol.Ruler },
+            IconSource = new SymbolIconSource { Symbol = Symbol.ProtectedDocument },
             IsVisible = navItem.IsLocked
         };
 
