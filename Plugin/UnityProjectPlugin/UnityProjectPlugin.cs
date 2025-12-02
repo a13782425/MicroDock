@@ -505,7 +505,7 @@ namespace UnityProjectPlugin
         }
 
         /// <summary>
-        /// 删除分组
+        /// 删除分组（如果分组下有项目，将项目转为无分组）
         /// </summary>
         public async Task DeleteGroupAsync(string id)
         {
@@ -515,17 +515,23 @@ namespace UnityProjectPlugin
                 throw new InvalidOperationException($"分组不存在");
             }
 
-            // 检查是否有项目使用该分组
-            int usageCount = GetGroupUsageCount(group.Name);
-            if (usageCount > 0)
+            // 将该分组下的所有项目转为无分组
+            List<UnityProject> projectsInGroup = _projects.Where(p => p.GroupName == group.Name).ToList();
+            foreach (UnityProject project in projectsInGroup)
             {
-                throw new InvalidOperationException($"无法删除分组 '{group.Name}'，还有 {usageCount} 个项目使用该分组");
+                project.GroupName = null;
+            }
+
+            // 如果有项目被修改，保存项目文件
+            if (projectsInGroup.Count > 0)
+            {
+                await SaveProjectsToFileAsync();
             }
 
             _groups.Remove(group);
             await SaveGroupsToFileAsync();
 
-            LogInfo($"已删除分组: {group.Name}");
+            LogInfo($"已删除分组: {group.Name}，{projectsInGroup.Count} 个项目已转为无分组");
         }
 
         /// <summary>

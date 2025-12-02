@@ -64,7 +64,7 @@ public partial class MainWindow : AppWindow
     {
         try
         {
-            var tabLockService = ServiceLocator.GetService<TabLockService>();
+            var tabLockService = ServiceLocator.Get<TabLockService>();
             tabLockService?.LockAll();
             Log.Debug("窗口最小化，已锁定所有页签");
         }

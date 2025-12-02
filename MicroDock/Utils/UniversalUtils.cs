@@ -408,8 +408,7 @@ internal static class UniversalUtils
             await Dispatcher.UIThread.InvokeAsync(async () =>
             {
                 // 获取主窗口的剪切板服务
-                if (Application.Current?.ApplicationLifetime is
-                    Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+                if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
                     && desktop.MainWindow != null)
                 {
                     var clipboard = desktop.MainWindow.Clipboard;

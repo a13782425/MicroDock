@@ -23,7 +23,7 @@ namespace MicroDock
                 // 1. 初始化所有服务（应用程序启动时）
                 ServiceLocator.InitializeServices();
                 // 设置 LogService 的 IsInit 标志
-                var logService = ServiceLocator.GetService<Service.LogService>();
+                var logService = ServiceLocator.Get<Service.LogService>();
                 if (logService != null)
                 {
                     logService.IsInit = true;
@@ -45,7 +45,7 @@ namespace MicroDock
                 ServiceLocator.Get<Service.TrayService>().Initialize();
                 
                 // 初始化平台服务 (Windows Hook)
-                ServiceLocator.GetService<Service.Platform.IPlatformService>()?.Initialize(mainWindow);
+                ServiceLocator.Get<Service.IPlatformService>()?.Initialize(mainWindow);
 
                 desktop.MainWindow = mainWindow;
 
@@ -88,11 +88,11 @@ namespace MicroDock
                     SingleInstanceService.StopPipeServer();
                     SingleInstanceService.ReleaseMutex();
 #endif
-                    ServiceLocator.GetService<AutoHideService>()?.Dispose();
-                    ServiceLocator.GetService<TopMostService>()?.Dispose();
-                    ServiceLocator.GetService<DelayStorageService>()?.Dispose();
-                    ServiceLocator.GetService<PluginService>()?.Dispose();
-                    ServiceLocator.GetService<TabLockService>()?.Dispose();
+                    ServiceLocator.Get<AutoHideService>()?.Dispose();
+                    ServiceLocator.Get<TopMostService>()?.Dispose();
+                    ServiceLocator.Get<DelayStorageService>()?.Dispose();
+                    ServiceLocator.Get<PluginService>()?.Dispose();
+                    ServiceLocator.Get<TabLockService>()?.Dispose();
                     DBContext.Close();
                     ServiceLocator.Clear();
                 };

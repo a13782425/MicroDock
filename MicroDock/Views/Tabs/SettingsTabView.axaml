@@ -13,7 +13,7 @@
 			 d:DesignHeight="350"
 			 x:Class="MicroDock.Views.SettingsTabView"
 			 x:DataType="vm:SettingsTabViewModel"
-             x:Name="Root">
+			 x:Name="Root">
 	<Design.DataContext>
 		<vm:SettingsTabViewModel />
 	</Design.DataContext>
@@ -102,7 +102,7 @@
 								 IconSource="Library"
 								 IsExpanded="False">
 				<StackPanel Margin="10">
-                    <TextBlock Text="导航栏顺序与密码锁定" FontWeight="SemiBold" Margin="0,0,0,8"/>
+					<TextBlock Text="导航栏顺序与密码锁定" FontWeight="SemiBold" Margin="0,0,0,8"/>
 					<controls:ReorderableListBox ItemsSource="{Binding NavigationTabs}"
 												 OrderChangedCommand="{Binding SaveTabOrderCommand}">
 						<controls:ReorderableListBox.ItemTemplate>
@@ -120,16 +120,16 @@
 											<ColumnDefinition Width="Auto"/> <!-- Lock Badge -->
 											<ColumnDefinition Width="Auto"/> <!-- Lock Button -->
 										</Grid.ColumnDefinitions>
-										
+
 										<CheckBox IsChecked="{Binding IsVisible}" Grid.Column="0" Margin="0,0,12,0" ToolTip.Tip="是否显示"/>
-										
+
 										<StackPanel Grid.Column="1" VerticalAlignment="Center">
-											 <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
-											 <TextBlock Text="{Binding UniqueId}" FontSize="10" Foreground="Gray" TextTrimming="CharacterEllipsis"/>
+											<TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
+											<TextBlock Text="{Binding UniqueId}" FontSize="10" Foreground="Gray" TextTrimming="CharacterEllipsis"/>
 										</StackPanel>
-										
+
 										<!-- 锁定徽章 -->
-										<fa:InfoBadge Grid.Column="2" 
+										<fa:InfoBadge Grid.Column="2"
 													  Margin="8,0"
 													  VerticalAlignment="Center"
 													  IsVisible="{Binding IsLocked}">
@@ -137,7 +137,7 @@
 												<fa:SymbolIconSource Symbol="Permissions"/>
 											</fa:InfoBadge.IconSource>
 										</fa:InfoBadge>
-										
+
 										<!-- 密码设置按钮 -->
 										<StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
 											<Button Content="{Binding PasswordButtonText}"
@@ -189,15 +189,15 @@
 												   Cursor="Hand"
 												   VerticalAlignment="Bottom"
 												   PointerPressed="PluginUniqueName_PointerPressed"/>
-										
+
 										<!-- 待删除标记 -->
-										<Border Background="Orange" CornerRadius="3" Padding="4,2" 
+										<Border Background="Orange" CornerRadius="3" Padding="4,2"
 												IsVisible="{Binding IsPendingDelete}">
 											<TextBlock Text="待删除" FontSize="10" Foreground="White"/>
 										</Border>
-										
+
 										<!-- 待更新标记 -->
-										<Border Background="DodgerBlue" CornerRadius="3" Padding="4,2" 
+										<Border Background="DodgerBlue" CornerRadius="3" Padding="4,2"
 												IsVisible="{Binding IsPendingUpdate}">
 											<TextBlock Text="{Binding PendingVersion, StringFormat='待更新至 v{0}'}" FontSize="10" Foreground="White"/>
 										</Border>
@@ -211,7 +211,7 @@
 													  IsEnabled="{Binding !IsPendingDelete}"
 													  OnContent="已启用"
 													  OffContent="已禁用"/>
-										
+
 										<!-- 更多操作下拉菜单 -->
 										<Button Content="更多 ▾">
 											<Button.Flyout>
@@ -232,13 +232,13 @@
 												</MenuFlyout>
 											</Button.Flyout>
 										</Button>
-										
+
 										<!-- 取消更新按钮（仅待更新时显示） -->
 										<Button Content="取消更新"
 												Command="{Binding CancelUpdateCommand}"
 												IsVisible="{Binding IsPendingUpdate}"
 												Classes="accent"/>
-										
+
 										<!-- 取消删除按钮（仅待删除时显示） -->
 										<Button Content="取消删除"
 												Command="{Binding CancelDeleteCommand}"

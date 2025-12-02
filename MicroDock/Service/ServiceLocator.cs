@@ -59,9 +59,9 @@ public static class ServiceLocator
     }
 
     /// <summary>
-    /// 获取服务（可能为空）
+    /// 获取服务（不可为空，如果未注册则抛出异常）
     /// </summary>
-    public static T? GetService<T>() where T : class
+    public static T? Get<T>() where T : class
     {
         lock (_lock)
         {
@@ -70,15 +70,7 @@ public static class ServiceLocator
                 return service as T;
             }
         }
-        return null;
-    }
-
-    /// <summary>
-    /// 获取服务（不可为空，如果未注册则抛出异常）
-    /// </summary>
-    public static T Get<T>() where T : class
-    {
-        return GetService<T>() ?? throw new InvalidOperationException($"服务 {typeof(T).Name} 未注册");
+        throw new InvalidOperationException($"服务 {typeof(T).Name} 未注册");
     }
 
     /// <summary>

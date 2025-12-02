@@ -18,7 +18,6 @@ public class ApplicationTabViewModel : ViewModelBase
     {
         _applications = new ObservableCollection<ApplicationDB>(DBContext.GetApplications());
         AddApplicationCommand = ReactiveCommand.CreateFromTask(AddApplication);
-        LaunchCommand = ReactiveCommand.Create<ApplicationDB>(LaunchApplication);
 
         // 监听数据库变化（简单实现）
         LoadApplications();
@@ -85,14 +84,6 @@ public class ApplicationTabViewModel : ViewModelBase
         // 保存到数据库并刷新列表
         DBContext.AddApplication(app, iconBytes);
         LoadApplications();
-    }
-
-    private void LaunchApplication(ApplicationDB app)
-    {
-        if (app != null)
-        {
-            IconService.TryStartProcess(app.FilePath);
-        }
     }
 
     public void RemoveApplication(ApplicationDB app)

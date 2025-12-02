@@ -479,11 +479,7 @@ public class PluginSettingItem : ViewModelBase
                 ShowNotification("打开失败", "插件文件夹不存在", AppNotificationType.Error);
                 return;
             }
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = pluginFolder,
-                UseShellExecute = true
-            });
+            ServiceLocator.Get<IPlatformService>()?.OpenExplorer(pluginFolder);
         }
         catch (Exception ex)
         {

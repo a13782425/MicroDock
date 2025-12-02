@@ -59,11 +59,11 @@ public class SettingsTabViewModel : ViewModelBase
         LoadPluginSettings();
 
         // 订阅服务状态变更通知
-        ServiceLocator.Get<EventService>().Subscribe<ServiceStateChangedMessage>(OnServiceStateChanged);
+        ServiceLocator.Get<EventService>()?.Subscribe<ServiceStateChangedMessage>(OnServiceStateChanged);
 
         // 订阅插件事件
-        ServiceLocator.Get<EventService>().Subscribe<PluginImportedMessage>(OnPluginImported);
-        ServiceLocator.Get<EventService>().Subscribe<PluginDeletedMessage>(OnPluginDeleted);
+        ServiceLocator.Get<EventService>()?.Subscribe<PluginImportedMessage>(OnPluginImported);
+        ServiceLocator.Get<EventService>()?.Subscribe<PluginDeletedMessage>(OnPluginDeleted);
     }
 
     /// <summary>
@@ -819,11 +819,7 @@ public class SettingsTabViewModel : ViewModelBase
             {
                 Directory.CreateDirectory(pluginDirectory);
             }
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = pluginDirectory,
-                UseShellExecute = true
-            });
+            ServiceLocator.Get<IPlatformService>()?.OpenExplorer(pluginDirectory);
         }
         catch (Exception ex)
         {
@@ -843,13 +839,13 @@ public class SettingsTabViewModel : ViewModelBase
             return;
         }
 
-        ServiceLocator.Get<EventService>().Publish(new ShowLoadingMessage("正在测试连接..."));
+        ServiceLocator.Get<EventService>()?.Publish(new ShowLoadingMessage("正在测试连接..."));
 
         try
         {
             var (success, message) = await PluginServerApiClient.TestConnectionAsync(ServerAddress);
 
-            ServiceLocator.Get<EventService>().Publish(new HideLoadingMessage());
+            ServiceLocator.Get<EventService>()?.Publish(new HideLoadingMessage());
 
             if (success)
             {
@@ -862,7 +858,7 @@ public class SettingsTabViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            ServiceLocator.Get<EventService>().Publish(new HideLoadingMessage());
+            ServiceLocator.Get<EventService>()?.Publish(new HideLoadingMessage());
             Log.Error(ex, "测试服务器连接失败");
             ShowNotification("测试失败", ex.Message, AppNotificationType.Error);
         }
@@ -893,13 +889,13 @@ public class SettingsTabViewModel : ViewModelBase
 
         if (!confirm) return;
 
-        ServiceLocator.Get<EventService>().Publish(new ShowLoadingMessage("正在备份主程序数据..."));
+        ServiceLocator.Get<EventService>()?.Publish(new ShowLoadingMessage("正在备份主程序数据..."));
 
         try
         {
             var (success, message) = await PluginServerApiClient.BackupAppDataAsync();
 
-            ServiceLocator.Get<EventService>().Publish(new HideLoadingMessage());
+            ServiceLocator.Get<EventService>()?.Publish(new HideLoadingMessage());
 
             if (success)
             {
@@ -913,7 +909,7 @@ public class SettingsTabViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            ServiceLocator.Get<EventService>().Publish(new HideLoadingMessage());
+            ServiceLocator.Get<EventService>()?.Publish(new HideLoadingMessage());
             Log.Error(ex, "备份主程序数据失败");
             ShowNotification("备份失败", ex.Message, AppNotificationType.Error);
         }
@@ -936,14 +932,14 @@ public class SettingsTabViewModel : ViewModelBase
             return;
         }
 
-        ServiceLocator.Get<EventService>().Publish(new ShowLoadingMessage("正在获取备份列表..."));
+        ServiceLocator.Get<EventService>()?.Publish(new ShowLoadingMessage("正在获取备份列表..."));
 
         try
         {
             // 获取备份列表
             var response = await PluginServerApiClient.GetBackupListAsync();
             
-            ServiceLocator.Get<EventService>().Publish(new HideLoadingMessage());
+            ServiceLocator.Get<EventService>()?.Publish(new HideLoadingMessage());
             
             if (!response.Success || response.Data?.Backups == null)
             {
@@ -993,11 +989,11 @@ public class SettingsTabViewModel : ViewModelBase
 
             if (!confirm) return;
 
-            ServiceLocator.Get<EventService>().Publish(new ShowLoadingMessage("正在恢复主程序数据..."));
+            ServiceLocator.Get<EventService>()?.Publish(new ShowLoadingMessage("正在恢复主程序数据..."));
 
             var (success, message) = await PluginServerApiClient.RestoreAppDataAsync(selectedBackup.Id);
 
-            ServiceLocator.Get<EventService>().Publish(new HideLoadingMessage());
+            ServiceLocator.Get<EventService>()?.Publish(new HideLoadingMessage());
 
             if (success)
             {
@@ -1019,7 +1015,7 @@ public class SettingsTabViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            ServiceLocator.Get<EventService>().Publish(new HideLoadingMessage());
+            ServiceLocator.Get<EventService>()?.Publish(new HideLoadingMessage());
             LogError("恢复主程序数据失败", DEFAULT_LOG_TAG, ex);
             ShowNotification("恢复失败", ex.Message, AppNotificationType.Error);
         }
@@ -1042,9 +1038,9 @@ public class SettingsTabViewModel : ViewModelBase
             if (needRefresh)
             {
                 // 重新获取备份列表
-                ServiceLocator.Get<EventService>().Publish(new ShowLoadingMessage("正在刷新备份列表..."));
+                ServiceLocator.Get<EventService>()?.Publish(new ShowLoadingMessage("正在刷新备份列表..."));
                 var response = await PluginServerApiClient.GetBackupListAsync();
-                ServiceLocator.Get<EventService>().Publish(new HideLoadingMessage());
+                ServiceLocator.Get<EventService>()?.Publish(new HideLoadingMessage());
                 
                 if (response.Success && response.Data?.Backups != null)
                 {
@@ -1137,9 +1133,9 @@ public class SettingsTabViewModel : ViewModelBase
                 
                 if (confirmDelete)
                 {
-                    ServiceLocator.Get<EventService>().Publish(new ShowLoadingMessage("正在删除备份..."));
+                    ServiceLocator.Get<EventService>()?.Publish(new ShowLoadingMessage("正在删除备份..."));
                     var (success, message) = await PluginServerApiClient.DeleteBackupAsync(itemToDelete.Id);
-                    ServiceLocator.Get<EventService>().Publish(new HideLoadingMessage());
+                    ServiceLocator.Get<EventService>()?.Publish(new HideLoadingMessage());
                     
                     if (success)
                     {
@@ -1237,14 +1233,14 @@ public class SettingsTabViewModel : ViewModelBase
             return;
         }
 
-        ServiceLocator.Get<EventService>().Publish(new ShowLoadingMessage("正在获取插件列表..."));
+        ServiceLocator.Get<EventService>()?.Publish(new ShowLoadingMessage("正在获取插件列表..."));
 
         try
         {
             // 获取服务器插件列表
             var response = await PluginServerApiClient.GetPluginListAsync();
 
-            ServiceLocator.Get<EventService>().Publish(new HideLoadingMessage());
+            ServiceLocator.Get<EventService>()?.Publish(new HideLoadingMessage());
 
             if (!response.Success || response.Data == null)
             {
@@ -1350,7 +1346,7 @@ public class SettingsTabViewModel : ViewModelBase
     /// </summary>
     private async Task DownloadAndInstallPluginAsync(string pluginName, string displayName)
     {
-        ServiceLocator.Get<EventService>().Publish(new ShowLoadingMessage($"正在下载 {displayName}..."));
+        ServiceLocator.Get<EventService>()?.Publish(new ShowLoadingMessage($"正在下载 {displayName}..."));
 
         try
         {
@@ -1359,7 +1355,7 @@ public class SettingsTabViewModel : ViewModelBase
 
             if (!success || data == null)
             {
-                ServiceLocator.Get<EventService>().Publish(new HideLoadingMessage());
+                ServiceLocator.Get<EventService>()?.Publish(new HideLoadingMessage());
                 ShowNotification("下载失败", message, AppNotificationType.Error);
                 return;
             }
@@ -1368,16 +1364,16 @@ public class SettingsTabViewModel : ViewModelBase
             string tempZipPath = Path.Combine(AppConfig.TEMP_BACKUP_FOLDER, $"plugin_install_{pluginName}_{DateTime.Now:yyyyMMddHHmmss}.zip");
             await File.WriteAllBytesAsync(tempZipPath, data);
 
-            ServiceLocator.Get<EventService>().Publish(new ShowLoadingMessage($"正在安装 {displayName}..."));
+            ServiceLocator.Get<EventService>()?.Publish(new ShowLoadingMessage($"正在安装 {displayName}..."));
 
             try
             {
                 // 调用 PluginService 导入插件
                 string pluginDirectory = Path.Combine(AppConfig.ROOT_PATH, "plugins");
-                PluginService pluginLoader = ServiceLocator.Get<PluginService>();
+                PluginService? pluginLoader = ServiceLocator.Get<PluginService>();
                 var (installSuccess, installMessage, installedPluginName) = await pluginLoader.ImportPluginAsync(tempZipPath, pluginDirectory);
 
-                ServiceLocator.Get<EventService>().Publish(new HideLoadingMessage());
+                ServiceLocator.Get<EventService>()?.Publish(new HideLoadingMessage());
 
                 if (installSuccess)
                 {
@@ -1387,7 +1383,7 @@ public class SettingsTabViewModel : ViewModelBase
                     // 发布插件导入事件
                     if (!string.IsNullOrEmpty(installedPluginName))
                     {
-                        ServiceLocator.Get<EventService>().Publish(new PluginImportedMessage { PluginName = installedPluginName });
+                        ServiceLocator.Get<EventService>()?.Publish(new PluginImportedMessage { PluginName = installedPluginName });
                     }
 
                     // 如果是更新插件（消息包含"重启"），询问是否立即重启
@@ -1424,7 +1420,7 @@ public class SettingsTabViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            ServiceLocator.Get<EventService>().Publish(new HideLoadingMessage());
+            ServiceLocator.Get<EventService>()?.Publish(new HideLoadingMessage());
             Log.Error(ex, "下载安装插件失败: {PluginName}", pluginName);
             ShowNotification("安装失败", ex.Message, AppNotificationType.Error);
         }

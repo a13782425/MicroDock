@@ -310,7 +310,7 @@ namespace UnityProjectPlugin.ViewModels
                 try
                 {
                     await _plugin.RemoveProjectAsync(project.Path);
-                    LoadProjects();
+                    RemoveProjectFromView(project);
                     
                     _plugin.Context?.ShowInAppNotification(
                         "删除成功",
@@ -328,6 +328,31 @@ namespace UnityProjectPlugin.ViewModels
                     _plugin.Context?.LogError("删除项目失败", ex);
                 }
             }
+        }
+
+        /// <summary>
+        /// 从视图中移除项目（增量更新，不刷新整个列表）
+        /// </summary>
+        private void RemoveProjectFromView(UnityProject project)
+        {
+            // 从主列表移除
+            _projects.Remove(project);
+            
+            // 从过滤列表移除
+            _filteredProjects.Remove(project);
+            
+            // 从分组视图移除
+            foreach (ProjectGroupView groupView in _groupedProjects)
+            {
+                if (groupView.Projects.Remove(project))
+                {
+                    // 保留空分组，不移除
+                    break;
+                }
+            }
+            
+            // 更新 HasProjects 状态
+            HasProjects = _projects.Count > 0;
         }
 
         /// <summary>
@@ -402,12 +427,62 @@ namespace UnityProjectPlugin.ViewModels
             try
             {
                 await _plugin.DeleteGroupAsync(group.Id);
-                LoadProjects();
+                RemoveGroupFromView(group);
+                
+                _plugin.Context?.ShowInAppNotification(
+                    "删除成功",
+                    $"已删除分组: {group.Name}",
+                    MicroDock.Plugin.NotificationType.Success
+                );
             }
             catch (Exception ex)
             {
+                _plugin.Context?.ShowInAppNotification(
+                    "删除失败",
+                    ex.Message,
+                    MicroDock.Plugin.NotificationType.Error
+                );
                 _plugin.Context?.LogError("删除分组失败", ex);
             }
+        }
+
+        /// <summary>
+        /// 从视图中移除分组（增量更新，不刷新整个列表）
+        /// 将该分组下的项目移动到"未分组"
+        /// </summary>
+        private void RemoveGroupFromView(ProjectGroup group)
+        {
+            // 找到要删除的分组视图
+            ProjectGroupView? groupViewToRemove = _groupedProjects.FirstOrDefault(g => g.GroupName == group.Name);
+            if (groupViewToRemove == null)
+            {
+                return;
+            }
+
+            // 获取该分组下的所有项目
+            List<UnityProject> projectsToMove = groupViewToRemove.Projects.ToList();
+
+            // 如果有项目需要移动到"未分组"
+            if (projectsToMove.Count > 0)
+            {
+                // 查找或创建"未分组"视图
+                ProjectGroupView? ungroupedView = _groupedProjects.FirstOrDefault(g => g.GroupName == "未分组");
+                if (ungroupedView == null)
+                {
+                    ungroupedView = new ProjectGroupView { GroupName = "未分组" };
+                    _groupedProjects.Add(ungroupedView);
+                }
+
+                // 将项目移动到"未分组"，并更新项目的 GroupName
+                foreach (UnityProject project in projectsToMove)
+                {
+                    project.GroupName = null;
+                    ungroupedView.Projects.Add(project);
+                }
+            }
+
+            // 从分组视图中移除该分组
+            _groupedProjects.Remove(groupViewToRemove);
         }
 
         /// <summary>

@@ -1,18 +1,27 @@
 using System;
 using Avalonia.Controls;
 
-namespace MicroDock.Service.Platform;
+namespace MicroDock.Service;
 
 /// <summary>
 /// 平台特定服务接口
 /// </summary>
-public interface IPlatformService
+public interface IPlatformService : IDisposable
 {
     /// <summary>
     /// 初始化服务（传入主窗口）
     /// </summary>
     void Initialize(Window window);
+    /// <summary>
+    /// 尝试启动进程
+    /// </summary>
+    bool TryStartProcess(string path);
 
+    /// <summary>
+    /// 在资源管理器打开文件夹
+    /// </summary>
+    /// <param name="filePath"></param>
+    bool OpenExplorer(string filePath);
     /// <summary>
     /// 注册全局热键
     /// </summary>

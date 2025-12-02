@@ -272,7 +272,7 @@ public class MainViewModel : ViewModelBase, IDisposable
             // 如果页签已解锁，刷新解锁时间
             if (SelectedNavItem.IsLocked && SelectedNavItem.IsUnlocked)
             {
-                ServiceLocator.GetService<TabLockService>()?.RefreshUnlockTime(SelectedNavItem.UniqueId);
+                ServiceLocator.Get<TabLockService>()?.RefreshUnlockTime(SelectedNavItem.UniqueId);
             }
         }
     }

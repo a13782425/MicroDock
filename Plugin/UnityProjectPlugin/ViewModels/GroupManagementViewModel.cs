@@ -85,22 +85,6 @@ namespace UnityProjectPlugin.ViewModels
         }
 
         /// <summary>
-        /// 删除分组
-        /// </summary>
-        public async System.Threading.Tasks.Task DeleteGroupAsync(string id)
-        {
-            try
-            {
-                await _plugin.DeleteGroupAsync(id);
-                LoadGroups();
-            }
-            catch (Exception ex)
-            {
-                throw new Exception($"删除分组失败: {ex.Message}", ex);
-            }
-        }
-
-        /// <summary>
         /// 获取分组使用数量
         /// </summary>
         public int GetGroupUsageCount(string groupName)

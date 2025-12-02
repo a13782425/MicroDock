@@ -1,17 +1,19 @@
-using System;
-using System.Collections.Generic;
-using System.Runtime.InteropServices;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Win32.Input;
 using Serilog;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Runtime.InteropServices;
 
-namespace MicroDock.Service.Platform.Windows;
+namespace MicroDock.Service;
 
 /// <summary>
 /// Windows 平台服务实现
 /// </summary>
-public class WindowsPlatformService : IPlatformService, IDisposable
+public class WindowsPlatformService : IPlatformService
 {
     private const int WM_HOTKEY = 0x0312;
     private IntPtr _handle;
@@ -25,7 +27,7 @@ public class WindowsPlatformService : IPlatformService, IDisposable
     {
         if (_isInitialized) return;
         _window = window;
-        
+
         var platformHandle = window.TryGetPlatformHandle();
         if (platformHandle != null)
         {
@@ -40,23 +42,73 @@ public class WindowsPlatformService : IPlatformService, IDisposable
             // 这里使用简单的消息循环监听可能比较困难。
             // 替代方案：启动一个不可见的 WinForms/WPF 窗口或者使用 HwndSource (WPF)
             // 但我们不想引入 WPF/WinForms。
-            
+
             // 实际上，我们可以通过 P/Invoke SetWindowLongPtr 来子类化窗口过程。
             // 但这比较危险。
-            
+
             // 另一个方案：轮询 GetMessage? 不行。
-            
+
             // 幸运的是，我们只需要在注册热键时工作。
             // 我们先尝试子类化窗口过程。
-            
+
             _newWndProcDelegate = new WndProcDelegate(CustomWndProc);
             _oldWndProc = SetWindowLongPtr(_handle, GWL_WNDPROC, Marshal.GetFunctionPointerForDelegate(_newWndProcDelegate));
-            
+
             _isInitialized = true;
             Log.Information("WindowsPlatformService initialized with handle: {Handle}", _handle);
         }
     }
 
+    public bool TryStartProcess(string path)
+    {
+        try
+        {
+            ProcessStartInfo psi = new ProcessStartInfo(path)
+            {
+                UseShellExecute = true
+            };
+            Process? process = Process.Start(psi);
+            bool success = process != null;
+
+            if (success)
+            {
+                Log.Information("成功启动进程: {Path}", path);
+            }
+            else
+            {
+                Log.Warning("启动进程失败(返回null): {Path}", path);
+            }
+
+            return success;
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "启动进程失败: {Path}", path);
+            return false;
+        }
+    }
+    public bool OpenExplorer(string filePath)
+    {
+        try
+        {
+            if (File.Exists(filePath))
+            {
+                // 打开文件所在文件夹并选中该文件
+                Process.Start("explorer.exe", $"/select,\"{filePath}\"");
+            }
+            else if (Directory.Exists(filePath))
+            {
+                // 打开文件夹
+                Process.Start("explorer.exe", $"\"{filePath}\"");
+            }
+            return true;
+        }
+        catch
+        {
+            // 静默失败
+            return false;
+        }
+    }
     public bool RegisterHotKey(string uniqueId, string keyCombination, Action callback)
     {
         if (!_isInitialized || _handle == IntPtr.Zero)
@@ -100,7 +152,7 @@ public class WindowsPlatformService : IPlatformService, IDisposable
             Log.Information("Unregistered hotkey: {UniqueId} (ID: {Id})", uniqueId, id);
         }
     }
-    
+
     public void Dispose()
     {
         // 恢复窗口过程
@@ -108,7 +160,7 @@ public class WindowsPlatformService : IPlatformService, IDisposable
         {
             SetWindowLongPtr(_handle, GWL_WNDPROC, _oldWndProc);
         }
-        
+
         // 注销所有热键
         foreach (var id in _idMapping.Values)
         {
@@ -134,7 +186,7 @@ public class WindowsPlatformService : IPlatformService, IDisposable
 
     // Subclassing
     private const int GWL_WNDPROC = -4;
-    
+
     private delegate IntPtr WndProcDelegate(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
     private WndProcDelegate? _newWndProcDelegate; // Keep reference to prevent GC
     private IntPtr _oldWndProc;
@@ -177,7 +229,7 @@ public class WindowsPlatformService : IPlatformService, IDisposable
     {
         modifiers = 0;
         vkey = 0;
-        
+
         if (string.IsNullOrWhiteSpace(combo)) return false;
 
         var parts = combo.Split('+', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
@@ -211,10 +263,10 @@ public class WindowsPlatformService : IPlatformService, IDisposable
                         // Try single character
                         if (part.Length == 1)
                         {
-                             // Very basic mapping for letters/numbers
-                             // This might need improvement
-                             // Avalonia Key enum is preferred
-                             return false;
+                            // Very basic mapping for letters/numbers
+                            // This might need improvement
+                            // Avalonia Key enum is preferred
+                            return false;
                         }
                     }
                     break;

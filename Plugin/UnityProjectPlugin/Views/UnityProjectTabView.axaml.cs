@@ -23,13 +23,11 @@ namespace UnityProjectPlugin.Views
         /// </summary>
         public UnityProjectPlugin Plugin => _plugin;
 
-        // UI 控件引用
-        private TextBox? _searchTextBox;
-        private ToggleButton? _groupViewToggle;
-        private Button? _addProjectButton;
-        private Button? _emptyAddButton;
-        private ItemsControl? _tileView;
-        private ItemsControl? _groupView;
+        /// <summary>
+        /// 公开 ViewModel 供子控件使用
+        /// </summary>
+        public UnityProjectTabViewModel ViewModel => _viewModel;
+
 
         public UnityProjectTabView(UnityProjectPlugin plugin)
         {
@@ -39,31 +37,14 @@ namespace UnityProjectPlugin.Views
             var filePickerService = new FilePickerService(this);
             _viewModel = new UnityProjectTabViewModel(plugin, filePickerService);
 
-            InitializeComponent();
-            InitializeControls();
+            InitializeComponent(true);
+            // 设置 DataContext
+            DataContext = _viewModel;
         }
 
         public string TabName => "Unity项目";
 
         public IconSymbolEnum IconSymbol => IconSymbolEnum.GamesFilled;
-
-        private void InitializeComponent()
-        {
-            AvaloniaXamlLoader.Load(this);
-        }
-
-        private void InitializeControls()
-        {
-            _searchTextBox = this.FindControl<TextBox>("SearchTextBox");
-            _groupViewToggle = this.FindControl<ToggleButton>("GroupViewToggle");
-            _addProjectButton = this.FindControl<Button>("AddProjectButton");
-            _emptyAddButton = this.FindControl<Button>("EmptyAddButton");
-            _tileView = this.FindControl<ItemsControl>("TileView");
-            _groupView = this.FindControl<ItemsControl>("GroupView");
-
-            // 设置 DataContext
-            DataContext = _viewModel;
-        }
 
         /// <summary>
         /// 刷新项目列表（供卡片调用）

@@ -52,38 +52,6 @@ public static class IconService
             return null;
         }
     }
-
-    /// <summary>
-    /// 尝试启动进程
-    /// </summary>
-    public static bool TryStartProcess(string path)
-    {
-        try
-        {
-            ProcessStartInfo psi = new ProcessStartInfo(path)
-            {
-                UseShellExecute = true
-            };
-            Process? process = Process.Start(psi);
-            bool success = process != null;
-            
-            if (success)
-            {
-                Log.Information("成功启动进程: {Path}", path);
-            }
-            else
-            {
-                Log.Warning("启动进程失败(返回null): {Path}", path);
-            }
-            
-            return success;
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "启动进程失败: {Path}", path);
-            return false;
-        }
-    }
 }
 
 

@@ -10,12 +10,20 @@
 			 x:DataType="db:ApplicationDB"
 			 Background="Transparent"
 			 >
+	<!-- 添加右键菜单 -->
+	<UserControl.ContextMenu>
+		<ContextMenu>
+			<MenuItem x:Name="OpenMenuItem" Header="打开"/>
+			<MenuItem x:Name="OpenLocationMenuItem" Header="打开文件位置"/>
+			<Separator/>
+			<MenuItem x:Name="DeleteMenuItem" Header="删除"/>
+		</ContextMenu>
+	</UserControl.ContextMenu>
 	<Border Width="72"
 			Height="96"
 			Background="Transparent"
 			Cursor="Hand"
 			DoubleTapped="OnDoubleTapped"
-			PointerPressed="OnPointerPressed"
 			ToolTip.Tip="{Binding Name}">
 		<Border.Styles>
 			<Style Selector="Border:pointerenter">

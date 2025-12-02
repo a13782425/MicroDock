@@ -1,41 +1,43 @@
 <UserControl xmlns="https://github.com/avaloniaui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:vm="clr-namespace:MicroDock.ViewModels"
-             xmlns:controls="clr-namespace:MicroDock.Views.Controls"
-             mc:Ignorable="d" d:DesignWidth="500" d:DesignHeight="350"
-             x:Class="MicroDock.Views.ApplicationTabView"
-             x:DataType="vm:ApplicationTabViewModel">
-    <UserControl.DataContext>
-        <vm:ApplicationTabViewModel/>
-    </UserControl.DataContext>
-    <StackPanel DragDrop.AllowDrop="True" Background="Transparent">
-        
-        <Button Content="+ 添加应用"
-                Command="{Binding AddApplicationCommand}"
-                HorizontalAlignment="Left"
-                Margin="0,0,0,10"/>
+			 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+			 xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+			 xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+			 xmlns:vm="clr-namespace:MicroDock.ViewModels"
+			 xmlns:controls="clr-namespace:MicroDock.Views.Controls"
+			 mc:Ignorable="d" d:DesignWidth="500" d:DesignHeight="350"
+			 x:Class="MicroDock.Views.ApplicationTabView"
+			 x:DataType="vm:ApplicationTabViewModel">
+	<UserControl.DataContext>
+		<vm:ApplicationTabViewModel/>
+	</UserControl.DataContext>
+	<StackPanel DragDrop.AllowDrop="True" Background="Transparent">
 
-        <!-- 网格式图标展示 -->
-        <ItemsControl ItemsSource="{Binding Applications}"
-                      Margin="0,10,0,0">
-            <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate>
-                    <WrapPanel Orientation="Horizontal" ItemSpacing="2"/>
-                </ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
-            <ItemsControl.ItemTemplate>
-                <DataTemplate>
-                    <controls:AppItemControl />
-                </DataTemplate>
-            </ItemsControl.ItemTemplate>
-        </ItemsControl>
+		<!-- 添加右键菜单 -->
+		<StackPanel.ContextMenu>
+			<ContextMenu>
+				<MenuItem Header="添加应用" Command="{Binding AddApplicationCommand}"/>
+			</ContextMenu>
+		</StackPanel.ContextMenu>
 
-        <TextBlock Text="暂无应用程序，请拖入文件或点击上方按钮添加"
-                   Foreground="Gray"
-                   HorizontalAlignment="Center"
-                   Margin="0,20,0,0"
-                   IsVisible="{Binding !HasApplications}"/>
-    </StackPanel>
+		<!-- 网格式图标展示 -->
+		<ItemsControl ItemsSource="{Binding Applications}"
+					  Margin="0,10,0,0">
+			<ItemsControl.ItemsPanel>
+				<ItemsPanelTemplate>
+					<WrapPanel Orientation="Horizontal" ItemSpacing="2"/>
+				</ItemsPanelTemplate>
+			</ItemsControl.ItemsPanel>
+			<ItemsControl.ItemTemplate>
+				<DataTemplate>
+					<controls:AppItemControl />
+				</DataTemplate>
+			</ItemsControl.ItemTemplate>
+		</ItemsControl>
+
+		<TextBlock Text="暂无应用程序，请拖入文件或右键添加"
+				   Foreground="Gray"
+				   HorizontalAlignment="Center"
+				   Margin="0,20,0,0"
+				   IsVisible="{Binding !HasApplications}"/>
+	</StackPanel>
 </UserControl>

@@ -106,7 +106,7 @@ public class NavigationItemModel : ReactiveObject, IDisposable
         }
         else
         {
-            var tabLockService = ServiceLocator.GetService<TabLockService>();
+            var tabLockService = ServiceLocator.Get<TabLockService>();
             _isUnlocked = tabLockService?.IsUnlocked(UniqueId) ?? false;
         }
         this.RaisePropertyChanged(nameof(IsUnlocked));

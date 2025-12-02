@@ -63,7 +63,7 @@ public class NavigationTabSettingItem : ReactiveObject, IDisposable
             .DisposeWith(_cleanUp);
 
         // 订阅锁定状态变更消息
-        ServiceLocator.Get<EventService>().Subscribe<TabLockStateChangedMessage>(OnTabLockStateChanged);
+        ServiceLocator.Get<EventService>()?.Subscribe<TabLockStateChangedMessage>(OnTabLockStateChanged);
     }
 
     private void OnTabLockStateChanged(TabLockStateChangedMessage message)
@@ -140,7 +140,7 @@ public class NavigationTabSettingItem : ReactiveObject, IDisposable
                     DBContext.UpdateNavigationTab(tab);
 
                     // Re-register hotkey
-                    var platformService = ServiceLocator.GetService<MicroDock.Service.Platform.IPlatformService>();
+                    var platformService = ServiceLocator.Get<MicroDock.Service.IPlatformService>();
                     if (string.IsNullOrEmpty(value))
                     {
                         platformService?.UnregisterHotKey(UniqueId);
@@ -149,8 +149,8 @@ public class NavigationTabSettingItem : ReactiveObject, IDisposable
                     {
                         platformService?.RegisterHotKey(UniqueId, value, () =>
                         {
-                            ServiceLocator.Get<EventService>().Publish(new NavigateToTabMessage(uniqueId: UniqueId));
-                            ServiceLocator.Get<EventService>().Publish(new MainWindowShowMessage());
+                            ServiceLocator.Get<EventService>()?.Publish(new NavigateToTabMessage(uniqueId: UniqueId));
+                            ServiceLocator.Get<EventService>()?.Publish(new MainWindowShowMessage());
                         });
                     }
                 }

@@ -11,6 +11,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reflection.Metadata;
 using System.Threading.Tasks;
 using UnityProjectPlugin.Models;
 
@@ -21,102 +22,83 @@ namespace UnityProjectPlugin.Views
     /// </summary>
     public partial class ProjectCard : UserControl
     {
-        private SplitButton? _openSplitButton;
-        private MenuItem? _deleteMenuItem;
-        private MenuItem? _openDirectoryMenuItem;
-        private TextBlock? _projectNameDisplay;
-        private TextBox? _projectNameEditor;
-        private TextBlock? _projectPathText;
-        private Button? _groupButton;
-        private TextBlock? _groupButtonText;
-        private ComboBox? _groupComboBox;
-        private ItemsControl? _groupsListControl;
-        private TextBox? _newGroupNameTextBox;
-        private Button? _addGroupButton;
-        private Image? _projectIcon;
+        //private SplitButton? _openSplitButton;
+        //private MenuItem? _deleteMenuItem;
+        //private MenuItem? _openDirectoryMenuItem;
+        //private TextBlock? ProjectNameDisplay;
+        //private TextBox? ProjectNameEditor;
+        //private TextBlock? _projectPathText;
+        //private Button? _groupButton;
+        //private TextBlock? GroupButtonText;
+        //private ComboBox? GroupComboBox;
+        //private ItemsControl? GroupsListControl;
+        //private TextBox? NewGroupNameTextBox;
+        //private Button? _addGroupButton;
+        //private Image? ProjectIcon;
         private UnityProjectPlugin? _plugin;
         private bool _isEditingName = false;
         private string _originalName = string.Empty;
 
         public ProjectCard()
         {
-            InitializeComponent();
-            InitializeControls();
+            InitializeComponent(true);
             AttachEventHandlers();
-        }
-
-        private void InitializeComponent()
-        {
-            AvaloniaXamlLoader.Load(this);
-        }
-
-        private void InitializeControls()
-        {
-            _openSplitButton = this.FindControl<SplitButton>("OpenSplitButton");
-            _deleteMenuItem = this.FindControl<MenuItem>("DeleteMenuItem");
-            _openDirectoryMenuItem = this.FindControl<MenuItem>("OpenDirectoryMenuItem");
-            _projectNameDisplay = this.FindControl<TextBlock>("ProjectNameDisplay");
-            _projectNameEditor = this.FindControl<TextBox>("ProjectNameEditor");
-            _projectPathText = this.FindControl<TextBlock>("ProjectPathText");
-            _groupButton = this.FindControl<Button>("GroupButton");
-            _groupButtonText = this.FindControl<TextBlock>("GroupButtonText");
-            _groupComboBox = this.FindControl<ComboBox>("GroupComboBox");
-            _groupsListControl = this.FindControl<ItemsControl>("GroupsListControl");
-            _newGroupNameTextBox = this.FindControl<TextBox>("NewGroupNameTextBox");
-            _addGroupButton = this.FindControl<Button>("AddGroupButton");
-            _projectIcon = this.FindControl<Image>("ProjectIcon");
         }
 
         private void AttachEventHandlers()
         {
-            if (_openDirectoryMenuItem != null)
+            if (OpenDirectoryMenuItem != null)
             {
-                _openDirectoryMenuItem.Click += OnOpenDirectoryClick;
+                OpenDirectoryMenuItem.Click += OnOpenDirectoryClick;
             }
 
             // 项目路径点击打开目录
-            if (_projectPathText != null)
+            if (ProjectPathText != null)
             {
-                _projectPathText.PointerPressed += OnPathPointerPressed;
+                ProjectPathText.PointerPressed += OnPathPointerPressed;
             }
 
             // 项目名双击编辑
-            if (_projectNameDisplay != null)
+            if (ProjectNameDisplay != null)
             {
-                _projectNameDisplay.DoubleTapped += OnNameDoubleTapped;
+                ProjectNameDisplay.DoubleTapped += OnNameDoubleTapped;
             }
 
             // 项目名编辑器事件
-            if (_projectNameEditor != null)
+            if (ProjectNameEditor != null)
             {
-                _projectNameEditor.LostFocus += OnNameEditorLostFocus;
-                _projectNameEditor.KeyDown += OnNameEditorKeyDown;
+                ProjectNameEditor.LostFocus += OnNameEditorLostFocus;
+                ProjectNameEditor.KeyDown += OnNameEditorKeyDown;
             }
 
             // 分组按钮事件
-            if (_groupButton != null)
+            if (GroupButton != null)
             {
-                _groupButton.Click += OnGroupButtonClick;
+                GroupButton.Click += OnGroupButtonClick;
             }
 
             // 分组选择器事件
-            if (_groupComboBox != null)
+            if (GroupComboBox != null)
             {
-                _groupComboBox.SelectionChanged += OnGroupSelectionChanged;
+                GroupComboBox.SelectionChanged += OnGroupSelectionChanged;
             }
 
             // 添加分组按钮事件
-            if (_addGroupButton != null)
+            if (AddGroupButton != null)
             {
-                _addGroupButton.Click += OnAddGroupButtonClick;
+                AddGroupButton.Click += OnAddGroupButtonClick;
             }
 
             // 新分组输入框回车事件
-            if (_newGroupNameTextBox != null)
+            if (NewGroupNameTextBox != null)
             {
-                _newGroupNameTextBox.KeyDown += OnNewGroupNameKeyDown;
+                NewGroupNameTextBox.KeyDown += OnNewGroupNameKeyDown;
             }
-
+            // 删除菜单项点击
+            if (DeleteMenuItem != null)
+            {
+                DeleteMenuItem.Click += OnDeleteMenuItemClick;
+            }
             // 监听 DataContext 变化
             this.DataContextChanged += OnDataContextChanged;
             this.AttachedToVisualTree += OnAttachedToVisualTree;
@@ -146,7 +128,7 @@ namespace UnityProjectPlugin.Views
         /// </summary>
         private void LoadProjectIcon(UnityProject project)
         {
-            if (_projectIcon == null) return;
+            if (ProjectIcon == null) return;
 
             try
             {
@@ -156,7 +138,7 @@ namespace UnityProjectPlugin.Views
                 {
                     var uri = new Uri("avares://UnityProjectPlugin/Assets/unity.png");
                     var asset = Avalonia.Platform.AssetLoader.Open(uri);
-                    _projectIcon.Source = new Bitmap(asset);
+                    ProjectIcon.Source = new Bitmap(asset);
                 }
                 catch (Exception ex)
                 {
@@ -170,7 +152,7 @@ namespace UnityProjectPlugin.Views
             catch
             {
                 // 加载失败，图标为空
-                _projectIcon.Source = null;
+                ProjectIcon.Source = null;
             }
         }
 
@@ -179,18 +161,34 @@ namespace UnityProjectPlugin.Views
         /// </summary>
         private void UpdateGroupDisplay(UnityProject project)
         {
-            if (_groupButtonText == null) return;
+            if (GroupButtonText == null) return;
 
             if (!string.IsNullOrEmpty(project.GroupName))
             {
-                _groupButtonText.Text = project.GroupName;
+                GroupButtonText.Text = project.GroupName;
             }
             else
             {
-                _groupButtonText.Text = "未分组";
+                GroupButtonText.Text = "未分组";
             }
         }
+        /// <summary>
+        /// 删除菜单项点击事件
+        /// </summary>
+        private async void OnDeleteMenuItemClick(object? sender, RoutedEventArgs e)
+        {
+            if (DataContext is not UnityProject project)
+                return;
 
+            // 获取父级 UnityProjectTabView 的 ViewModel
+            var tabView = this.FindAncestorOfType<UnityProjectTabView>();
+            var viewModel = tabView?.ViewModel;
+
+            if (viewModel?.DeleteProjectCommand?.CanExecute(project) == true)
+            {
+                viewModel.DeleteProjectCommand.Execute(project);
+            }
+        }
         /// <summary>
         /// 分组按钮点击 - 打开分组管理 Flyout
         /// </summary>
@@ -204,30 +202,30 @@ namespace UnityProjectPlugin.Views
         /// </summary>
         private void LoadGroupsData()
         {
-            if (_plugin == null || _groupComboBox == null || _groupsListControl == null) return;
+            if (_plugin == null || GroupComboBox == null || GroupsListControl == null) return;
 
             List<ProjectGroup> groups = _plugin.GetGroups();
 
             // 设置 ComboBox 数据源
             List<string> groupNames = groups.Select(g => g.Name).ToList();
             groupNames.Insert(0, string.Empty); // 添加"无分组"选项
-            _groupComboBox.ItemsSource = groupNames;
+            GroupComboBox.ItemsSource = groupNames;
 
             // 设置当前选择
             if (DataContext is UnityProject project)
             {
                 if (!string.IsNullOrEmpty(project.GroupName))
                 {
-                    _groupComboBox.SelectedItem = project.GroupName;
+                    GroupComboBox.SelectedItem = project.GroupName;
                 }
                 else
                 {
-                    _groupComboBox.SelectedIndex = 0;
+                    GroupComboBox.SelectedIndex = 0;
                 }
             }
 
             // 设置分组列表
-            _groupsListControl.ItemsSource = groups;
+            GroupsListControl.ItemsSource = groups;
         }
 
         /// <summary>
@@ -240,29 +238,29 @@ namespace UnityProjectPlugin.Views
 
         private void EnterNameEditMode()
         {
-            if (_projectNameDisplay == null || _projectNameEditor == null || _isEditingName) return;
+            if (ProjectNameDisplay == null || ProjectNameEditor == null || _isEditingName) return;
             if (DataContext is not UnityProject project) return;
 
             _isEditingName = true;
             _originalName = project.Name;
 
-            _projectNameDisplay.IsVisible = false;
-            _projectNameEditor.IsVisible = true;
-            _projectNameEditor.Text = project.Name;
-            _projectNameEditor.Focus();
-            _projectNameEditor.SelectAll();
+            ProjectNameDisplay.IsVisible = false;
+            ProjectNameEditor.IsVisible = true;
+            ProjectNameEditor.Text = project.Name;
+            ProjectNameEditor.Focus();
+            ProjectNameEditor.SelectAll();
         }
 
         private async Task ExitNameEditModeAsync(bool save)
         {
-            if (_projectNameDisplay == null || _projectNameEditor == null || !_isEditingName) return;
+            if (ProjectNameDisplay == null || ProjectNameEditor == null || !_isEditingName) return;
             if (DataContext is not UnityProject project) return;
 
             _isEditingName = false;
 
             if (save)
             {
-                string newName = _projectNameEditor.Text?.Trim() ?? string.Empty;
+                string newName = ProjectNameEditor.Text?.Trim() ?? string.Empty;
                 if (!string.IsNullOrEmpty(newName) && newName != _originalName && _plugin != null)
                 {
                     // 保存新名称
@@ -276,11 +274,11 @@ namespace UnityProjectPlugin.Views
             else
             {
                 // 恢复原名称
-                _projectNameEditor.Text = _originalName;
+                ProjectNameEditor.Text = _originalName;
             }
 
-            _projectNameDisplay.IsVisible = true;
-            _projectNameEditor.IsVisible = false;
+            ProjectNameDisplay.IsVisible = true;
+            ProjectNameEditor.IsVisible = false;
         }
 
         private async void OnNameEditorLostFocus(object? sender, RoutedEventArgs e)
@@ -308,10 +306,10 @@ namespace UnityProjectPlugin.Views
         /// </summary>
         private async void OnGroupSelectionChanged(object? sender, SelectionChangedEventArgs e)
         {
-            if (_groupComboBox == null || _plugin == null) return;
+            if (GroupComboBox == null || _plugin == null) return;
             if (DataContext is not UnityProject project) return;
 
-            string? selectedGroup = _groupComboBox.SelectedItem as string;
+            string? selectedGroup = GroupComboBox.SelectedItem as string;
             string? newGroupName = string.IsNullOrEmpty(selectedGroup) ? null : selectedGroup;
 
             // 如果分组变化了，保存
@@ -333,7 +331,7 @@ namespace UnityProjectPlugin.Views
         {
             await AddNewGroupAsync();
         }
-
+  
         private async void OnNewGroupNameKeyDown(object? sender, KeyEventArgs e)
         {
             if (e.Key == Key.Enter)
@@ -345,9 +343,9 @@ namespace UnityProjectPlugin.Views
 
         private async Task AddNewGroupAsync()
         {
-            if (_newGroupNameTextBox == null || _plugin == null) return;
+            if (NewGroupNameTextBox == null || _plugin == null) return;
 
-            string? newGroupName = _newGroupNameTextBox.Text?.Trim();
+            string? newGroupName = NewGroupNameTextBox.Text?.Trim();
             if (string.IsNullOrEmpty(newGroupName)) return;
 
             // 检查是否已存在
@@ -359,7 +357,7 @@ namespace UnityProjectPlugin.Views
 
             // 添加新分组
             await _plugin.AddGroupAsync(newGroupName);
-            _newGroupNameTextBox.Text = string.Empty;
+            NewGroupNameTextBox.Text = string.Empty;
 
             // 重新加载分组列表
             LoadGroupsData();
@@ -370,24 +368,17 @@ namespace UnityProjectPlugin.Views
         /// </summary>
         public async void DeleteGroupButton_Click(object? sender, RoutedEventArgs e)
         {
-            if (sender is Button button && button.Tag is ProjectGroup group && _plugin != null)
+            if (sender is Button button && button.Tag is ProjectGroup group)
             {
-                // 检查是否有项目使用该分组
-                int usageCount = _plugin.GetGroupUsageCount(group.Name);
-                if (usageCount > 0)
+                // 通过 ViewModel 删除分组
+                UnityProjectTabView? tabView = this.FindAncestorOfType<UnityProjectTabView>();
+                if (tabView != null)
                 {
-                    // TODO: 显示提示消息
-                    return;
+                    await tabView.ViewModel.DeleteGroupAsync(group);
+                    
+                    // 重新加载分组列表（用于分组下拉框）
+                    LoadGroupsData();
                 }
-
-                // 删除分组
-                await _plugin.DeleteGroupAsync(group.Id);
-
-                // 重新加载分组列表
-                LoadGroupsData();
-
-                // 刷新父列表
-                RefreshParentList();
             }
         }
 
