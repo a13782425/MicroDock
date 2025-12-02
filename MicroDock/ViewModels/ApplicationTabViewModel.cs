@@ -1,12 +1,13 @@
+using Avalonia.Controls;
+using Avalonia.Platform.Storage;
+using MicroDock.Database;
+using MicroDock.Service;
+using ReactiveUI;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Reactive;
 using System.Windows.Input;
-using Avalonia.Controls;
-using MicroDock.Database;
-using MicroDock.Service;
-using ReactiveUI;
 
 namespace MicroDock.ViewModels;
 
@@ -33,26 +34,38 @@ public class ApplicationTabViewModel : ViewModelBase
 
     private async System.Threading.Tasks.Task AddApplication()
     {
-        OpenFileDialog dialog = new OpenFileDialog
+        // 使用新的 StorageProvider API
+        if (Avalonia.Application.Current?.ApplicationLifetime is not Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop || desktop.MainWindow == null)
+            return;
+
+        IStorageProvider? storageProvider = desktop.MainWindow.StorageProvider;
+        if (storageProvider == null)
+            return;
+
+        // 定义文件类型过滤器
+        var filePickerFileTypes = new FilePickerFileType[]
+        {
+            new("Applications")
+            {
+                Patterns = new[] { "*.exe", "*.lnk" }
+            },
+            FilePickerFileTypes.All
+        };
+
+        var filePickerOptions = new FilePickerOpenOptions
         {
             Title = "选择要添加的应用程序",
             AllowMultiple = true,
-            Filters = new List<Avalonia.Controls.FileDialogFilter>
-            {
-                new() { Name = "Applications", Extensions = { "exe", "lnk" } },
-                new() { Name = "All files", Extensions = { "*" } }
-            }
+            FileTypeFilter = filePickerFileTypes
         };
 
-        if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
+        IReadOnlyList<IStorageFile> result = await storageProvider.OpenFilePickerAsync(filePickerOptions);
+
+        if (result.Count > 0)
         {
-            string[]? result = await dialog.ShowAsync(desktop.MainWindow);
-            if (result != null && result.Length > 0)
+            foreach (IStorageFile file in result)
             {
-                foreach (string filePath in result)
-                {
-                    AddApplicationFromPath(filePath);
-                }
+                AddApplicationFromPath(file.Path.LocalPath);
             }
         }
     }

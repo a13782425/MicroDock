@@ -40,9 +40,9 @@ namespace MicroDock
                 };
 
                 // 4. 初始化需要窗口的服务
-                ServiceLocator.Get<Service.AutoHideService>().Initialize(mainWindow);
-                ServiceLocator.Get<Service.TopMostService>().Initialize(mainWindow);
-                ServiceLocator.Get<Service.TrayService>().Initialize();
+                ServiceLocator.Get<Service.AutoHideService>()?.Initialize(mainWindow);
+                ServiceLocator.Get<Service.TopMostService>()?.Initialize(mainWindow);
+                ServiceLocator.Get<Service.TrayService>()?.Initialize();
                 
                 // 初始化平台服务 (Windows Hook)
                 ServiceLocator.Get<Service.IPlatformService>()?.Initialize(mainWindow);

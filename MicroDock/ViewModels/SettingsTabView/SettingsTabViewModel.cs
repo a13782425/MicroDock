@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Platform.Storage;
 using HarfBuzzSharp;
 using MicroDock.Database;
 using MicroDock.Extension;
@@ -459,81 +460,94 @@ public class SettingsTabViewModel : ViewModelBase
     {
         try
         {
-            OpenFileDialog dialog = new OpenFileDialog
+
+            // 使用新的 StorageProvider API
+            if (Avalonia.Application.Current?.ApplicationLifetime is not Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop || desktop.MainWindow == null)
+                return;
+
+            IStorageProvider? storageProvider = desktop.MainWindow.StorageProvider;
+            if (storageProvider == null)
+                return;
+
+            // 定义文件类型过滤器
+            var filePickerFileTypes = new FilePickerFileType[]
+            {
+                new("ZIP文件")
+                {
+                    Patterns = new[] { "*.zip" }
+                },
+                FilePickerFileTypes.All
+            };
+
+            var filePickerOptions = new FilePickerOpenOptions
             {
                 Title = "选择插件ZIP文件",
                 AllowMultiple = false,
-                Filters = new List<FileDialogFilter>
-                {
-                    new() { Name = "ZIP 文件", Extensions = { "zip" } },
-                    new() { Name = "所有文件", Extensions = { "*" } }
-                }
+                FileTypeFilter = filePickerFileTypes
             };
 
-            if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
+            IReadOnlyList<IStorageFile> result = await storageProvider.OpenFilePickerAsync(filePickerOptions);
+            if (result != null && result.Count > 0)
             {
-                string[]? result = await dialog.ShowAsync(desktop.MainWindow);
-                if (result != null && result.Length > 0)
+                string zipFilePath = result[0].Path.LocalPath;
+
+                // 显示加载提示
+                ServiceLocator.Get<EventService>().Publish(new ShowLoadingMessage("正在导入插件..."));
+
+                try
                 {
-                    string zipFilePath = result[0];
+                    // 获取插件目录
+                    string pluginDirectory = Path.Combine(AppConfig.ROOT_PATH, "plugins");
 
-                    // 显示加载提示
-                    ServiceLocator.Get<EventService>().Publish(new ShowLoadingMessage("正在导入插件..."));
+                    // 调用 PluginLoader 导入插件
+                    PluginService pluginLoader = ServiceLocator.Get<PluginService>();
+                    var (success, message, pluginName) = await pluginLoader.ImportPluginAsync(zipFilePath, pluginDirectory);
 
-                    try
+                    // 隐藏加载提示
+                    ServiceLocator.Get<EventService>().Publish(new HideLoadingMessage());
+
+                    if (success)
                     {
-                        // 获取插件目录
-                        string pluginDirectory = Path.Combine(AppConfig.ROOT_PATH, "plugins");
+                        // 刷新插件列表
+                        LoadPluginSettings();
 
-                        // 调用 PluginLoader 导入插件
-                        PluginService pluginLoader = ServiceLocator.Get<PluginService>();
-                        var (success, message, pluginName) = await pluginLoader.ImportPluginAsync(zipFilePath, pluginDirectory);
-
-                        // 隐藏加载提示
-                        ServiceLocator.Get<EventService>().Publish(new HideLoadingMessage());
-
-                        if (success)
+                        // 发布插件导入事件
+                        if (!string.IsNullOrEmpty(pluginName))
                         {
-                            // 刷新插件列表
-                            LoadPluginSettings();
+                            ServiceLocator.Get<EventService>().Publish(new PluginImportedMessage { PluginName = pluginName });
+                        }
 
-                            // 发布插件导入事件
-                            if (!string.IsNullOrEmpty(pluginName))
+                        // 如果是更新插件（消息包含"重启"），询问是否立即重启
+                        if (message.Contains("重启"))
+                        {
+                            bool restart = await ShowConfirmDialogAsync(
+                                "导入成功",
+                                message,
+                                "是否立即重启应用以完成更新？"
+                            );
+                            if (restart)
                             {
-                                ServiceLocator.Get<EventService>().Publish(new PluginImportedMessage { PluginName = pluginName });
-                            }
-
-                            // 如果是更新插件（消息包含"重启"），询问是否立即重启
-                            if (message.Contains("重启"))
-                            {
-                                bool restart = await ShowConfirmDialogAsync(
-                                    "导入成功",
-                                    message,
-                                    "是否立即重启应用以完成更新？"
-                                );
-                                if (restart)
-                                {
-                                    Utils.UniversalUtils.RestartApplication("plugin_updated");
-                                }
-                            }
-                            else
-                            {
-                                ShowNotification("导入成功", message);
+                                Utils.UniversalUtils.RestartApplication("plugin_updated");
                             }
                         }
                         else
                         {
-                            ShowNotification("导入失败", message, AppNotificationType.Error);
+                            ShowNotification("导入成功", message);
                         }
                     }
-                    catch (Exception ex)
+                    else
                     {
-                        ServiceLocator.Get<EventService>().Publish(new HideLoadingMessage());
-                        Log.Error(ex, "导入插件失败");
-                        ShowNotification("导入失败", ex.Message, AppNotificationType.Error);
+                        ShowNotification("导入失败", message, AppNotificationType.Error);
                     }
                 }
+                catch (Exception ex)
+                {
+                    ServiceLocator.Get<EventService>().Publish(new HideLoadingMessage());
+                    Log.Error(ex, "导入插件失败");
+                    ShowNotification("导入失败", ex.Message, AppNotificationType.Error);
+                }
             }
+
         }
         catch (Exception ex)
         {
@@ -938,9 +952,9 @@ public class SettingsTabViewModel : ViewModelBase
         {
             // 获取备份列表
             var response = await PluginServerApiClient.GetBackupListAsync();
-            
+
             ServiceLocator.Get<EventService>()?.Publish(new HideLoadingMessage());
-            
+
             if (!response.Success || response.Data?.Backups == null)
             {
                 ShowNotification("获取失败", response.Message ?? "无法获取备份列表", AppNotificationType.Error);
@@ -952,7 +966,7 @@ public class SettingsTabViewModel : ViewModelBase
                 .Where(b => b.BackupType == "program")
                 .OrderByDescending(b => b.CreatedAt)
                 .ToList();
-            
+
             if (programBackups.Count == 0)
             {
                 ShowNotification("提示", "服务器上暂无主程序备份", AppNotificationType.Information);
@@ -974,7 +988,7 @@ public class SettingsTabViewModel : ViewModelBase
 
             // 显示备份列表对话框
             var selectedBackup = await ShowBackupListDialogAsync("恢复主程序数据", backupItems, "program");
-            
+
             if (selectedBackup == null)
             {
                 return; // 用户取消
@@ -1032,7 +1046,7 @@ public class SettingsTabViewModel : ViewModelBase
     {
         BackupListItem? selectedBackup = null;
         bool needRefresh = false;
-        
+
         while (true)
         {
             if (needRefresh)
@@ -1041,7 +1055,7 @@ public class SettingsTabViewModel : ViewModelBase
                 ServiceLocator.Get<EventService>()?.Publish(new ShowLoadingMessage("正在刷新备份列表..."));
                 var response = await PluginServerApiClient.GetBackupListAsync();
                 ServiceLocator.Get<EventService>()?.Publish(new HideLoadingMessage());
-                
+
                 if (response.Success && response.Data?.Backups != null)
                 {
                     backupItems.Clear();
@@ -1049,7 +1063,7 @@ public class SettingsTabViewModel : ViewModelBase
                         .Where(b => b.BackupType == backupType)
                         .OrderByDescending(b => b.CreatedAt)
                         .ToList();
-                    
+
                     foreach (var b in filteredBackups)
                     {
                         backupItems.Add(new BackupListItem
@@ -1065,7 +1079,7 @@ public class SettingsTabViewModel : ViewModelBase
                 }
                 needRefresh = false;
             }
-            
+
             if (backupItems.Count == 0)
             {
                 ShowNotification("提示", "没有可用的备份", AppNotificationType.Information);
@@ -1130,13 +1144,13 @@ public class SettingsTabViewModel : ViewModelBase
                     $"确定要删除此备份吗？\n\n{itemToDelete.DisplayName}\n创建时间: {itemToDelete.FormattedCreatedAt}",
                     "此操作不可撤销。"
                 );
-                
+
                 if (confirmDelete)
                 {
                     ServiceLocator.Get<EventService>()?.Publish(new ShowLoadingMessage("正在删除备份..."));
                     var (success, message) = await PluginServerApiClient.DeleteBackupAsync(itemToDelete.Id);
                     ServiceLocator.Get<EventService>()?.Publish(new HideLoadingMessage());
-                    
+
                     if (success)
                     {
                         ShowNotification("删除成功", "备份已删除", AppNotificationType.Success);
@@ -1165,7 +1179,7 @@ public class SettingsTabViewModel : ViewModelBase
                 }
                 return selectedBackup;
             }
-            
+
             // 用户取消
             return null;
         }
@@ -1566,7 +1580,7 @@ public class BackupListItem
     public string CreatedAt { get; set; } = string.Empty;
     public long FileSize { get; set; }
     public string? PluginName { get; set; }
-    
+
     /// <summary>
     /// 格式化的创建时间
     /// </summary>
@@ -1581,7 +1595,7 @@ public class BackupListItem
             return CreatedAt;
         }
     }
-    
+
     /// <summary>
     /// 格式化的文件大小
     /// </summary>
@@ -1596,7 +1610,7 @@ public class BackupListItem
             return $"{FileSize / (1024.0 * 1024.0):F2} MB";
         }
     }
-    
+
     /// <summary>
     /// 显示名称（用于列表显示）
     /// </summary>

@@ -11,7 +11,7 @@ namespace MicroDock;
 internal static class AppConfig
 {
     //主要的, 次要的, 构建的, 修订的
-    public static Version AppVersion { get; set; } = new Version(0, 0, 3, 0);
+    public static Version AppVersion { get; set; } = new Version(1, 0, 0, 0);
     /// <summary>
     /// 是否是真实退出应用
     /// </summary>
