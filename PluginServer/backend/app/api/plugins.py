@@ -43,10 +43,11 @@ async def get_plugin(request: PluginNameRequest, db: AsyncSession = Depends(get_
 async def upload_plugin(
     file: UploadFile = File(..., description="插件ZIP文件"),
     plugin_key: str = Form(..., description="插件密钥（首次上传绑定，后续验证）"),
+    upload_secret: str = Form(..., description="全局上传密钥（用于首次上传验证）"),
     db: AsyncSession = Depends(get_db)
 ):
     """上传新插件（ZIP格式，包含plugin.json）"""
-    plugin = await PluginService.create_plugin_from_upload(db, file, plugin_key)
+    plugin = await PluginService.create_plugin_from_upload(db, file, plugin_key, upload_secret)
     return ApiResponse.ok(data=plugin, message="插件上传成功")
 
 

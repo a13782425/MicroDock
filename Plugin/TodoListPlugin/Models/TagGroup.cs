@@ -18,6 +18,11 @@ namespace TodoListPlugin.Models
         public string Name { get; set; } = string.Empty;
 
         /// <summary>
+        /// 标签颜色
+        /// </summary>
+        public string Color { get; set; } = "#808080";
+
+        /// <summary>
         /// 创建时间
         /// </summary>
         public DateTime CreatedTime { get; set; } = DateTime.Now;

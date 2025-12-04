@@ -1,12 +1,12 @@
-version: '3.8'
-
 services:
   backend:
     build:
-      context: .
-      dockerfile: Dockerfile.backend
+      context: ./backend
+      dockerfile: Dockerfile
     container_name: microdock-backend
     restart: always
+    ports:
+      - "8000:8000"
     volumes:
       - ./backend/data:/app/data
     environment:
@@ -23,8 +23,8 @@ services:
 
   frontend:
     build:
-      context: .
-      dockerfile: Dockerfile.frontend
+      context: ./frontend
+      dockerfile: Dockerfile
     container_name: microdock-frontend
     restart: always
     ports:

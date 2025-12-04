@@ -1,0 +1,40 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="TodoListPlugin.Views.Dialogs.EditFieldContent"
+             Width="360">
+    
+    <StackPanel Spacing="16">
+        <!-- 名称 -->
+        <StackPanel>
+            <TextBlock Text="字段名称" Margin="0,0,0,8"/>
+            <TextBox Name="NameTextBox" 
+                     Watermark="输入字段名称..."/>
+        </StackPanel>
+        
+        <!-- 字段类型 -->
+        <StackPanel>
+            <TextBlock Text="字段类型" Margin="0,0,0,8"/>
+            <ComboBox Name="TypeComboBox" HorizontalAlignment="Stretch" SelectedIndex="0">
+                <ComboBoxItem Content="文本" Tag="Text"/>
+                <ComboBoxItem Content="数字" Tag="Number"/>
+                <ComboBoxItem Content="日期" Tag="Date"/>
+                <ComboBoxItem Content="单选" Tag="Select"/>
+                <ComboBoxItem Content="多选" Tag="MultiSelect"/>
+                <ComboBoxItem Content="复选框" Tag="Boolean"/>
+            </ComboBox>
+        </StackPanel>
+        
+        <!-- 默认值 -->
+        <StackPanel>
+            <TextBlock Text="默认值（可选）" Margin="0,0,0,8"/>
+            <TextBox Name="DefaultValueTextBox" 
+                     Watermark="输入默认值..."/>
+        </StackPanel>
+        
+        <!-- 是否必填 -->
+        <CheckBox Name="RequiredCheckBox" Content="必填字段"/>
+        
+        <!-- 是否在卡片上显示 -->
+        <CheckBox Name="ShowOnCardCheckBox" Content="在卡片上显示"/>
+    </StackPanel>
+</UserControl>

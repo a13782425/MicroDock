@@ -1,4 +1,4 @@
-﻿using Avalonia;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Controls.Notifications;
@@ -385,6 +385,55 @@ internal static class UniversalUtils
         {
             LogError($"显示自定义对话框失败: {title}", DEFAULT_LOG_TAG, ex);
             return ContentDialogResult.None;
+        }
+    }
+
+    /// <summary>
+    /// 显示自定义内容对话框（泛型版本，支持验证和强类型返回）
+    /// </summary>
+    /// <typeparam name="TDialog">对话框类型，必须继承 UserControl 并实现 ICustomDialog</typeparam>
+    /// <typeparam name="TResult">返回结果类型</typeparam>
+    /// <param name="title">对话框标题</param>
+    /// <param name="dialogContent">对话框内容控件</param>
+    /// <param name="primaryText">主按钮文本</param>
+    /// <param name="closeText">关闭按钮文本</param>
+    /// <returns>对话框结果，如果取消则返回 null</returns>
+    public static async Task<TResult?> ShowCustomDialogAsync<TDialog, TResult>(
+        string title,
+        string primaryText = "确定",
+        string closeText = "取消")
+        where TDialog : UserControl, ICustomDialog<TResult>, new()
+        where TResult : class
+    {
+        try
+        {
+            TDialog dialogContent = Activator.CreateInstance<TDialog>();
+            return await Dispatcher.UIThread.InvokeAsync(async () =>
+            {
+                var dialog = new ContentDialog
+                {
+                    Title = title,
+                    Content = dialogContent,
+                    PrimaryButtonText = primaryText,
+                    CloseButtonText = closeText,
+                    DefaultButton = ContentDialogButton.Primary
+                };
+
+                // 验证拦截
+                dialog.PrimaryButtonClick += (sender, args) =>
+                {
+                    if (!dialogContent.Validate())
+                        args.Cancel = true;
+                };
+
+                var result = await dialog.ShowAsync();
+                return dialogContent.GetResult();
+            });
+        }
+        catch (Exception ex)
+        {
+            LogError($"显示自定义对话框失败: {title}", DEFAULT_LOG_TAG, ex);
+            return null;
         }
     }
 

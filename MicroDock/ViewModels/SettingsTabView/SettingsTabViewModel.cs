@@ -8,6 +8,7 @@ using MicroDock.Model;
 using MicroDock.Plugin;
 using MicroDock.Service;
 using MicroDock.Utils;
+using MicroDock.Views.Dialog;
 using ReactiveUI;
 using Serilog;
 using System;
@@ -1044,7 +1045,6 @@ public class SettingsTabViewModel : ViewModelBase
     /// <returns>选中的备份项，如果取消则返回 null</returns>
     private async Task<BackupListItem?> ShowBackupListDialogAsync(string title, ObservableCollection<BackupListItem> backupItems, string backupType)
     {
-        BackupListItem? selectedBackup = null;
         bool needRefresh = false;
 
         while (true)
@@ -1086,59 +1086,16 @@ public class SettingsTabViewModel : ViewModelBase
                 return null;
             }
 
-            // 创建列表
-            var listBox = new ListBox
-            {
-                MinWidth = 450,
-                SelectionMode = SelectionMode.Single,
-                ItemsSource = backupItems,
-                ItemTemplate = CreateBackupListItemTemplate()
-            };
+            // 使用 GlobalData 传递数据并显示对话框
+            GlobalData.TempBackupList = backupItems;
+            var result = await UniversalUtils.ShowCustomDialogAsync<BackupListDialog, BackupDialogResult>(
+                title, "恢复", "取消");
+            GlobalData.TempBackupList = null; // 清理
 
-            var scrollViewer = new ScrollViewer
-            {
-                MaxHeight = 350,
-                HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled,
-                VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
-                Content = listBox
-            };
-
-            var titleText = new TextBlock
-            {
-                Text = $"找到 {backupItems.Count} 个备份，选择一个进行操作：",
-                FontSize = 13,
-                Margin = new Avalonia.Thickness(0, 0, 0, 10)
-            };
-
-            // 删除按钮
-            var deleteButton = new Button
-            {
-                Content = "删除选中",
-                Margin = new Avalonia.Thickness(0, 10, 0, 0),
-                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left
-            };
-
-            var contentPanel = new StackPanel
-            {
-                Spacing = 0,
-                Children = { titleText, scrollViewer, deleteButton }
-            };
-
-            // 用于跟踪是否需要删除
-            bool deleteRequested = false;
-            deleteButton.Click += (s, e) => { deleteRequested = true; };
-
-            // 显示对话框
-            var dialogResult = await UniversalUtils.ShowCustomDialogAsync(
-                title,
-                contentPanel,
-                "恢复",
-                "取消"
-            );
-
-            if (deleteRequested && listBox.SelectedItem is BackupListItem itemToDelete)
+            if (result?.Action == BackupDialogAction.Delete && result.SelectedItem != null)
             {
                 // 用户点击了删除按钮
+                var itemToDelete = result.SelectedItem;
                 bool confirmDelete = await ShowConfirmDialogAsync(
                     "确认删除",
                     $"确定要删除此备份吗？\n\n{itemToDelete.DisplayName}\n创建时间: {itemToDelete.FormattedCreatedAt}",
@@ -1169,71 +1126,14 @@ public class SettingsTabViewModel : ViewModelBase
                 }
             }
 
-            if (dialogResult == FluentAvalonia.UI.Controls.ContentDialogResult.Primary)
+            if (result?.Action == BackupDialogAction.Restore && result.SelectedItem != null)
             {
-                selectedBackup = listBox.SelectedItem as BackupListItem;
-                if (selectedBackup == null)
-                {
-                    ShowNotification("提示", "请先选择一个备份", AppNotificationType.Warning);
-                    continue; // 重新显示对话框
-                }
-                return selectedBackup;
+                return result.SelectedItem;
             }
 
             // 用户取消
             return null;
         }
-    }
-
-    /// <summary>
-    /// 创建备份列表项模板
-    /// </summary>
-    private static Avalonia.Controls.Templates.FuncDataTemplate<BackupListItem> CreateBackupListItemTemplate()
-    {
-        return new Avalonia.Controls.Templates.FuncDataTemplate<BackupListItem>((item, _) =>
-        {
-            var border = new Border
-            {
-                Padding = new Avalonia.Thickness(10, 8),
-                Margin = new Avalonia.Thickness(2),
-                CornerRadius = new Avalonia.CornerRadius(6),
-                Background = Avalonia.Media.Brushes.Transparent
-            };
-
-            var grid = new Grid
-            {
-                ColumnDefinitions = new ColumnDefinitions("*, Auto")
-            };
-
-            var leftPanel = new StackPanel { Spacing = 2 };
-
-            // 描述/名称
-            var nameText = new TextBlock
-            {
-                FontWeight = Avalonia.Media.FontWeight.SemiBold,
-                FontSize = 14
-            };
-            nameText.Bind(TextBlock.TextProperty, new Avalonia.Data.Binding("DisplayName"));
-            leftPanel.Children.Add(nameText);
-
-            // 创建时间和文件大小
-            var infoPanel = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 12 };
-            var timeText = new TextBlock { FontSize = 11, Opacity = 0.6 };
-            timeText.Bind(TextBlock.TextProperty, new Avalonia.Data.Binding("FormattedCreatedAt") { StringFormat = "创建时间: {0}" });
-            infoPanel.Children.Add(timeText);
-
-            var sizeText = new TextBlock { FontSize = 11, Opacity = 0.6 };
-            sizeText.Bind(TextBlock.TextProperty, new Avalonia.Data.Binding("FormattedFileSize") { StringFormat = "大小: {0}" });
-            infoPanel.Children.Add(sizeText);
-
-            leftPanel.Children.Add(infoPanel);
-
-            Grid.SetColumn(leftPanel, 0);
-            grid.Children.Add(leftPanel);
-
-            border.Child = grid;
-            return border;
-        });
     }
 
     /// <summary>
@@ -1295,55 +1195,14 @@ public class SettingsTabViewModel : ViewModelBase
                 });
             }
 
-            // 构建插件列表 UI - 标题固定，列表滚动
-            var listBox = new ListBox
+            // 使用 GlobalData 传递数据并显示对话框
+            GlobalData.TempPluginList = pluginItems;
+            var selectedItem = await UniversalUtils.ShowCustomDialogAsync<PluginDownloadDialog, RemotePluginListItem>(
+                "安装插件", "安装", "取消");
+            GlobalData.TempPluginList = null; // 清理
+
+            if (selectedItem != null)
             {
-                MinWidth = 450,
-                SelectionMode = SelectionMode.Single,
-                ItemsSource = pluginItems,
-                ItemTemplate = CreatePluginListItemTemplate()
-            };
-
-            // 使用 ScrollViewer 包裹 ListBox，确保只有列表滚动
-            var scrollViewer = new ScrollViewer
-            {
-                MaxHeight = 350,
-                HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled,
-                VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
-                Content = listBox
-            };
-
-            // 标题固定在顶部
-            var titleText = new TextBlock
-            {
-                Text = $"找到 {pluginItems.Count} 个可用插件，选择一个进行安装：",
-                FontSize = 13,
-                Margin = new Avalonia.Thickness(0, 0, 0, 10)
-            };
-
-            var contentPanel = new StackPanel
-            {
-                Spacing = 0,
-                Children = { titleText, scrollViewer }
-            };
-
-            // 显示对话框
-            var dialogResult = await UniversalUtils.ShowCustomDialogAsync(
-                "安装插件",
-                contentPanel,
-                "安装",
-                "取消"
-            );
-
-            if (dialogResult == FluentAvalonia.UI.Controls.ContentDialogResult.Primary)
-            {
-                var selectedItem = listBox.SelectedItem as RemotePluginListItem;
-                if (selectedItem == null)
-                {
-                    ShowNotification("提示", "请先选择一个插件", AppNotificationType.Warning);
-                    return;
-                }
-
                 await DownloadAndInstallPluginAsync(selectedItem.Name, selectedItem.DisplayName);
             }
         }
@@ -1441,99 +1300,6 @@ public class SettingsTabViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// 创建插件列表项模板
-    /// </summary>
-    private static Avalonia.Controls.Templates.FuncDataTemplate<RemotePluginListItem> CreatePluginListItemTemplate()
-    {
-        return new Avalonia.Controls.Templates.FuncDataTemplate<RemotePluginListItem>((item, _) =>
-        {
-            var border = new Border
-            {
-                Padding = new Avalonia.Thickness(10, 8),
-                Margin = new Avalonia.Thickness(2),
-                CornerRadius = new Avalonia.CornerRadius(6),
-                Background = Avalonia.Media.Brushes.Transparent
-            };
-
-            var grid = new Grid
-            {
-                ColumnDefinitions = new ColumnDefinitions("*, Auto")
-            };
-
-            var leftPanel = new StackPanel { Spacing = 2 };
-
-            var namePanel = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 8 };
-            var nameText = new TextBlock
-            {
-                FontWeight = Avalonia.Media.FontWeight.SemiBold,
-                FontSize = 14
-            };
-            nameText.Bind(TextBlock.TextProperty, new Avalonia.Data.Binding("DisplayName"));
-            namePanel.Children.Add(nameText);
-
-            // 已安装/可更新标签
-            var installedBadge = new Border
-            {
-                Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#22C55E")),
-                CornerRadius = new Avalonia.CornerRadius(3),
-                Padding = new Avalonia.Thickness(6, 2),
-                Child = new TextBlock
-                {
-                    Text = "已安装",
-                    FontSize = 10,
-                    Foreground = Avalonia.Media.Brushes.White
-                }
-            };
-            installedBadge.Bind(Border.IsVisibleProperty, new Avalonia.Data.Binding("IsInstalled"));
-            namePanel.Children.Add(installedBadge);
-
-            var updateBadge = new Border
-            {
-                Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#3B82F6")),
-                CornerRadius = new Avalonia.CornerRadius(3),
-                Padding = new Avalonia.Thickness(6, 2),
-                Child = new TextBlock
-                {
-                    Text = "可更新",
-                    FontSize = 10,
-                    Foreground = Avalonia.Media.Brushes.White
-                }
-            };
-            updateBadge.Bind(Border.IsVisibleProperty, new Avalonia.Data.Binding("NeedsUpdate"));
-            namePanel.Children.Add(updateBadge);
-
-            leftPanel.Children.Add(namePanel);
-
-            var descText = new TextBlock
-            {
-                FontSize = 12,
-                Opacity = 0.7,
-                TextTrimming = Avalonia.Media.TextTrimming.CharacterEllipsis,
-                MaxWidth = 350
-            };
-            descText.Bind(TextBlock.TextProperty, new Avalonia.Data.Binding("Description"));
-            leftPanel.Children.Add(descText);
-
-            var infoPanel = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 12 };
-            var authorText = new TextBlock { FontSize = 11, Opacity = 0.6 };
-            authorText.Bind(TextBlock.TextProperty, new Avalonia.Data.Binding("Author") { StringFormat = "作者: {0}" });
-            infoPanel.Children.Add(authorText);
-
-            var versionText = new TextBlock { FontSize = 11, Opacity = 0.6 };
-            versionText.Bind(TextBlock.TextProperty, new Avalonia.Data.Binding("Version") { StringFormat = "v{0}" });
-            infoPanel.Children.Add(versionText);
-
-            leftPanel.Children.Add(infoPanel);
-
-            Grid.SetColumn(leftPanel, 0);
-            grid.Children.Add(leftPanel);
-
-            border.Child = grid;
-            return border;
-        });
-    }
-
-    /// <summary>
     /// 更新上次备份时间显示
     /// </summary>
     private void UpdateLastBackupTime()
@@ -1552,67 +1318,4 @@ public class SettingsTabViewModel : ViewModelBase
 
     #endregion
 
-}
-
-/// <summary>
-/// 远程插件列表项（用于对话框显示）
-/// </summary>
-public class RemotePluginListItem
-{
-    public string Name { get; set; } = string.Empty;
-    public string DisplayName { get; set; } = string.Empty;
-    public string Description { get; set; } = string.Empty;
-    public string Author { get; set; } = string.Empty;
-    public string Version { get; set; } = string.Empty;
-    public bool IsInstalled { get; set; }
-    public bool NeedsUpdate { get; set; }
-    public string? InstalledVersion { get; set; }
-}
-
-/// <summary>
-/// 备份列表项（用于备份选择对话框显示）
-/// </summary>
-public class BackupListItem
-{
-    public int Id { get; set; }
-    public string BackupType { get; set; } = string.Empty;
-    public string Description { get; set; } = string.Empty;
-    public string CreatedAt { get; set; } = string.Empty;
-    public long FileSize { get; set; }
-    public string? PluginName { get; set; }
-
-    /// <summary>
-    /// 格式化的创建时间
-    /// </summary>
-    public string FormattedCreatedAt
-    {
-        get
-        {
-            if (DateTime.TryParse(CreatedAt, out var dt))
-            {
-                return dt.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss");
-            }
-            return CreatedAt;
-        }
-    }
-
-    /// <summary>
-    /// 格式化的文件大小
-    /// </summary>
-    public string FormattedFileSize
-    {
-        get
-        {
-            if (FileSize < 1024)
-                return $"{FileSize} B";
-            if (FileSize < 1024 * 1024)
-                return $"{FileSize / 1024.0:F1} KB";
-            return $"{FileSize / (1024.0 * 1024.0):F2} MB";
-        }
-    }
-
-    /// <summary>
-    /// 显示名称（用于列表显示）
-    /// </summary>
-    public string DisplayName => string.IsNullOrEmpty(Description) ? $"备份 #{Id}" : Description;
 }

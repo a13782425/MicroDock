@@ -14,6 +14,8 @@ export default defineConfig(({ mode }) => {
     // 加载环境变量，第三个参数 '' 表示加载所有环境变量（不仅限于 VITE_ 前缀）
     const env = loadEnv(mode, process.cwd(), '')
     
+    const host = env.VITE_HOST || '0.0.0.0'
+
     // 前端服务端口，默认 3000
     const port = parseInt(env.VITE_PORT || '3000')
     
@@ -28,6 +30,7 @@ export default defineConfig(({ mode }) => {
         server: {
             // 前端开发服务器端口
             port: port,
+            host: host,
             // API 代理配置，将 /api 请求转发到后端
             proxy: {
                 '/api': {

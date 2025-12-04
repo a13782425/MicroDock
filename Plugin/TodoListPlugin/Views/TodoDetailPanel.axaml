@@ -1,0 +1,255 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             x:Class="TodoListPlugin.Views.TodoDetailPanel"
+             Width="400">
+    
+    <UserControl.Styles>
+        <Style Selector="TextBlock.SectionHeader">
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Margin" Value="0,0,0,8"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}"/>
+        </Style>
+        <Style Selector="Border.Section">
+            <Setter Property="Background" Value="{DynamicResource CardBackgroundFillColorDefaultBrush}"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="16"/>
+            <Setter Property="Margin" Value="0,0,0,12"/>
+        </Style>
+    </UserControl.Styles>
+    
+    <Border Background="{DynamicResource LayerFillColorDefaultBrush}"
+            BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+            BorderThickness="1,0,0,0">
+        <Grid RowDefinitions="Auto,*,Auto">
+            <!-- 头部：标题和关闭按钮 -->
+            <Border Grid.Row="0" 
+                    Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                    Padding="16,12"
+                    BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="0,0,0,1">
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Text="待办详情" 
+                               FontSize="16" 
+                               FontWeight="SemiBold"
+                               VerticalAlignment="Center"/>
+                    <Button Grid.Column="1" 
+                            Name="CloseButton"
+                            Classes="transparent"
+                            Click="OnCloseClick"
+                            ToolTip.Tip="关闭">
+                        <PathIcon Data="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z" Width="16" Height="16"/>
+                    </Button>
+                </Grid>
+            </Border>
+            
+            <!-- 内容区域 -->
+            <ScrollViewer Grid.Row="1" 
+                          Padding="16"
+                          HorizontalScrollBarVisibility="Disabled"
+                          VerticalScrollBarVisibility="Auto">
+                <StackPanel Spacing="4">
+                    <!-- 标题 -->
+                    <Border Classes="Section">
+                        <StackPanel>
+                            <TextBlock Classes="SectionHeader" Text="标题"/>
+                            <TextBox Name="TitleTextBox"
+                                     Watermark="输入标题..."
+                                     TextWrapping="Wrap"
+                                     AcceptsReturn="False"
+                                     LostFocus="OnTitleLostFocus"/>
+                        </StackPanel>
+                    </Border>
+                    
+                    <!-- 描述 -->
+                    <Border Classes="Section">
+                        <StackPanel>
+                            <TextBlock Classes="SectionHeader" Text="描述"/>
+                            <TextBox Name="DescriptionTextBox"
+                                     Watermark="添加描述..."
+                                     TextWrapping="Wrap"
+                                     AcceptsReturn="True"
+                                     MinHeight="80"
+                                     MaxHeight="200"
+                                     LostFocus="OnDescriptionLostFocus"/>
+                        </StackPanel>
+                    </Border>
+                    
+                    <!-- 状态 -->
+                    <Border Classes="Section">
+                        <StackPanel>
+                            <TextBlock Classes="SectionHeader" Text="状态"/>
+                            <ComboBox Name="StatusComboBox"
+                                      HorizontalAlignment="Stretch"
+                                      SelectionChanged="OnStatusChanged"/>
+                        </StackPanel>
+                    </Border>
+                    
+                    <!-- 优先级 -->
+                    <Border Classes="Section">
+                        <StackPanel>
+                            <TextBlock Classes="SectionHeader" Text="优先级"/>
+                            <ComboBox Name="PriorityComboBox"
+                                      HorizontalAlignment="Stretch"
+                                      SelectionChanged="OnPriorityChanged">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <Border Width="12" Height="12" 
+                                                    CornerRadius="6"
+                                                    Background="{Binding Color}"/>
+                                            <TextBlock Text="{Binding Name}"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                        </StackPanel>
+                    </Border>
+                    
+                    <!-- 标签 -->
+                    <Border Classes="Section">
+                        <StackPanel>
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Classes="SectionHeader" Text="标签"/>
+                                <Button Grid.Column="1" 
+                                        Classes="transparent"
+                                        Click="OnAddTagClick"
+                                        ToolTip.Tip="添加标签"
+                                        Padding="4">
+                                    <PathIcon Data="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z" Width="14" Height="14"/>
+                                </Button>
+                            </Grid>
+                            <ItemsControl Name="TagsItemsControl">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel Orientation="Horizontal"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="{Binding Color}"
+                                                CornerRadius="12"
+                                                Padding="10,4"
+                                                Margin="0,0,8,8"
+                                                Cursor="Hand">
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <TextBlock Text="{Binding Name}" 
+                                                           Foreground="White"
+                                                           FontSize="12"/>
+                                                <Button Classes="transparent"
+                                                        Click="OnRemoveTagClick"
+                                                        Tag="{Binding Id}"
+                                                        Padding="0"
+                                                        Width="16" Height="16">
+                                                    <PathIcon Data="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z" Width="10" Height="10" Foreground="White"/>
+                                                </Button>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+                    
+                    <!-- 自定义字段 -->
+                    <Border Classes="Section" Name="CustomFieldsSection">
+                        <StackPanel>
+                            <TextBlock Classes="SectionHeader" Text="自定义字段"/>
+                            <ItemsControl Name="CustomFieldsItemsControl">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid ColumnDefinitions="Auto,*" Margin="0,0,0,8">
+                                            <StackPanel Orientation="Horizontal" Width="100" Margin="0,0,8,0">
+                                                <TextBlock Text="{Binding Name}" 
+                                                           FontWeight="SemiBold"
+                                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                           VerticalAlignment="Center"/>
+                                                <TextBlock Text="*" 
+                                                           Foreground="Red" 
+                                                           IsVisible="{Binding Required}"
+                                                           VerticalAlignment="Center"
+                                                           Margin="2,0,0,0"/>
+                                            </StackPanel>
+                                            <TextBox Grid.Column="1" 
+                                                     Text="{Binding Value, Mode=TwoWay}"
+                                                     Tag="{Binding}"
+                                                     LostFocus="OnCustomFieldValueLostFocus"
+                                                     Watermark="{Binding Name, StringFormat='输入{0}...'}"
+                                                     VerticalAlignment="Center"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBlock Text="暂无自定义字段，请在设置中添加"
+                                       Name="NoCustomFieldsHint"
+                                       Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                       FontSize="12"
+                                       IsVisible="False"/>
+                        </StackPanel>
+                    </Border>
+                    
+                    <!-- 截止日期 -->
+                    <Border Classes="Section">
+                        <StackPanel>
+                            <TextBlock Classes="SectionHeader" Text="截止日期"/>
+                            <Grid ColumnDefinitions="*,Auto">
+                                <CalendarDatePicker Name="DueDatePicker"
+                                                    HorizontalAlignment="Stretch"
+                                                    SelectedDateChanged="OnDueDateChanged"/>
+                                <Button Grid.Column="1" 
+                                        Classes="transparent"
+                                        Click="OnClearDueDateClick"
+                                        ToolTip.Tip="清除日期"
+                                        Margin="8,0,0,0">
+                                    <PathIcon Data="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z" Width="14" Height="14"/>
+                                </Button>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+                    
+                    <!-- 创建信息 -->
+                    <Border Classes="Section" Opacity="0.7">
+                        <StackPanel Spacing="4">
+                            <TextBlock Name="CreatedTimeText" 
+                                       FontSize="12"
+                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                            <TextBlock Name="UpdatedTimeText"
+                                       FontSize="12"
+                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+            
+            <!-- 底部操作栏 -->
+            <Border Grid.Row="2"
+                    Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                    Padding="16,12"
+                    BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="0,1,0,0">
+                <Grid ColumnDefinitions="*,Auto">
+                    <Button Name="MoveButton"
+                            Classes="transparent"
+                            Click="OnMoveClick"
+                            ToolTip.Tip="移动到其他项目">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <PathIcon Data="M15,19L9,12L15,5V19Z" Width="16" Height="16"/>
+                            <TextBlock Text="移动"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Grid.Column="1"
+                            Name="DeleteButton"
+                            Classes="transparent"
+                            Click="OnDeleteClick"
+                            Foreground="#FF4444"
+                            ToolTip.Tip="删除待办">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <PathIcon Data="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z" Width="16" Height="16"/>
+                            <TextBlock Text="删除"/>
+                        </StackPanel>
+                    </Button>
+                </Grid>
+            </Border>
+        </Grid>
+    </Border>
+</UserControl>

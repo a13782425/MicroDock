@@ -98,7 +98,6 @@ class Settings(BaseSettings):
     CORS_ORIGINS: List[str] = Field(
         default=[
             "http://localhost:3000",
-            "http://localhost:3001",
             "http://127.0.0.1:3000",
         ],
         description="允许的跨域来源列表"
@@ -127,6 +126,13 @@ class Settings(BaseSettings):
     JWT_EXPIRE_MINUTES: int = Field(
         default=60 * 24,
         description="JWT 过期时间（分钟），默认 24 小时"
+    )
+    
+    # ==================== 上传安全配置 ====================
+    # 全局上传密钥（用于首次上传验证，防止恶意提交）
+    UPLOAD_SECRET_KEY: str = Field(
+        default="change-this-upload-secret-in-production",
+        description="全局上传密钥，用于首次上传验证，生产环境务必修改"
     )
     
     class Config:

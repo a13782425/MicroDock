@@ -1,4 +1,4 @@
-﻿using SQLite;
+using SQLite;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -207,6 +207,12 @@ internal static class DBContext
             // 删除应用
             _database.Delete<ApplicationDB>(id);
         }
+    }
+
+    // 更新应用
+    public static void UpdateApplication(ApplicationDB application)
+    {
+        _database.Update(application);
     }
 
     #endregion

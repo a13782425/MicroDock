@@ -5,10 +5,10 @@
   "description": "卡片式待办事项管理，支持自定义字段、筛选和提醒功能",
   "author": "MicroDock",
   "license": "MIT",
-  
+
   "main": "TodoListPlugin.dll",
   "entryClass": "TodoListPlugin.TodoListPlugin",
-  
+
   "engines": {
     "microdock": ">=0.0.3.0"
   }

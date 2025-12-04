@@ -1,0 +1,339 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
+             x:Class="TodoListPlugin.Views.TodoSettingsView">
+    
+    <UserControl.Styles>
+        <!-- 设置卡片样式 -->
+        <Style Selector="Border.setting-card">
+            <Setter Property="Background" Value="{DynamicResource CardBackgroundFillColorDefaultBrush}"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="16"/>
+            <Setter Property="Margin" Value="0,8"/>
+        </Style>
+        
+        <!-- 设置项样式 -->
+        <Style Selector="Border.setting-item">
+            <Setter Property="Background" Value="{DynamicResource ControlFillColorDefaultBrush}"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="12,10"/>
+            <Setter Property="Margin" Value="0,4"/>
+        </Style>
+        
+        <Style Selector="Border.setting-item:pointerover">
+            <Setter Property="Background" Value="{DynamicResource ControlFillColorSecondaryBrush}"/>
+        </Style>
+    </UserControl.Styles>
+    
+    <Grid RowDefinitions="Auto,*">
+        <!-- 标题栏 -->
+        <Border Grid.Row="0" Padding="20,16"
+                BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="Auto,*">
+                <Button Name="BackButton"
+                        Click="OnBackClick"
+                        Background="Transparent"
+                        Padding="8"
+                        Margin="0,0,12,0">
+                    <PathIcon Data="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z"
+                              Width="16" Height="16"/>
+                </Button>
+                <TextBlock Grid.Column="1"
+                           Text="设置"
+                           FontSize="20"
+                           FontWeight="SemiBold"
+                           VerticalAlignment="Center"/>
+            </Grid>
+        </Border>
+        
+        <!-- 设置内容 -->
+        <ScrollViewer Grid.Row="1" Padding="20">
+            <StackPanel Spacing="16" MaxWidth="600">
+                
+                <!-- 状态列管理 -->
+                <Border Classes="setting-card">
+                    <StackPanel>
+                        <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,12">
+                            <StackPanel>
+                                <TextBlock Text="状态列" FontWeight="SemiBold" FontSize="16"/>
+                                <TextBlock Text="管理看板中的状态列，所有项目共用"
+                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                           FontSize="12"
+                                           Margin="0,4,0,0"/>
+                            </StackPanel>
+                            <Button Grid.Column="1"
+                                    Name="AddStatusButton"
+                                    Click="OnAddStatusClick"
+                                    ToolTip.Tip="添加状态列"
+                                    Padding="8">
+                                <PathIcon Data="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"
+                                          Width="16" Height="16"/>
+                            </Button>
+                        </Grid>
+                        
+                        <ItemsControl Name="StatusColumnsList">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Classes="setting-item">
+                                        <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                                            <Ellipse Grid.Column="0"
+                                                     Width="12" Height="12"
+                                                     Fill="{Binding Color}"
+                                                     Margin="0,0,12,0"
+                                                     VerticalAlignment="Center"/>
+                                            <TextBlock Grid.Column="1"
+                                                       Text="{Binding Name}"
+                                                       VerticalAlignment="Center"/>
+                                            <Button Grid.Column="2"
+                                                    Click="OnEditStatusClick"
+                                                    Tag="{Binding}"
+                                                    Background="Transparent"
+                                                    Padding="6"
+                                                    ToolTip.Tip="编辑">
+                                                <PathIcon Data="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z"
+                                                          Width="14" Height="14"/>
+                                            </Button>
+                                            <Button Grid.Column="3"
+                                                    Click="OnDeleteStatusClick"
+                                                    Tag="{Binding}"
+                                                    Background="Transparent"
+                                                    Padding="6"
+                                                    ToolTip.Tip="删除"
+                                                    IsEnabled="{Binding !IsDefault}">
+                                                <PathIcon Data="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"
+                                                          Width="14" Height="14"/>
+                                            </Button>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+                
+                <!-- 优先级管理 -->
+                <Border Classes="setting-card">
+                    <StackPanel>
+                        <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,12">
+                            <StackPanel>
+                                <TextBlock Text="优先级" FontWeight="SemiBold" FontSize="16"/>
+                                <TextBlock Text="管理待办事项的优先级选项"
+                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                           FontSize="12"
+                                           Margin="0,4,0,0"/>
+                            </StackPanel>
+                            <Button Grid.Column="1"
+                                    Name="AddPriorityButton"
+                                    Click="OnAddPriorityClick"
+                                    ToolTip.Tip="添加优先级"
+                                    Padding="8">
+                                <PathIcon Data="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"
+                                          Width="16" Height="16"/>
+                            </Button>
+                        </Grid>
+                        
+                        <ItemsControl Name="PrioritiesList">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Classes="setting-item">
+                                        <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                                            <Border Grid.Column="0"
+                                                    Background="{Binding Color}"
+                                                    CornerRadius="4"
+                                                    Padding="8,4"
+                                                    Margin="0,0,12,0"
+                                                    VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Name}"
+                                                           FontSize="11"
+                                                           Foreground="White"/>
+                                            </Border>
+                                            <TextBlock Grid.Column="1"
+                                                       Text="{Binding Level, StringFormat='级别: {0}'}"
+                                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                       VerticalAlignment="Center"/>
+                                            <Button Grid.Column="2"
+                                                    Click="OnEditPriorityClick"
+                                                    Tag="{Binding}"
+                                                    Background="Transparent"
+                                                    Padding="6"
+                                                    ToolTip.Tip="编辑">
+                                                <PathIcon Data="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z"
+                                                          Width="14" Height="14"/>
+                                            </Button>
+                                            <Button Grid.Column="3"
+                                                    Click="OnDeletePriorityClick"
+                                                    Tag="{Binding}"
+                                                    Background="Transparent"
+                                                    Padding="6"
+                                                    ToolTip.Tip="删除">
+                                                <PathIcon Data="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"
+                                                          Width="14" Height="14"/>
+                                            </Button>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+                
+                <!-- 标签管理 -->
+                <Border Classes="setting-card">
+                    <StackPanel>
+                        <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,12">
+                            <StackPanel>
+                                <TextBlock Text="标签" FontWeight="SemiBold" FontSize="16"/>
+                                <TextBlock Text="管理待办事项的标签选项"
+                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                           FontSize="12"
+                                           Margin="0,4,0,0"/>
+                            </StackPanel>
+                            <Button Grid.Column="1"
+                                    Name="AddTagButton"
+                                    Click="OnAddTagClick"
+                                    ToolTip.Tip="添加标签"
+                                    Padding="8">
+                                <PathIcon Data="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"
+                                          Width="16" Height="16"/>
+                            </Button>
+                        </Grid>
+                        
+                        <ItemsControl Name="TagsList">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Classes="setting-item">
+                                        <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                                            <Border Grid.Column="0"
+                                                    Background="{Binding Color}"
+                                                    CornerRadius="4"
+                                                    Padding="8,4"
+                                                    Margin="0,0,12,0"
+                                                    VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Name}"
+                                                           FontSize="11"
+                                                           Foreground="White"/>
+                                            </Border>
+                                            <TextBlock Grid.Column="1"
+                                                       VerticalAlignment="Center"/>
+                                            <Button Grid.Column="2"
+                                                    Click="OnEditTagClick"
+                                                    Tag="{Binding}"
+                                                    Background="Transparent"
+                                                    Padding="6"
+                                                    ToolTip.Tip="编辑">
+                                                <PathIcon Data="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z"
+                                                          Width="14" Height="14"/>
+                                            </Button>
+                                            <Button Grid.Column="3"
+                                                    Click="OnDeleteTagClick"
+                                                    Tag="{Binding}"
+                                                    Background="Transparent"
+                                                    Padding="6"
+                                                    ToolTip.Tip="删除">
+                                                <PathIcon Data="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"
+                                                          Width="14" Height="14"/>
+                                            </Button>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+                
+                <!-- 字段模板管理 -->
+                <Border Classes="setting-card">
+                    <StackPanel>
+                        <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,12">
+                            <StackPanel>
+                                <TextBlock Text="字段模板" FontWeight="SemiBold" FontSize="16"/>
+                                <TextBlock Text="管理待办事项的自定义字段"
+                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                           FontSize="12"
+                                           Margin="0,4,0,0"/>
+                            </StackPanel>
+                            <Button Grid.Column="1"
+                                    Name="AddFieldButton"
+                                    Click="OnAddFieldClick"
+                                    ToolTip.Tip="添加字段"
+                                    Padding="8">
+                                <PathIcon Data="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"
+                                          Width="16" Height="16"/>
+                            </Button>
+                        </Grid>
+                        
+                        <ItemsControl Name="FieldTemplatesList">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Classes="setting-item">
+                                        <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto">
+                                            <StackPanel Grid.Column="0">
+                                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                                    <TextBlock Text="{Binding Name}"
+                                                               FontWeight="Medium"/>
+                                                    <!-- 内置字段标识 -->
+                                                    <Border Background="{DynamicResource AccentFillColorDefaultBrush}"
+                                                            CornerRadius="4"
+                                                            Padding="4,1"
+                                                            IsVisible="{Binding IsDefault}">
+                                                        <TextBlock Text="内置"
+                                                                   FontSize="10"
+                                                                   Foreground="White"/>
+                                                    </Border>
+                                                </StackPanel>
+                                                <TextBlock Text="{Binding FieldType}"
+                                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                           FontSize="11"/>
+                                            </StackPanel>
+                                            <!-- 必填：内置字段禁用 -->
+                                            <CheckBox Grid.Column="1"
+                                                      IsChecked="{Binding Required}"
+                                                      Content="必填"
+                                                      Tag="{Binding}"
+                                                      Click="OnFieldRequiredChanged"
+                                                      IsEnabled="{Binding IsDefault, Converter={x:Static BoolConverters.Not}}"
+                                                      Margin="0,0,8,0"/>
+                                            <!-- 显示：所有字段都可配置 -->
+                                            <CheckBox Grid.Column="2"
+                                                      IsChecked="{Binding ShowOnCard}"
+                                                      Content="显示"
+                                                      Tag="{Binding}"
+                                                      Click="OnFieldShowOnCardChanged"
+                                                      Margin="0,0,8,0"/>
+                                            <!-- 编辑：内置字段隐藏 -->
+                                            <Button Grid.Column="3"
+                                                    Click="OnEditFieldClick"
+                                                    Tag="{Binding}"
+                                                    Background="Transparent"
+                                                    Padding="6"
+                                                    ToolTip.Tip="编辑"
+                                                    IsVisible="{Binding IsDefault, Converter={x:Static BoolConverters.Not}}">
+                                                <PathIcon Data="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z"
+                                                          Width="14" Height="14"/>
+                                            </Button>
+                                            <!-- 删除：内置字段隐藏 -->
+                                            <Button Grid.Column="4"
+                                                    Click="OnDeleteFieldClick"
+                                                    Tag="{Binding}"
+                                                    Background="Transparent"
+                                                    Padding="6"
+                                                    ToolTip.Tip="删除"
+                                                    IsVisible="{Binding IsDefault, Converter={x:Static BoolConverters.Not}}">
+                                                <PathIcon Data="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"
+                                                          Width="14" Height="14"/>
+                                            </Button>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+                
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

@@ -14,6 +14,7 @@ from app.services.file_service import FileService
 from app.services.version_service import VersionService
 from app.utils.hash import calculate_file_hash
 from app.utils.validators import validate_upload_file, validate_key_or_raise
+from app.config import settings
 
 
 class PluginService:
@@ -68,7 +69,8 @@ class PluginService:
     async def create_plugin_from_upload(
         db: AsyncSession,
         file: UploadFile,
-        plugin_key: str
+        plugin_key: str,
+        upload_secret: str
     ) -> Plugin:
         """
         从上传的ZIP文件创建插件
@@ -77,6 +79,7 @@ class PluginService:
             db: 数据库会话
             file: 上传的ZIP文件
             plugin_key: 插件密钥（首次上传绑定，后续验证）
+            upload_secret: 全局上传密钥（用于首次上传验证）
             
         Returns:
             Plugin: 创建的插件对象
@@ -87,7 +90,14 @@ class PluginService:
         # 2. 验证 plugin_key 格式
         validate_key_or_raise(plugin_key, "插件密钥")
         
-        # 3. 临时保存文件用于解析
+        # 3. 验证全局上传密钥
+        if upload_secret != settings.UPLOAD_SECRET_KEY:
+            raise HTTPException(
+                status_code=403,
+                detail="全局上传密钥无效，无权上传插件"
+            )
+        
+        # 4. 临时保存文件用于解析
         temp_path = Path("./data/temp") / file.filename
         temp_path.parent.mkdir(parents=True, exist_ok=True)
         
@@ -97,12 +107,12 @@ class PluginService:
                 content = await file.read()
                 f.write(content)
             
-            # 4. 解析 plugin.json
+            # 5. 解析 plugin.json
             plugin_data = await FileService.parse_plugin_json(temp_path)
             plugin_name = plugin_data['name']
             plugin_version = plugin_data['version']
             
-            # 5. 检查插件是否已存在
+            # 6. 检查插件是否已存在
             existing_plugin = await PluginService.get_plugin_by_name(db, plugin_name)
             if existing_plugin:
                 # 验证 plugin_key 是否匹配
@@ -119,7 +129,7 @@ class PluginService:
                         detail=f"插件 '{plugin_name}' 的版本 '{plugin_version}' 已存在"
                     )
             
-            # 6. 创建或更新插件
+            # 7. 创建或更新插件
             if existing_plugin:
                 plugin = existing_plugin
             else:
@@ -137,19 +147,19 @@ class PluginService:
                 db.add(plugin)
                 await db.flush()
             
-            # 7. 重置文件指针并保存（使用插件名和版本号命名）
+            # 8. 重置文件指针并保存（使用插件名和版本号命名）
             file.file.seek(0)
             file_path, file_size = await FileService.save_upload_file(
                 file, plugin_name, plugin_version
             )
             
-            # 8. 计算文件哈希
+            # 9. 计算文件哈希
             file_hash = await calculate_file_hash(file_path)
             
-            # 9. 生成规范的文件名：{plugin_name}@{version}.zip
+            # 10. 生成规范的文件名：{plugin_name}@{version}.zip
             formatted_file_name = f"{plugin_name}@{plugin_version}.zip"
             
-            # 10. 创建版本记录
+            # 11. 创建版本记录
             version = PluginVersion(
                 plugin_name=plugin_name,
                 version=plugin_version,
@@ -163,7 +173,7 @@ class PluginService:
             )
             db.add(version)
             
-            # 11. 更新插件的当前版本
+            # 12. 更新插件的当前版本
             plugin.current_version = plugin_version
             
             await db.commit()

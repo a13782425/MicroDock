@@ -124,7 +124,7 @@ def check_environment():
             [npm_cmd, "--version"], 
             capture_output=True, 
             check=True, 
-            shell=True,
+            shell=False,
             text=True
         )
         print(f"✓ Node.js/npm {result.stdout.strip()}")
@@ -218,7 +218,7 @@ def start_frontend(config: dict):
     return subprocess.Popen(
         [npm_cmd, "run", "dev"],
         cwd="frontend",
-        shell=True,
+        shell=False,
         env=env
     )
 

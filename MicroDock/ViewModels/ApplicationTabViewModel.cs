@@ -109,6 +109,15 @@ public class ApplicationTabViewModel : ViewModelBase
         }
     }
 
+    public void RenameApplication(ApplicationDB app, string newName)
+    {
+        if (app != null && !string.IsNullOrWhiteSpace(newName))
+        {
+            app.Name = newName;
+            DBContext.UpdateApplication(app);
+        }
+    }
+
     private void LoadApplications()
     {
         _applications.Clear();

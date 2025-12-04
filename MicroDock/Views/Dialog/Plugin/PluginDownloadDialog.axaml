@@ -1,0 +1,71 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:local="clr-namespace:MicroDock.Views.Dialog"
+             mc:Ignorable="d" d:DesignWidth="500" d:DesignHeight="450"
+             x:Class="MicroDock.Views.Dialog.PluginDownloadDialog">
+    <UserControl.Resources>
+        <!-- 插件列表项模板 -->
+        <DataTemplate x:Key="PluginItemTemplate" x:DataType="local:RemotePluginListItem">
+            <Border Padding="10,8" Margin="2" CornerRadius="6" Background="Transparent">
+                <Grid ColumnDefinitions="*, Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <!-- 名称和标签行 -->
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="{Binding DisplayName}" 
+                                       FontWeight="SemiBold" 
+                                       FontSize="14"/>
+                            <!-- 已安装标签 -->
+                            <Border Background="#22C55E" 
+                                    CornerRadius="3" 
+                                    Padding="6,2"
+                                    IsVisible="{Binding IsInstalled}">
+                                <TextBlock Text="已安装" FontSize="10" Foreground="White"/>
+                            </Border>
+                            <!-- 可更新标签 -->
+                            <Border Background="#3B82F6" 
+                                    CornerRadius="3" 
+                                    Padding="6,2"
+                                    IsVisible="{Binding NeedsUpdate}">
+                                <TextBlock Text="可更新" FontSize="10" Foreground="White"/>
+                            </Border>
+                        </StackPanel>
+                        <!-- 描述 -->
+                        <TextBlock Text="{Binding Description}" 
+                                   FontSize="12" 
+                                   Opacity="0.7"
+                                   TextTrimming="CharacterEllipsis"
+                                   MaxWidth="350"/>
+                        <!-- 作者和版本 -->
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <TextBlock Text="{Binding Author, StringFormat='作者: {0}'}" 
+                                       FontSize="11" 
+                                       Opacity="0.6"/>
+                            <TextBlock Text="{Binding Version, StringFormat='v{0}'}" 
+                                       FontSize="11" 
+                                       Opacity="0.6"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </DataTemplate>
+    </UserControl.Resources>
+    
+    <StackPanel Spacing="0" MinWidth="450">
+        <!-- 标题文本 -->
+        <TextBlock Name="TitleText"
+                   Text="找到 0 个可用插件，选择一个进行安装："
+                   FontSize="13"
+                   Margin="0,0,0,10"/>
+        
+        <!-- 插件列表 -->
+        <ScrollViewer MaxHeight="350"
+                      HorizontalScrollBarVisibility="Disabled"
+                      VerticalScrollBarVisibility="Auto">
+            <ListBox Name="PluginListBox"
+                     SelectionMode="Single"
+                     ItemTemplate="{StaticResource PluginItemTemplate}"/>
+        </ScrollViewer>
+    </StackPanel>
+</UserControl>

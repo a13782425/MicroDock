@@ -1,0 +1,84 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:converters="using:TodoListPlugin.Converters"
+             x:Class="TodoListPlugin.Views.Dialogs.EditPriorityContent"
+             Width="360">
+    
+    <UserControl.Resources>
+        <converters:BoolToThicknessConverter x:Key="BoolToThicknessConverter"/>
+    </UserControl.Resources>
+    
+    <StackPanel Spacing="16">
+        <!-- 名称 -->
+        <StackPanel>
+            <TextBlock Text="优先级名称" Margin="0,0,0,8"/>
+            <TextBox Name="NameTextBox" 
+                     Watermark="输入优先级名称..."/>
+        </StackPanel>
+        
+        <!-- 级别 -->
+        <StackPanel>
+            <TextBlock Text="优先级级别（数值越小优先级越高）" Margin="0,0,0,8"/>
+            <NumericUpDown Name="LevelNumeric" 
+                           Minimum="0" Maximum="100" Value="0"
+                           HorizontalAlignment="Left" Width="120"/>
+        </StackPanel>
+        
+        <!-- 颜色 -->
+        <StackPanel>
+            <TextBlock Text="优先级颜色" Margin="0,0,0,8"/>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <RadioButton GroupName="Color" Content="" Tag="#FF4444" IsChecked="True">
+                    <RadioButton.Template>
+                        <ControlTemplate>
+                            <Border Width="32" Height="32" CornerRadius="16" Background="#FF4444"
+                                    BorderBrush="{DynamicResource AccentFillColorDefaultBrush}"
+                                    BorderThickness="{TemplateBinding IsChecked, Converter={StaticResource BoolToThicknessConverter}}"
+                                    Cursor="Hand"/>
+                        </ControlTemplate>
+                    </RadioButton.Template>
+                </RadioButton>
+                <RadioButton GroupName="Color" Content="" Tag="#FF8800">
+                    <RadioButton.Template>
+                        <ControlTemplate>
+                            <Border Width="32" Height="32" CornerRadius="16" Background="#FF8800"
+                                    BorderBrush="{DynamicResource AccentFillColorDefaultBrush}"
+                                    BorderThickness="{TemplateBinding IsChecked, Converter={StaticResource BoolToThicknessConverter}}"
+                                    Cursor="Hand"/>
+                        </ControlTemplate>
+                    </RadioButton.Template>
+                </RadioButton>
+                <RadioButton GroupName="Color" Content="" Tag="#FFCC00">
+                    <RadioButton.Template>
+                        <ControlTemplate>
+                            <Border Width="32" Height="32" CornerRadius="16" Background="#FFCC00"
+                                    BorderBrush="{DynamicResource AccentFillColorDefaultBrush}"
+                                    BorderThickness="{TemplateBinding IsChecked, Converter={StaticResource BoolToThicknessConverter}}"
+                                    Cursor="Hand"/>
+                        </ControlTemplate>
+                    </RadioButton.Template>
+                </RadioButton>
+                <RadioButton GroupName="Color" Content="" Tag="#44BB44">
+                    <RadioButton.Template>
+                        <ControlTemplate>
+                            <Border Width="32" Height="32" CornerRadius="16" Background="#44BB44"
+                                    BorderBrush="{DynamicResource AccentFillColorDefaultBrush}"
+                                    BorderThickness="{TemplateBinding IsChecked, Converter={StaticResource BoolToThicknessConverter}}"
+                                    Cursor="Hand"/>
+                        </ControlTemplate>
+                    </RadioButton.Template>
+                </RadioButton>
+                <RadioButton GroupName="Color" Content="" Tag="#808080">
+                    <RadioButton.Template>
+                        <ControlTemplate>
+                            <Border Width="32" Height="32" CornerRadius="16" Background="#808080"
+                                    BorderBrush="{DynamicResource AccentFillColorDefaultBrush}"
+                                    BorderThickness="{TemplateBinding IsChecked, Converter={StaticResource BoolToThicknessConverter}}"
+                                    Cursor="Hand"/>
+                        </ControlTemplate>
+                    </RadioButton.Template>
+                </RadioButton>
+            </StackPanel>
+        </StackPanel>
+    </StackPanel>
+</UserControl>

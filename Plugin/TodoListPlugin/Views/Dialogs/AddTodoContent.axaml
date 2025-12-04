@@ -1,0 +1,45 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="TodoListPlugin.Views.Dialogs.AddTodoContent"
+             Width="400">
+    
+    <StackPanel Spacing="16">
+        <!-- 待办标题 -->
+        <StackPanel>
+            <TextBlock Text="待办标题" Margin="0,0,0,8"/>
+            <TextBox Name="TitleTextBox" 
+                     Watermark="输入待办标题..."/>
+        </StackPanel>
+        
+        <!-- 选择状态列（可选） -->
+        <StackPanel>
+            <TextBlock Text="添加到状态列" Margin="0,0,0,8"/>
+            <ComboBox Name="StatusComboBox" 
+                      HorizontalAlignment="Stretch"
+                      PlaceholderText="选择状态列..."/>
+        </StackPanel>
+        
+        <!-- 必填字段区域 -->
+        <StackPanel Name="RequiredFieldsPanel" IsVisible="False">
+            <TextBlock Text="必填字段" 
+                       Margin="0,0,0,8"
+                       FontWeight="SemiBold"
+                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+            <ItemsControl Name="RequiredFieldsItemsControl">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Margin="0,0,0,12">
+                            <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,0,0,4">
+                                <TextBlock Text="{Binding Name}"/>
+                                <TextBlock Text="*" Foreground="Red"/>
+                            </StackPanel>
+                            <TextBox Tag="{Binding Id}"
+                                     Watermark="{Binding Name, StringFormat='输入{0}...'}"
+                                     TextChanged="OnRequiredFieldTextChanged"/>
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
+    </StackPanel>
+</UserControl>

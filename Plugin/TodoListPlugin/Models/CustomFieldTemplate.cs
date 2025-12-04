@@ -29,6 +29,11 @@ namespace TodoListPlugin.Models
         public bool Required { get; set; }
 
         /// <summary>
+        /// 是否在卡片上显示
+        /// </summary>
+        public bool ShowOnCard { get; set; }
+
+        /// <summary>
         /// 默认值（字符串表示）
         /// </summary>
         public string? DefaultValue { get; set; }

@@ -16,6 +16,7 @@
 			<MenuItem x:Name="OpenMenuItem" Header="打开"/>
 			<MenuItem x:Name="OpenLocationMenuItem" Header="打开文件位置"/>
 			<Separator/>
+			<MenuItem x:Name="RenameMenuItem" Header="重命名"/>
 			<MenuItem x:Name="DeleteMenuItem" Header="删除"/>
 		</ContextMenu>
 	</UserControl.ContextMenu>
@@ -36,14 +37,28 @@
 				   Width="48"
 				   Height="48"
 				   HorizontalAlignment="Center"/>
-			<TextBlock Text="{Binding Name}"
-					   FontSize="12"
-					   TextAlignment="Center"
-					   TextWrapping="Wrap"
-					   Width="72"
-					   Height="24"
-					   TextTrimming="CharacterEllipsis"
-					   HorizontalAlignment="Center"/>
+			<Panel Width="72" Height="24">
+				<TextBlock x:Name="NameTextBlock"
+						   Text="{Binding Name}"
+						   FontSize="12"
+						   TextAlignment="Center"
+						   TextWrapping="Wrap"
+						   Width="72"
+						   Height="24"
+						   TextTrimming="CharacterEllipsis"
+						   HorizontalAlignment="Center"/>
+			<TextBox x:Name="NameTextBox"
+					 FontSize="12"
+					 Width="72"
+					 MinHeight="24"
+					 Padding="0"
+					 Margin="0"
+					 BorderThickness="1"
+					 HorizontalAlignment="Center"
+					 HorizontalContentAlignment="Center"
+					 VerticalContentAlignment="Center"
+					 IsVisible="False"/>
+			</Panel>
 		</StackPanel>
 	</Border>
 </UserControl>

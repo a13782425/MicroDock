@@ -16,6 +16,11 @@ namespace TodoListPlugin.Models
         Bool,
 
         /// <summary>
+        /// 布尔值（别名）
+        /// </summary>
+        Boolean = Bool,
+
+        /// <summary>
         /// 日期
         /// </summary>
         Date,
@@ -28,7 +33,12 @@ namespace TodoListPlugin.Models
         /// <summary>
         /// 单选项（下拉选择）
         /// </summary>
-        Select
+        Select,
+
+        /// <summary>
+        /// 多选项
+        /// </summary>
+        MultiSelect
     }
 
     /// <summary>

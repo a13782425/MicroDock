@@ -3,6 +3,7 @@ using MicroDock.Database;
 using MicroDock.Model;
 using MicroDock.Service;
 using MicroDock.Utils;
+using MicroDock.Views.Dialog;
 using ReactiveUI;
 using System;
 using System.Reactive;
@@ -32,17 +33,11 @@ public class NavigationTabSettingItem : ReactiveObject, IDisposable
     /// </summary>
     public ReactiveCommand<Unit, Unit> SetPasswordCommand { get; }
 
-    /// <summary>
-    /// 移除密码命令
-    /// </summary>
-    public ReactiveCommand<Unit, Unit> RemovePasswordCommand { get; }
-
 #pragma warning disable CS8618
     public NavigationTabSettingItem(NavigationTabDto? navigationTabDto)
 #pragma warning restore CS8618 
     {
         SetPasswordCommand = ReactiveCommand.CreateFromTask(SetPasswordAsync);
-        RemovePasswordCommand = ReactiveCommand.CreateFromTask(RemovePasswordAsync);
 
         if (navigationTabDto == null)
         {
@@ -182,51 +177,49 @@ public class NavigationTabSettingItem : ReactiveObject, IDisposable
         if (IsLocked)
         {
             // 修改密码 - 需要先验证旧密码
-            var oldPassword = await ShowPasswordInputDialogAsync("修改密码", "请输入当前密码：");
-            if (string.IsNullOrEmpty(oldPassword))
+            ChangePasswordResult? result = await UniversalUtils.ShowCustomDialogAsync<ChangePasswordDialog, ChangePasswordResult>("修改密码");
+            //var oldPassword = await ShowPasswordInputDialogAsync("修改密码", "请输入当前密码：");
+            if (string.IsNullOrEmpty(result.CurrentPassword))
                 return;
 
-            if (!tabLockService.VerifyPassword(UniqueId, oldPassword))
+            if (!tabLockService.VerifyPassword(UniqueId, result.CurrentPassword))
             {
                 ShowNotification("密码错误", "当前密码不正确", AppNotificationType.Error);
                 return;
             }
 
-            var newPassword = await ShowPasswordInputDialogAsync("修改密码", "请输入新密码：");
-            if (string.IsNullOrEmpty(newPassword))
-                return;
-
-            var confirmPassword = await ShowPasswordInputDialogAsync("修改密码", "请再次输入新密码：");
-            if (newPassword != confirmPassword)
+            if (string.IsNullOrWhiteSpace(result.NewPassword))
             {
-                ShowNotification("密码不匹配", "两次输入的密码不一致", AppNotificationType.Error);
-                return;
-            }
-
-            if (tabLockService.ChangePassword(UniqueId, oldPassword, newPassword))
-            {
-                ShowNotification("修改成功", "密码已修改", AppNotificationType.Success);
+                //移除密码
+                if (tabLockService.RemovePassword(UniqueId, result.CurrentPassword))
+                {
+                    IsLocked = false;
+                    this.RaisePropertyChanged(nameof(PasswordButtonText));
+                    ShowNotification("移除成功", "密码已移除，页签已解锁", AppNotificationType.Success);
+                }
+                else
+                {
+                    ShowNotification("密码错误", "密码不正确，无法移除", AppNotificationType.Error);
+                }
             }
             else
             {
-                ShowNotification("修改失败", "密码修改失败", AppNotificationType.Error);
+                if (tabLockService.ChangePassword(UniqueId, result.CurrentPassword, result.NewPassword))
+                {
+                    ShowNotification("修改成功", "密码已修改", AppNotificationType.Success);
+                }
+                else
+                {
+                    ShowNotification("修改失败", "密码修改失败", AppNotificationType.Error);
+                }
             }
         }
         else
         {
             // 设置新密码
-            var newPassword = await ShowPasswordInputDialogAsync("设置密码", "请输入密码：");
-            if (string.IsNullOrEmpty(newPassword))
-                return;
-
-            var confirmPassword = await ShowPasswordInputDialogAsync("设置密码", "请再次输入密码：");
-            if (newPassword != confirmPassword)
-            {
-                ShowNotification("密码不匹配", "两次输入的密码不一致", AppNotificationType.Error);
-                return;
-            }
-
-            if (tabLockService.SetPassword(UniqueId, newPassword))
+            // 新的调用方式
+            string? password = await UniversalUtils.ShowCustomDialogAsync<SetPasswordDialog, string>("设置密码");
+            if (tabLockService.SetPassword(UniqueId, password))
             {
                 IsLocked = true;
                 this.RaisePropertyChanged(nameof(PasswordButtonText));
@@ -237,39 +230,6 @@ public class NavigationTabSettingItem : ReactiveObject, IDisposable
                 ShowNotification("设置失败", "密码设置失败", AppNotificationType.Error);
             }
         }
-    }
-
-    /// <summary>
-    /// 移除密码
-    /// </summary>
-    private async Task RemovePasswordAsync()
-    {
-        if (!IsLocked)
-            return;
-
-        var password = await ShowPasswordInputDialogAsync("移除密码", "请输入当前密码以移除锁定：");
-        if (string.IsNullOrEmpty(password))
-            return;
-
-        var tabLockService = ServiceLocator.Get<TabLockService>();
-        if (tabLockService.RemovePassword(UniqueId, password))
-        {
-            IsLocked = false;
-            this.RaisePropertyChanged(nameof(PasswordButtonText));
-            ShowNotification("移除成功", "密码已移除，页签已解锁", AppNotificationType.Success);
-        }
-        else
-        {
-            ShowNotification("密码错误", "密码不正确，无法移除", AppNotificationType.Error);
-        }
-    }
-
-    /// <summary>
-    /// 显示密码输入对话框
-    /// </summary>
-    private async Task<string?> ShowPasswordInputDialogAsync(string title, string prompt)
-    {
-        return await UniversalUtils.ShowPasswordInputDialogAsync(title, prompt);
     }
 
     public void Dispose()
