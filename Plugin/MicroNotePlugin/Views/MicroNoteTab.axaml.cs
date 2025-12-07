@@ -1,8 +1,9 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
+using Microsoft.Extensions.DependencyInjection;
 using MicroDock.Plugin;
-using MicroNotePlugin.Services;
+using MicroNotePlugin.Core.Interfaces;
 using MicroNotePlugin.ViewModels;
 using MicroNotePlugin.Views.Controls;
 
@@ -39,17 +40,10 @@ public partial class MicroNoteTab : UserControl, IMicroTab
 
     private void InitializeServices()
     {
-        if (_plugin.Context == null) return;
+        if (_plugin.Context == null || _plugin.Services == null) return;
 
-        // 创建服务（MetadataService 不再依赖 IPluginContext，改用 JSON 文件存储）
-        var dataPath = _plugin.Context.DataPath;
-        var metadataService = new MetadataService(dataPath);
-        var fileService = new NoteFileService(dataPath, metadataService);
-        var markdownService = new MarkdownService();
-        var imageService = new ImageService(dataPath, metadataService);
-
-        // 创建 ViewModel
-        _viewModel = new MicroNoteTabViewModel(fileService, metadataService, markdownService);
+        // 创建 ViewModel（使用 DI 容器）
+        _viewModel = new MicroNoteTabViewModel(_plugin.Services);
         DataContext = _viewModel;
 
         // 获取子控件并设置 ViewModel
@@ -65,14 +59,17 @@ public partial class MicroNoteTab : UserControl, IMicroTab
         if (_markdownEditor != null)
         {
             _markdownEditor.SetViewModel(_viewModel.Editor);
+            
+            // 从 DI 获取图片服务
+            var imageService = _plugin.Services.GetRequiredService<IImageService>();
             _markdownEditor.SetImageService(imageService);
         }
     }
 
-    private void OnFileSelected(object? sender, FileNodeViewModel node)
+    private async void OnFileSelected(object? sender, FileNodeViewModel node)
     {
         if (_viewModel == null) return;
 
-        _viewModel.OpenFile(node);
+        await _viewModel.OpenFileAsync(node);
     }
 }

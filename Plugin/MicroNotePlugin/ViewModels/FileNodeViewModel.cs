@@ -1,6 +1,6 @@
 using System.Collections.ObjectModel;
 using ReactiveUI;
-using MicroNotePlugin.Models;
+using MicroNotePlugin.Core.Entities;
 
 namespace MicroNotePlugin.ViewModels;
 
@@ -9,12 +9,14 @@ namespace MicroNotePlugin.ViewModels;
 /// </summary>
 public enum FileNodeType
 {
-    /// <summary>根节点（收藏、常用、全部文件）</summary>
+    /// <summary>根节点（收藏、常用、全部文件、标签）</summary>
     Root,
     /// <summary>文件夹</summary>
     Folder,
     /// <summary>文件</summary>
-    File
+    File,
+    /// <summary>标签</summary>
+    Tag
 }
 
 /// <summary>
@@ -22,8 +24,9 @@ public enum FileNodeType
 /// </summary>
 public class FileNodeViewModel : ReactiveObject
 {
+    private string _id = string.Empty;
     private string _name = string.Empty;
-    private string _hash = string.Empty;
+    private string? _folderId;
     private string _folderPath = string.Empty;
     private FileNodeType _nodeType;
     private bool _isFavorite;
@@ -35,6 +38,15 @@ public class FileNodeViewModel : ReactiveObject
     private ObservableCollection<FileNodeViewModel> _children = new();
 
     /// <summary>
+    /// 节点 ID（笔记 ID、文件夹 ID 或标签 ID）
+    /// </summary>
+    public string Id
+    {
+        get => _id;
+        set => this.RaiseAndSetIfChanged(ref _id, value);
+    }
+
+    /// <summary>
     /// 节点名称
     /// </summary>
     public string Name
@@ -44,16 +56,16 @@ public class FileNodeViewModel : ReactiveObject
     }
 
     /// <summary>
-    /// 文件 Hash（仅文件节点有效）
+    /// 所属文件夹 ID（仅文件节点有效）
     /// </summary>
-    public string Hash
+    public string? FolderId
     {
-        get => _hash;
-        set => this.RaiseAndSetIfChanged(ref _hash, value);
+        get => _folderId;
+        set => this.RaiseAndSetIfChanged(ref _folderId, value);
     }
 
     /// <summary>
-    /// 虚拟文件夹路径（文件夹节点的完整路径，或文件节点所属的文件夹路径）
+    /// 虚拟文件夹路径（文件夹节点的完整路径）
     /// </summary>
     public string FolderPath
     {
@@ -149,6 +161,11 @@ public class FileNodeViewModel : ReactiveObject
     public bool IsRoot => NodeType == FileNodeType.Root;
 
     /// <summary>
+    /// 是否是标签节点
+    /// </summary>
+    public bool IsTag => NodeType == FileNodeType.Tag;
+
+    /// <summary>
     /// 是否有子节点
     /// </summary>
     public bool HasChildren => Children.Count > 0;
@@ -172,72 +189,58 @@ public class FileNodeViewModel : ReactiveObject
     }
 
     /// <summary>
-    /// 从 NoteFile 创建节点
+    /// 从 Note 实体创建节点
     /// </summary>
-    public static FileNodeViewModel FromNoteFile(NoteFile file, bool isFavorite = false, int openCount = 0)
+    public static FileNodeViewModel FromNote(Note note)
     {
         return new FileNodeViewModel
         {
-            Name = file.Name,
-            Hash = file.Hash,
-            FolderPath = file.Folder,
+            Id = note.Id,
+            Name = note.Name,
+            FolderId = note.FolderId,
             NodeType = FileNodeType.File,
-            IsFavorite = isFavorite,
-            OpenCount = openCount
+            IsFavorite = note.IsFavorite,
+            OpenCount = note.OpenCount
         };
     }
 
     /// <summary>
-    /// 从 NoteMetadata 创建节点
+    /// 从 Folder 实体创建节点
     /// </summary>
-    public static FileNodeViewModel FromNoteMetadata(NoteMetadata metadata)
+    public static FileNodeViewModel FromFolder(Folder folder)
     {
         return new FileNodeViewModel
         {
-            Name = metadata.Name,
-            Hash = metadata.Hash,
-            FolderPath = metadata.Folder,
-            NodeType = FileNodeType.File,
-            IsFavorite = metadata.IsFavorite,
-            OpenCount = metadata.OpenCount
-        };
-    }
-
-    /// <summary>
-    /// 从 NoteFolder 创建节点
-    /// </summary>
-    public static FileNodeViewModel FromNoteFolder(NoteFolder folder, Func<string, bool> isFavoriteChecker, Func<string, int> openCountGetter)
-    {
-        var node = new FileNodeViewModel
-        {
+            Id = folder.Id,
             Name = folder.Name,
             FolderPath = folder.Path,
             NodeType = FileNodeType.Folder,
             IsExpanded = false
         };
+    }
 
-        // 添加子文件夹
-        foreach (var subFolder in folder.SubFolders.OrderBy(f => f.Name))
+    /// <summary>
+    /// 从 Tag 实体创建节点
+    /// </summary>
+    public static FileNodeViewModel FromTag(Tag tag)
+    {
+        return new FileNodeViewModel
         {
-            node.Children.Add(FromNoteFolder(subFolder, isFavoriteChecker, openCountGetter));
-        }
-
-        // 添加子文件
-        foreach (var file in folder.Files.OrderBy(f => f.Name))
-        {
-            node.Children.Add(FromNoteFile(file, isFavoriteChecker(file.Hash), openCountGetter(file.Hash)));
-        }
-
-        return node;
+            Id = tag.Id,
+            Name = tag.Name,
+            NodeType = FileNodeType.Tag,
+            IsExpanded = false
+        };
     }
 
     /// <summary>
     /// 创建根节点
     /// </summary>
-    public static FileNodeViewModel CreateRoot(string name)
+    public static FileNodeViewModel CreateRoot(string name, string id = "")
     {
         return new FileNodeViewModel
         {
+            Id = id,
             Name = name,
             NodeType = FileNodeType.Root,
             IsExpanded = true

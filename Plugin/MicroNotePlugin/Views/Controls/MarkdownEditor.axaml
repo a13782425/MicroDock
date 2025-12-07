@@ -3,7 +3,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:ae="clr-namespace:AvaloniaEdit;assembly=AvaloniaEdit"
-             xmlns:md="clr-namespace:Markdown.Avalonia;assembly=Markdown.Avalonia"
+             xmlns:wv="clr-namespace:AvaloniaWebView;assembly=Avalonia.WebView"
              xmlns:local="clr-namespace:MicroNotePlugin.Views.Controls"
              xmlns:vm="clr-namespace:MicroNotePlugin.ViewModels"
              mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="450"
@@ -76,10 +76,8 @@
                 
                 <!-- 预览（预览模式和分屏模式显示） -->
                 <Border Grid.Column="2" 
-                        Padding="16"
                         IsVisible="{Binding ShowPreview}">
-                    <md:MarkdownScrollViewer x:Name="PreviewScroller"
-                                             Markdown="{Binding MarkdownContent}"/>
+                    <wv:WebView x:Name="PreviewWebView"/>
                 </Border>
             </Grid>
         </Grid>

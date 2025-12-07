@@ -1,6 +1,7 @@
 using System.Reactive.Linq;
 using ReactiveUI;
-using MicroNotePlugin.Models;
+using MicroNotePlugin.Core.Entities;
+using MicroNotePlugin.Core.Interfaces;
 using MicroNotePlugin.Services;
 
 namespace MicroNotePlugin.ViewModels;
@@ -21,13 +22,14 @@ public enum EditorViewMode
 /// <summary>
 /// Markdown 编辑器 ViewModel
 /// </summary>
-public class MarkdownEditorViewModel : ReactiveObject
+public class MarkdownEditorViewModel : ReactiveObject, IDisposable
 {
-    private readonly NoteFileService _fileService;
+    private readonly INoteRepository _noteRepository;
+    private readonly IVersionService _versionService;
     private readonly MarkdownService _markdownService;
     private readonly IDisposable _autoSaveSubscription;
 
-    private string _currentHash = string.Empty;
+    private string _currentNoteId = string.Empty;
     private string _markdownContent = string.Empty;
     private string _htmlContent = string.Empty;
     private bool _isEditMode = true;
@@ -35,30 +37,39 @@ public class MarkdownEditorViewModel : ReactiveObject
     private bool _hasFile;
     private string _fileName = string.Empty;
     private EditorViewMode _viewMode = EditorViewMode.Edit;
+    private string _originalContent = string.Empty;
 
-    public MarkdownEditorViewModel(NoteFileService fileService, MarkdownService markdownService)
+    public MarkdownEditorViewModel(
+        INoteRepository noteRepository, 
+        IVersionService versionService,
+        MarkdownService markdownService)
     {
-        _fileService = fileService;
+        _noteRepository = noteRepository;
+        _versionService = versionService;
         _markdownService = markdownService;
 
-        // 设置自动保存（防抖 500ms）
+        // 设置自动保存（防抖 3秒）
         _autoSaveSubscription = this.WhenAnyValue(x => x.MarkdownContent)
-            .Throttle(TimeSpan.FromMilliseconds(500))
-            .Where(_ => IsDirty && !string.IsNullOrEmpty(CurrentHash))
-            .Subscribe(_ => Save());
+            .Throttle(TimeSpan.FromSeconds(3))
+            .Where(_ => IsDirty && !string.IsNullOrEmpty(CurrentNoteId))
+            .Subscribe(async _ => await SaveAsync());
 
         // 当内容变化时更新预览
         this.WhenAnyValue(x => x.MarkdownContent)
+            .Throttle(TimeSpan.FromMilliseconds(300))
+            .ObserveOn(RxApp.MainThreadScheduler)
             .Subscribe(_ => UpdatePreview());
     }
 
+    #region Properties
+
     /// <summary>
-    /// 当前文件 Hash
+    /// 当前笔记 ID
     /// </summary>
-    public string CurrentHash
+    public string CurrentNoteId
     {
-        get => _currentHash;
-        private set => this.RaiseAndSetIfChanged(ref _currentHash, value);
+        get => _currentNoteId;
+        private set => this.RaiseAndSetIfChanged(ref _currentNoteId, value);
     }
 
     /// <summary>
@@ -72,7 +83,7 @@ public class MarkdownEditorViewModel : ReactiveObject
             if (_markdownContent != value)
             {
                 this.RaiseAndSetIfChanged(ref _markdownContent, value);
-                IsDirty = true;
+                IsDirty = _markdownContent != _originalContent;
             }
         }
     }
@@ -104,9 +115,7 @@ public class MarkdownEditorViewModel : ReactiveObject
         set
         {
             this.RaiseAndSetIfChanged(ref _viewMode, value);
-            // 同步更新 IsEditMode
             IsEditMode = value != EditorViewMode.Preview;
-            // 通知所有显示相关属性更新
             this.RaisePropertyChanged(nameof(ShowEditOnly));
             this.RaisePropertyChanged(nameof(ShowPreviewOnly));
             this.RaisePropertyChanged(nameof(ShowSplitView));
@@ -117,12 +126,12 @@ public class MarkdownEditorViewModel : ReactiveObject
     }
 
     /// <summary>
-    /// 是否仅显示编辑器（非分屏模式）
+    /// 是否仅显示编辑器
     /// </summary>
     public bool ShowEditOnly => ViewMode == EditorViewMode.Edit && HasFile;
 
     /// <summary>
-    /// 是否仅显示预览（非分屏模式）
+    /// 是否仅显示预览
     /// </summary>
     public bool ShowPreviewOnly => ViewMode == EditorViewMode.Preview && HasFile;
 
@@ -132,12 +141,12 @@ public class MarkdownEditorViewModel : ReactiveObject
     public bool ShowSplitView => ViewMode == EditorViewMode.Split && HasFile;
 
     /// <summary>
-    /// 是否显示编辑器（兼容旧代码）
+    /// 是否显示编辑器
     /// </summary>
     public bool ShowEditor => ViewMode == EditorViewMode.Edit || ViewMode == EditorViewMode.Split;
 
     /// <summary>
-    /// 是否显示预览（兼容旧代码）
+    /// 是否显示预览
     /// </summary>
     public bool ShowPreview => ViewMode == EditorViewMode.Preview || ViewMode == EditorViewMode.Split;
 
@@ -164,7 +173,6 @@ public class MarkdownEditorViewModel : ReactiveObject
         private set
         {
             this.RaiseAndSetIfChanged(ref _hasFile, value);
-            // 通知所有显示相关属性更新
             this.RaisePropertyChanged(nameof(ShowEditOnly));
             this.RaisePropertyChanged(nameof(ShowPreviewOnly));
             this.RaisePropertyChanged(nameof(ShowSplitView));
@@ -180,63 +188,82 @@ public class MarkdownEditorViewModel : ReactiveObject
         private set => this.RaiseAndSetIfChanged(ref _fileName, value);
     }
 
+    #endregion
+
+    #region Public Methods
+
     /// <summary>
-    /// 通过 Hash 加载文件
+    /// 加载笔记
     /// </summary>
-    public void LoadFile(string hash, string fileName)
+    public async Task LoadNoteAsync(string noteId)
     {
-        // 先保存当前文件
         if (IsDirty)
         {
-            Save();
+            await SaveAsync();
         }
 
-        CurrentHash = hash;
-        FileName = fileName;
-        
-        var content = _fileService.ReadNoteContent(hash);
-        _markdownContent = content;
+        var note = await _noteRepository.GetByIdAsync(noteId);
+        if (note == null) return;
+
+        CurrentNoteId = note.Id;
+        FileName = note.Name;
+        _originalContent = note.Content;
+        _markdownContent = note.Content;
         this.RaisePropertyChanged(nameof(MarkdownContent));
-        
+
         IsDirty = false;
         HasFile = true;
-        
+
         UpdatePreview();
     }
 
     /// <summary>
     /// 通过节点加载文件
     /// </summary>
-    public void LoadFile(FileNodeViewModel node)
+    public async Task LoadNoteAsync(FileNodeViewModel node)
     {
         if (!node.IsFile) return;
-        LoadFile(node.Hash, node.Name);
+        await LoadNoteAsync(node.Id);
     }
 
     /// <summary>
-    /// 保存文件
+    /// 保存笔记
     /// </summary>
-    public void Save()
+    public async Task SaveAsync()
     {
-        if (string.IsNullOrEmpty(CurrentHash) || !IsDirty)
+        if (string.IsNullOrEmpty(CurrentNoteId) || !IsDirty)
             return;
 
-        _fileService.SaveNoteContent(CurrentHash, MarkdownContent);
+        var note = await _noteRepository.GetByIdAsync(CurrentNoteId);
+        if (note == null) return;
+
+        // 创建版本快照（如果内容有变化）
+        if (note.Content != MarkdownContent)
+        {
+            await _versionService.CreateVersionAsync(note.Id, note.Content);
+        }
+
+        // 更新笔记
+        note.Content = MarkdownContent;
+        await _noteRepository.UpdateAsync(note);
+
+        _originalContent = MarkdownContent;
         IsDirty = false;
     }
 
     /// <summary>
     /// 关闭当前文件
     /// </summary>
-    public void CloseFile()
+    public async Task CloseFileAsync()
     {
         if (IsDirty)
         {
-            Save();
+            await SaveAsync();
         }
 
-        CurrentHash = string.Empty;
+        CurrentNoteId = string.Empty;
         FileName = string.Empty;
+        _originalContent = string.Empty;
         _markdownContent = string.Empty;
         this.RaisePropertyChanged(nameof(MarkdownContent));
         HtmlContent = string.Empty;
@@ -284,13 +311,9 @@ public class MarkdownEditorViewModel : ReactiveObject
         };
     }
 
-    /// <summary>
-    /// 更新预览内容
-    /// </summary>
-    private void UpdatePreview()
-    {
-        HtmlContent = _markdownService.ToStyledHtml(MarkdownContent);
-    }
+    #endregion
+
+    #region Text Operations
 
     /// <summary>
     /// 在光标位置插入文本
@@ -306,9 +329,9 @@ public class MarkdownEditorViewModel : ReactiveObject
     /// 包装选中的文本
     /// </summary>
     public (string newContent, int newCaretIndex) WrapSelection(
-        string prefix, 
-        string suffix, 
-        int selectionStart, 
+        string prefix,
+        string suffix,
+        int selectionStart,
         int selectionLength)
     {
         var before = MarkdownContent.Substring(0, selectionStart);
@@ -327,9 +350,8 @@ public class MarkdownEditorViewModel : ReactiveObject
     /// </summary>
     public (string newContent, int newCaretIndex) AddLinePrefix(string prefix, int caretIndex)
     {
-        // 找到当前行的开始位置
         var lineStart = MarkdownContent.LastIndexOf('\n', Math.Max(0, caretIndex - 1)) + 1;
-        
+
         var before = MarkdownContent.Substring(0, lineStart);
         var after = MarkdownContent.Substring(lineStart);
 
@@ -409,13 +431,13 @@ public class MarkdownEditorViewModel : ReactiveObject
             var after = MarkdownContent.Substring(selectionStart + selectionLength);
             var newContent = before + linkText + after;
             MarkdownContent = newContent;
-            return (newContent, selectionStart + selected.Length + 3); // 光标定位到 url
+            return (newContent, selectionStart + selected.Length + 3);
         }
         else
         {
             var linkText = "[链接文本](url)";
             var newContent = InsertText(linkText, selectionStart);
-            return (newContent, selectionStart + 1); // 光标定位到链接文本
+            return (newContent, selectionStart + 1);
         }
     }
 
@@ -426,7 +448,7 @@ public class MarkdownEditorViewModel : ReactiveObject
     {
         var imageText = "![图片描述](图片地址)";
         var newContent = InsertText(imageText, caretIndex);
-        return (newContent, caretIndex + 2); // 光标定位到图片描述
+        return (newContent, caretIndex + 2);
     }
 
     /// <summary>
@@ -436,7 +458,7 @@ public class MarkdownEditorViewModel : ReactiveObject
     {
         var codeBlock = "\n```\n\n```\n";
         var newContent = InsertText(codeBlock, caretIndex);
-        return (newContent, caretIndex + 5); // 光标定位到代码块内
+        return (newContent, caretIndex + 5);
     }
 
     /// <summary>
@@ -496,6 +518,28 @@ public class MarkdownEditorViewModel : ReactiveObject
         var newContent = InsertText(rule, caretIndex);
         return (newContent, caretIndex + rule.Length);
     }
+
+    /// <summary>
+    /// 插入图片 Markdown 语法
+    /// </summary>
+    public (string, int) InsertImageMarkdown(string imagePath, int caretIndex, string? altText = null)
+    {
+        var alt = altText ?? "图片";
+        var imageText = $"![{alt}]({imagePath})";
+        var newContent = InsertText(imageText, caretIndex);
+        return (newContent, caretIndex + imageText.Length);
+    }
+
+    #endregion
+
+    #region Private Methods
+
+    private void UpdatePreview()
+    {
+        HtmlContent = _markdownService.ToHtml(MarkdownContent);
+    }
+
+    #endregion
 
     public void Dispose()
     {

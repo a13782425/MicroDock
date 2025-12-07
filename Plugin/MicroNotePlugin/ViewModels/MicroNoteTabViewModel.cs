@@ -1,4 +1,6 @@
 using ReactiveUI;
+using Microsoft.Extensions.DependencyInjection;
+using MicroNotePlugin.Core.Interfaces;
 using MicroNotePlugin.Services;
 
 namespace MicroNotePlugin.ViewModels;
@@ -11,42 +13,46 @@ public class MicroNoteTabViewModel : ReactiveObject
     public FileTreeViewModel FileTree { get; }
     public MarkdownEditorViewModel Editor { get; }
 
-    public MicroNoteTabViewModel(
-        NoteFileService fileService, 
-        MetadataService metadataService,
-        MarkdownService markdownService)
+    public MicroNoteTabViewModel(IServiceProvider serviceProvider)
     {
-        FileTree = new FileTreeViewModel(fileService, metadataService);
-        Editor = new MarkdownEditorViewModel(fileService, markdownService);
+        var noteRepository = serviceProvider.GetRequiredService<INoteRepository>();
+        var folderRepository = serviceProvider.GetRequiredService<IFolderRepository>();
+        var tagRepository = serviceProvider.GetRequiredService<ITagRepository>();
+        var searchService = serviceProvider.GetRequiredService<ISearchService>();
+        var versionService = serviceProvider.GetRequiredService<IVersionService>();
+        var markdownService = serviceProvider.GetRequiredService<MarkdownService>();
+
+        FileTree = new FileTreeViewModel(noteRepository, folderRepository, tagRepository, searchService);
+        Editor = new MarkdownEditorViewModel(noteRepository, versionService, markdownService);
     }
 
     /// <summary>
     /// 打开选中的文件
     /// </summary>
-    public void OpenSelectedFile()
+    public async Task OpenSelectedFileAsync()
     {
         if (FileTree.SelectedNode is { IsFile: true } node)
         {
-            FileTree.RecordFileOpen(node);
-            Editor.LoadFile(node);
+            await FileTree.RecordFileOpenAsync(node);
+            await Editor.LoadNoteAsync(node);
         }
     }
 
     /// <summary>
     /// 通过节点打开文件
     /// </summary>
-    public void OpenFile(FileNodeViewModel node)
+    public async Task OpenFileAsync(FileNodeViewModel node)
     {
         if (!node.IsFile) return;
-        FileTree.RecordFileOpen(node);
-        Editor.LoadFile(node);
+        await FileTree.RecordFileOpenAsync(node);
+        await Editor.LoadNoteAsync(node);
     }
 
     /// <summary>
-    /// 通过 Hash 打开文件
+    /// 通过 ID 打开文件
     /// </summary>
-    public void OpenFile(string hash, string fileName)
+    public async Task OpenFileAsync(string noteId)
     {
-        Editor.LoadFile(hash, fileName);
+        await Editor.LoadNoteAsync(noteId);
     }
 }

@@ -34,26 +34,8 @@ public partial class FileTreeView : UserControl
     /// </summary>
     public void SetViewModel(FileTreeViewModel viewModel)
     {
-        // 解除旧 ViewModel 的事件订阅
-        if (_viewModel != null)
-        {
-            _viewModel.NoteCreated -= OnNoteCreated;
-        }
-
         _viewModel = viewModel;
         DataContext = viewModel;
-
-        // 订阅新 ViewModel 的事件
-        if (_viewModel != null)
-        {
-            _viewModel.NoteCreated += OnNoteCreated;
-        }
-    }
-
-    private void OnNoteCreated(object? sender, FileNodeViewModel node)
-    {
-        // 当通过右键菜单创建笔记时，触发文件选择事件
-        FileSelected?.Invoke(this, node);
     }
 
     private void OnLoaded(object? sender, RoutedEventArgs e)
@@ -98,7 +80,7 @@ public partial class FileTreeView : UserControl
         }
     }
 
-    private void OnTreeKeyDown(object? sender, KeyEventArgs e)
+    private async void OnTreeKeyDown(object? sender, KeyEventArgs e)
     {
         if (_viewModel?.SelectedNode == null) return;
         var node = _viewModel.SelectedNode;
@@ -108,13 +90,13 @@ public partial class FileTreeView : UserControl
         if (e.Key == Key.Enter)
         {
             // 确认重命名
-            _viewModel.ConfirmRenameCommand.Execute(node).Subscribe();
+            await _viewModel.RenameNodeAsync(node, node.EditingName);
             e.Handled = true;
         }
         else if (e.Key == Key.Escape)
         {
             // 取消重命名
-            _viewModel.CancelRenameCommand.Execute(node).Subscribe();
+            node.CancelEditing();
             e.Handled = true;
         }
     }
@@ -158,7 +140,7 @@ public partial class FileTreeView : UserControl
 
         // 获取目标节点
         var targetNode = GetNodeAtPosition(e);
-        if (targetNode != null && _viewModel.CanMove(_draggedNode, targetNode))
+        if (targetNode != null && CanMove(_draggedNode, targetNode))
         {
             e.DragEffects = DragDropEffects.Move;
         }
@@ -166,18 +148,46 @@ public partial class FileTreeView : UserControl
         e.Handled = true;
     }
 
-    private void OnDrop(object? sender, DragEventArgs e)
+    private async void OnDrop(object? sender, DragEventArgs e)
     {
         if (_viewModel == null || _draggedNode == null) return;
 
         var targetNode = GetNodeAtPosition(e);
-        if (targetNode != null && _viewModel.CanMove(_draggedNode, targetNode))
+        if (targetNode != null && CanMove(_draggedNode, targetNode))
         {
-            _viewModel.MoveNode(_draggedNode, targetNode);
+            await _viewModel.MoveNodeAsync(_draggedNode, targetNode);
         }
 
         _draggedNode = null;
         e.Handled = true;
+    }
+
+    /// <summary>
+    /// 检查是否可以移动节点
+    /// </summary>
+    private bool CanMove(FileNodeViewModel source, FileNodeViewModel target)
+    {
+        // 不能移动到自己
+        if (source.Id == target.Id) return false;
+
+        // 不能移动到自己的子节点
+        if (target.IsFolder && IsDescendantOf(target, source)) return false;
+
+        // 文件夹可以移动到其他文件夹或根目录
+        // 文件可以移动到文件夹
+        return target.IsFolder || target.IsRoot;
+    }
+
+    private bool IsDescendantOf(FileNodeViewModel node, FileNodeViewModel potentialAncestor)
+    {
+        if (node.FolderId == potentialAncestor.Id) return true;
+
+        foreach (var child in potentialAncestor.Children)
+        {
+            if (IsDescendantOf(node, child)) return true;
+        }
+
+        return false;
     }
 
     private FileNodeViewModel? GetNodeAtPosition(DragEventArgs e)
@@ -197,7 +207,7 @@ public partial class FileTreeView : UserControl
     {
         if (e.Key == Key.Enter && _viewModel != null)
         {
-            await _viewModel.SearchAsync(_viewModel.SearchKeyword);
+            await _viewModel.SearchAsync(_viewModel.SearchText);
         }
         else if (e.Key == Key.Escape)
         {
@@ -210,36 +220,56 @@ public partial class FileTreeView : UserControl
         _viewModel?.ClearSearch();
     }
 
-    private void OnNewNoteClick(object? sender, RoutedEventArgs e)
+    private async void OnNewNoteClick(object? sender, RoutedEventArgs e)
     {
         if (_viewModel == null) return;
         
-        // 简单地创建一个新笔记
-        var newNote = _viewModel.CreateNote("新建笔记", _viewModel.SelectedNode);
-        if (newNote != null)
+        // 获取当前选中的文件夹 ID
+        string? folderId = null;
+        if (_viewModel.SelectedNode?.IsFolder == true)
         {
-            _viewModel.SelectedNode = newNote;
-            FileSelected?.Invoke(this, newNote);
+            folderId = _viewModel.SelectedNode.Id;
+        }
+        else if (_viewModel.SelectedNode?.IsFile == true)
+        {
+            folderId = _viewModel.SelectedNode.FolderId;
+        }
+        
+        await _viewModel.CreateNoteAsync(folderId);
+        
+        // 触发文件选择事件
+        if (_viewModel.SelectedNode != null)
+        {
+            FileSelected?.Invoke(this, _viewModel.SelectedNode);
         }
     }
 
-    private void OnNewFolderClick(object? sender, RoutedEventArgs e)
+    private async void OnNewFolderClick(object? sender, RoutedEventArgs e)
     {
         if (_viewModel == null) return;
 
-        _viewModel.CreateFolder("新建文件夹", _viewModel.SelectedNode);
+        string? parentId = null;
+        if (_viewModel.SelectedNode?.IsFolder == true)
+        {
+            parentId = _viewModel.SelectedNode.Id;
+        }
+
+        await _viewModel.CreateFolderAsync(parentId);
     }
 
-    private void OnRefreshClick(object? sender, RoutedEventArgs e)
+    private async void OnRefreshClick(object? sender, RoutedEventArgs e)
     {
-        _viewModel?.RefreshTree();
+        if (_viewModel != null)
+        {
+            await _viewModel.RefreshTreeAsync();
+        }
     }
 
-    private void OnTreeDoubleTapped(object? sender, TappedEventArgs e)
+    private async void OnTreeDoubleTapped(object? sender, TappedEventArgs e)
     {
         if (_viewModel?.SelectedNode is { IsFile: true, IsEditing: false } node)
         {
-            _viewModel.RecordFileOpen(node);
+            await _viewModel.RecordFileOpenAsync(node);
             FileSelected?.Invoke(this, node);
         }
     }
@@ -262,33 +292,33 @@ public partial class FileTreeView : UserControl
     /// <summary>
     /// 切换选中节点的收藏状态
     /// </summary>
-    public void ToggleSelectedFavorite()
+    public async void ToggleSelectedFavorite()
     {
         if (_viewModel?.SelectedNode is { IsFile: true } node)
         {
-            _viewModel.ToggleFavorite(node);
+            await _viewModel.ToggleFavoriteAsync(node);
         }
     }
 
     /// <summary>
     /// 删除选中的节点
     /// </summary>
-    public void DeleteSelected()
+    public async void DeleteSelected()
     {
         if (_viewModel?.SelectedNode is { IsRoot: false } node)
         {
-            _viewModel.DeleteNode(node);
+            await _viewModel.DeleteNodeAsync(node);
         }
     }
 
     /// <summary>
     /// 重命名选中的节点
     /// </summary>
-    public void RenameSelected(string newName)
+    public async void RenameSelected(string newName)
     {
         if (_viewModel?.SelectedNode is { IsRoot: false } node)
         {
-            _viewModel.RenameNode(node, newName);
+            await _viewModel.RenameNodeAsync(node, newName);
         }
     }
 
@@ -320,15 +350,16 @@ public class NodeIconConverter : IMultiValueConverter
         {
             FileNodeType.Root => name switch
             {
-                "⭐ 收藏" => "",
-                "📊 常用" => "",
-                "📁 全部文件" => "",
-                _ when name.StartsWith("🔍") => "", // 搜索结果
-                _ when name.StartsWith("🏷️") => "", // 标签
+                "收藏" => "⭐",
+                "常用" => "📊",
+                "全部文件" => "📁",
+                "标签" => "🏷️",
+                _ when name.StartsWith("搜索") => "🔍",
                 _ => "📂"
             },
             FileNodeType.Folder => "📂",
             FileNodeType.File => "📄",
+            FileNodeType.Tag => "🏷️",
             _ => "📄"
         };
     }

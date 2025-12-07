@@ -3,8 +3,11 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using AvaloniaEdit;
-using MicroNotePlugin.Services;
+using MicroNotePlugin.Core.Interfaces;
 using MicroNotePlugin.ViewModels;
+using AvaloniaWebView;
+using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace MicroNotePlugin.Views.Controls;
 
@@ -13,12 +16,12 @@ public partial class MarkdownEditor : UserControl
     private MarkdownEditorViewModel? _viewModel;
     private TextEditor? _editor;
     private EditorToolbar? _toolbar;
-    private Control? _previewScroller;
+    private WebView? _webView;    
     private bool _isUpdatingContent;
-    private ImageService? _imageService;
+    private IImageService? _imageService;
 
     public MarkdownEditor()
-    {
+    {        
         AvaloniaXamlLoader.Load(this);
         this.Loaded += OnLoaded;
     }
@@ -26,7 +29,7 @@ public partial class MarkdownEditor : UserControl
     /// <summary>
     /// 设置图片服务
     /// </summary>
-    public void SetImageService(ImageService imageService)
+    public void SetImageService(IImageService imageService)
     {
         _imageService = imageService;
     }
@@ -57,6 +60,12 @@ public partial class MarkdownEditor : UserControl
                     _isUpdatingContent = false;
                 }
             }
+
+            // 初始化 WebView 内容
+            if (_webView != null && !string.IsNullOrEmpty(_viewModel.HtmlContent))
+            {
+                UpdateWebViewContent();
+            }
         }
     }
 
@@ -64,7 +73,7 @@ public partial class MarkdownEditor : UserControl
     {
         _editor = this.FindControl<TextEditor>("Editor");
         _toolbar = this.FindControl<EditorToolbar>("Toolbar");
-        _previewScroller = this.FindControl<Control>("PreviewScroller");
+        _webView = this.FindControl<WebView>("PreviewWebView");
 
         if (_editor != null)
         {
@@ -87,6 +96,28 @@ public partial class MarkdownEditor : UserControl
             }
         }
 
+        if (_webView != null)
+        {
+            // 使用用户修改后的路径逻辑
+            var webPath = Path.Combine(MicroNotePlugin.Instance?.Context?.ConfigPath ?? "", "web", "index.html");
+            if (File.Exists(webPath))
+            {
+                _webView.Url = new Uri(webPath);
+                // WebView.Avalonia 可能没有 NavigationCompleted 事件，或者名字不同
+                // 暂时假设它有，或者我们不需要等待？
+                // 如果没有 NavigationCompleted，可能需要轮询或直接发送
+                // 尝试使用 NavigationCompleted 如果存在，否则注释掉
+                /*
+                _webView.NavigationCompleted += (s, e) => 
+                {
+                    if (e.IsSuccess) UpdateWebViewContent();
+                };
+                */
+                // 简单起见，延迟发送
+                System.Threading.Tasks.Task.Delay(500).ContinueWith(_ => Avalonia.Threading.Dispatcher.UIThread.Invoke(UpdateWebViewContent));
+            }
+        }
+
         if (_toolbar != null)
         {
             BindToolbarEvents();
@@ -99,6 +130,10 @@ public partial class MarkdownEditor : UserControl
         {
             UpdateEditorContent();
         }
+        else if (e.PropertyName == nameof(MarkdownEditorViewModel.HtmlContent))
+        {
+            UpdateWebViewContent();
+        }
         else if (e.PropertyName == nameof(MarkdownEditorViewModel.IsEditMode))
         {
             _toolbar?.SetFormattingEnabled(_viewModel?.IsEditMode ?? true);
@@ -108,6 +143,34 @@ public partial class MarkdownEditor : UserControl
             }
         }
     }
+
+    private void UpdateWebViewContent()
+    {
+        if (_webView == null || _viewModel == null) return;
+
+        var html = _viewModel.HtmlContent;
+        
+        // 替换图片路径
+        if (_imageService != null && !string.IsNullOrEmpty(html))
+        {
+            var imagesRoot = _imageService.GetImagesRootPath();
+            var rootUrl = new Uri(imagesRoot).AbsoluteUri;
+            if (!rootUrl.EndsWith("/")) rootUrl += "/";
+            
+            html = Regex.Replace(html, "src=[\"']images/([^\"']+)[\"']", m => 
+            {
+                var relative = m.Groups[1].Value;
+                return $"src=\"{rootUrl}{relative}\"";
+            });
+        }
+
+        // 发送消息给 JS
+        // WebView.Avalonia 可能没有 PostMessage，使用 ExecuteScriptAsync 直接调用
+        var jsonContent = JsonSerializer.Serialize(html);
+        _webView.ExecuteScriptAsync($"updateContent({jsonContent})");
+    }
+
+    // ... (Rest of the file remains same)
 
     private void UpdateEditorContent()
     {
@@ -167,7 +230,7 @@ public partial class MarkdownEditor : UserControl
                     e.Handled = true;
                     break;
                 case Key.S: // 保存
-                    _viewModel.Save();
+                    _ = _viewModel.SaveAsync();
                     e.Handled = true;
                     break;
                 case Key.V: // 粘贴 - 检查是否有图片
@@ -196,11 +259,11 @@ public partial class MarkdownEditor : UserControl
             var topLevel = TopLevel.GetTopLevel(this);
             var clipboard = topLevel?.Clipboard;
             
-            var imagePath = await _imageService.SaveImageFromClipboardAsync(clipboard);
-            if (imagePath != null)
+            var image = await _imageService.SaveFromClipboardAsync(clipboard);
+            if (image != null)
             {
                 // 插入图片 Markdown 语法
-                var markdown = ImageService.GetMarkdownImageSyntax(imagePath);
+                var markdown = _imageService.GetMarkdownSyntax(image);
                 var caretOffset = _editor.CaretOffset;
                 
                 _viewModel.InsertText(markdown + "\n", caretOffset);
