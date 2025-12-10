@@ -19,6 +19,14 @@ public partial class MicroNoteTab : UserControl, IMicroTab
     public MicroNoteTab(MicroNotePlugin plugin)
     {
         _plugin = plugin;
+        
+        // 在 XAML 加载前初始化 ViewModel，确保 DataContext 绑定能正常工作
+        if (_plugin.Context != null && _plugin.Services != null)
+        {
+            _viewModel = new MicroNoteTabViewModel(_plugin.Services);
+            DataContext = _viewModel;
+        }
+        
         AvaloniaXamlLoader.Load(this);
         this.Loaded += OnLoaded;
     }
@@ -42,22 +50,27 @@ public partial class MicroNoteTab : UserControl, IMicroTab
     {
         if (_plugin.Context == null || _plugin.Services == null) return;
 
-        // 创建 ViewModel（使用 DI 容器）
-        _viewModel = new MicroNoteTabViewModel(_plugin.Services);
-        DataContext = _viewModel;
+        // 如果 ViewModel 尚未初始化（构造函数中可能已初始化）
+        if (_viewModel == null)
+        {
+            _viewModel = new MicroNoteTabViewModel(_plugin.Services);
+            DataContext = _viewModel;
+        }
 
-        // 获取子控件并设置 ViewModel
+        // 获取子控件并设置 ViewModel 和事件
         _fileTreeView = this.FindControl<FileTreeView>("FileTreeView");
         _markdownEditor = this.FindControl<MarkdownEditor>("MarkdownEditor");
 
         if (_fileTreeView != null)
         {
+            // SetViewModel 会设置内部的 _viewModel 字段，双击等功能依赖它
             _fileTreeView.SetViewModel(_viewModel.FileTree);
             _fileTreeView.FileSelected += OnFileSelected;
         }
 
         if (_markdownEditor != null)
         {
+            // SetViewModel 会设置内部的 _viewModel 字段，编辑器功能依赖它
             _markdownEditor.SetViewModel(_viewModel.Editor);
             
             // 从 DI 获取图片服务

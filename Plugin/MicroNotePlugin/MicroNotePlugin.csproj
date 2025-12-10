@@ -4,9 +4,6 @@
 		<TargetFramework>net8.0</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
-		<!-- Ensure all dependencies are copied for plugin loading -->
-		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
-		<!-- <UseWindowsForms>true</UseWindowsForms> -->
 	</PropertyGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\..\MicroDock.Plugin\MicroDock.Plugin.csproj" />
@@ -25,8 +22,9 @@
 		<!-- WebView Support -->
 		<PackageReference Include="WebView.Avalonia" Version="11.0.0.1" />
 		<PackageReference Include="WebView.Avalonia.Desktop" Version="11.0.0.1" />
+		
 		<!-- DI and Database -->
-		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
 		<PackageReference Include="sqlite-net-pcl" Version="1.9.172" />
 		<PackageReference Include="SQLiteNetExtensions" Version="2.1.0" />
 		<PackageReference Include="SQLiteNetExtensions.Async" Version="2.1.0" />
@@ -37,12 +35,24 @@
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</None>
 		<Content Include="Assets\Web\**">
-			<TargetPath>config\web\%(Filename)%(Extension)</TargetPath>
+			<TargetPath>config\web\%(RecursiveDir)%(Filename)%(Extension)</TargetPath>
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</Content>
 	</ItemGroup>
 	<Target Name="PostBuild" AfterTargets="PostBuildEvent">
-		<Exec Command="copy /Y &quot;$(TargetPath)&quot; &quot;$(MSBuildProjectDirectory)\..\..\MicroDock\bin\Debug\net8.0-windows10.0.17763.0\Plugins\com.microdock.note\$(TargetName)$(TargetExt)&quot;" />
-		<!-- <Exec Command="" />-->
+		<Exec Command="copy /Y $(TargetPath) $(MSBuildProjectDirectory)\..\..\MicroDock\bin\Debug\net8.0-windows10.0.17763.0\Plugins\com.microdock.note\$(TargetName)$(TargetExt)" />
+		<Exec Command="copy /Y $(TargetDir)plugin.json $(MSBuildProjectDirectory)\..\..\MicroDock\bin\Debug\net8.0-windows10.0.17763.0\Plugins\com.microdock.note\plugin.json" />
+		<Exec Command="robocopy $(TargetDir)config $(MSBuildProjectDirectory)\..\..\MicroDock\bin\Debug\net8.0-windows10.0.17763.0\Plugins\com.microdock.note\config /MIR" IgnoreExitCode="true" />
+		<!--<Exec Command="if exist $(MSBuildProjectDirectory)\..\..\MicroDock\bin\Debug\net8.0-windows10.0.17763.0\Plugins\com.microdock.note\config rmdir /S /Q $(MSBuildProjectDirectory)\..\..\MicroDock\bin\Debug\net8.0-windows10.0.17763.0\Plugins\com.microdock.note\config" />-->
+		<!--<Exec Command="xcopy /Y /E $(TargetDir)config $(MSBuildProjectDirectory)\..\..\MicroDock\bin\Debug\net8.0-windows10.0.17763.0\Plugins\com.microdock.note\config" />-->
 	</Target>
 </Project>
+
+
+<!--
+
+```csharp
+public class head{
+}
+```
+-->

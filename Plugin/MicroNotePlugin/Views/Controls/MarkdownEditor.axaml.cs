@@ -16,12 +16,13 @@ public partial class MarkdownEditor : UserControl
     private MarkdownEditorViewModel? _viewModel;
     private TextEditor? _editor;
     private EditorToolbar? _toolbar;
-    private WebView? _webView;    
+    private WebView? _webView;
     private bool _isUpdatingContent;
+    private bool _webViewLoaded;
     private IImageService? _imageService;
 
     public MarkdownEditor()
-    {        
+    {
         AvaloniaXamlLoader.Load(this);
         this.Loaded += OnLoaded;
     }
@@ -41,12 +42,12 @@ public partial class MarkdownEditor : UserControl
     {
         _viewModel = viewModel;
         DataContext = viewModel;
-        
+
         // 绑定内容变化
         if (_viewModel != null)
         {
             _viewModel.PropertyChanged += OnViewModelPropertyChanged;
-            
+
             // 如果编辑器已初始化且有内容，同步到编辑器
             if (_editor != null && !string.IsNullOrEmpty(_viewModel.MarkdownContent))
             {
@@ -82,13 +83,13 @@ public partial class MarkdownEditor : UserControl
             _editor.ShowLineNumbers = true;
             _editor.WordWrap = true;
             _editor.TextArea.RightClickMovesCaret = true;
-            
+
             // 绑定文本变化事件
             _editor.TextChanged += OnEditorTextChanged;
-            
+
             // 绑定快捷键
             _editor.KeyDown += OnEditorKeyDown;
-            
+
             // 如果已有内容，同步到编辑器
             if (_viewModel != null && !string.IsNullOrEmpty(_viewModel.MarkdownContent))
             {
@@ -98,23 +99,32 @@ public partial class MarkdownEditor : UserControl
 
         if (_webView != null)
         {
-            // 使用用户修改后的路径逻辑
-            var webPath = Path.Combine(MicroNotePlugin.Instance?.Context?.ConfigPath ?? "", "web", "index.html");
+            // 修正路径：应该是 config/web，不是 web
+            var configPath = MicroNotePlugin.Instance?.Context?.ConfigPath ?? "";
+            var webPath = Path.Combine(configPath, "web", "index.html");
+
+            // 如果 config/web 不存在，尝试直接在插件目录下找
+            if (!File.Exists(webPath))
+            {
+                // 尝试备选路径
+                var pluginDir = Path.GetDirectoryName(typeof(MicroNotePlugin).Assembly.Location) ?? "";
+                webPath = Path.Combine(pluginDir, "config", "web", "index.html");
+            }
+
+            System.Diagnostics.Debug.WriteLine($"[MicroNote] WebView path: {webPath}, Exists: {File.Exists(webPath)}");
+
             if (File.Exists(webPath))
             {
                 _webView.Url = new Uri(webPath);
-                // WebView.Avalonia 可能没有 NavigationCompleted 事件，或者名字不同
-                // 暂时假设它有，或者我们不需要等待？
-                // 如果没有 NavigationCompleted，可能需要轮询或直接发送
-                // 尝试使用 NavigationCompleted 如果存在，否则注释掉
-                /*
-                _webView.NavigationCompleted += (s, e) => 
-                {
-                    if (e.IsSuccess) UpdateWebViewContent();
-                };
-                */
-                // 简单起见，延迟发送
-                System.Threading.Tasks.Task.Delay(500).ContinueWith(_ => Avalonia.Threading.Dispatcher.UIThread.Invoke(UpdateWebViewContent));
+                _webViewLoaded = false;
+                _webView.Loaded += _webView_Loaded;
+                // 延迟发送内容，等待 WebView 加载完成
+                // 增加延迟时间以确保 JS 已加载
+
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"[MicroNote] WebView HTML file not found: {webPath}");
             }
         }
 
@@ -122,6 +132,21 @@ public partial class MarkdownEditor : UserControl
         {
             BindToolbarEvents();
         }
+    }
+
+    private void _webView_Loaded(object? sender, RoutedEventArgs e)
+    {
+        Avalonia.Threading.Dispatcher.UIThread.Invoke(() =>
+        {
+            _webViewLoaded = true;
+
+            // WebView 加载完成后，如果已经有内容则立即更新
+            // 这解决了笔记加载时 WebView 还未就绪导致预览不显示的问题
+            if (_viewModel != null && !string.IsNullOrEmpty(_viewModel.HtmlContent))
+            {
+                UpdateWebViewContent();
+            }
+        });
     }
 
     private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -146,18 +171,30 @@ public partial class MarkdownEditor : UserControl
 
     private void UpdateWebViewContent()
     {
-        if (_webView == null || _viewModel == null) return;
+        if (_webView == null || _viewModel == null)
+        {
+            System.Diagnostics.Debug.WriteLine($"[MicroNote] UpdateWebViewContent: webView={_webView != null}, viewModel={_viewModel != null}");
+            return;
+        }
+
+        if (!_webViewLoaded)
+        {
+            MicroNotePlugin.Instance?.Context?.LogWarning("[MicroNote] UpdateWebViewContent: WebView not loaded yet");
+            return;
+        }
 
         var html = _viewModel.HtmlContent;
-        
+
+        System.Diagnostics.Debug.WriteLine($"[MicroNote] UpdateWebViewContent: html length={html?.Length ?? 0}");
+
         // 替换图片路径
         if (_imageService != null && !string.IsNullOrEmpty(html))
         {
             var imagesRoot = _imageService.GetImagesRootPath();
             var rootUrl = new Uri(imagesRoot).AbsoluteUri;
             if (!rootUrl.EndsWith("/")) rootUrl += "/";
-            
-            html = Regex.Replace(html, "src=[\"']images/([^\"']+)[\"']", m => 
+
+            html = Regex.Replace(html, "src=[\"']images/([^\"']+)[\"']", m =>
             {
                 var relative = m.Groups[1].Value;
                 return $"src=\"{rootUrl}{relative}\"";
@@ -165,9 +202,10 @@ public partial class MarkdownEditor : UserControl
         }
 
         // 发送消息给 JS
-        // WebView.Avalonia 可能没有 PostMessage，使用 ExecuteScriptAsync 直接调用
-        var jsonContent = JsonSerializer.Serialize(html);
-        _webView.ExecuteScriptAsync($"updateContent({jsonContent})");
+        var jsonContent = JsonSerializer.Serialize(html ?? "");
+        var script = $"if(typeof updateContent === 'function') {{ updateContent({jsonContent}); }} else {{ console.error('updateContent not defined'); }}";
+        System.Diagnostics.Debug.WriteLine($"[MicroNote] Executing script: {script.Substring(0, Math.Min(100, script.Length))}...");
+        _webView.ExecuteScriptAsync(script);
     }
 
     // ... (Rest of the file remains same)
@@ -258,18 +296,18 @@ public partial class MarkdownEditor : UserControl
             // 获取剪贴板
             var topLevel = TopLevel.GetTopLevel(this);
             var clipboard = topLevel?.Clipboard;
-            
+
             var image = await _imageService.SaveFromClipboardAsync(clipboard);
             if (image != null)
             {
                 // 插入图片 Markdown 语法
                 var markdown = _imageService.GetMarkdownSyntax(image);
                 var caretOffset = _editor.CaretOffset;
-                
+
                 _viewModel.InsertText(markdown + "\n", caretOffset);
                 UpdateEditorContent();
                 _editor.CaretOffset = Math.Min(caretOffset + markdown.Length + 1, _editor.Text.Length);
-                
+
                 return true;
             }
         }
@@ -311,11 +349,11 @@ public partial class MarkdownEditor : UserControl
     private void InsertBold()
     {
         if (_viewModel == null || _editor == null) return;
-        
+
         var (_, newCaret) = _viewModel.InsertBold(
-            _editor.SelectionStart, 
+            _editor.SelectionStart,
             _editor.SelectionLength);
-        
+
         UpdateEditorContent();
         _editor.CaretOffset = Math.Min(newCaret, _editor.Text.Length);
     }
@@ -323,11 +361,11 @@ public partial class MarkdownEditor : UserControl
     private void InsertItalic()
     {
         if (_viewModel == null || _editor == null) return;
-        
+
         var (_, newCaret) = _viewModel.InsertItalic(
-            _editor.SelectionStart, 
+            _editor.SelectionStart,
             _editor.SelectionLength);
-        
+
         UpdateEditorContent();
         _editor.CaretOffset = Math.Min(newCaret, _editor.Text.Length);
     }
@@ -335,11 +373,11 @@ public partial class MarkdownEditor : UserControl
     private void InsertStrikethrough()
     {
         if (_viewModel == null || _editor == null) return;
-        
+
         var (_, newCaret) = _viewModel.InsertStrikethrough(
-            _editor.SelectionStart, 
+            _editor.SelectionStart,
             _editor.SelectionLength);
-        
+
         UpdateEditorContent();
         _editor.CaretOffset = Math.Min(newCaret, _editor.Text.Length);
     }
@@ -347,9 +385,9 @@ public partial class MarkdownEditor : UserControl
     private void InsertHeading(int level)
     {
         if (_viewModel == null || _editor == null) return;
-        
+
         var (_, newCaret) = _viewModel.InsertHeading(level, _editor.CaretOffset);
-        
+
         UpdateEditorContent();
         _editor.CaretOffset = Math.Min(newCaret, _editor.Text.Length);
     }
@@ -357,11 +395,11 @@ public partial class MarkdownEditor : UserControl
     private void InsertLink()
     {
         if (_viewModel == null || _editor == null) return;
-        
+
         var (_, newCaret) = _viewModel.InsertLink(
-            _editor.SelectionStart, 
+            _editor.SelectionStart,
             _editor.SelectionLength);
-        
+
         UpdateEditorContent();
         _editor.CaretOffset = Math.Min(newCaret, _editor.Text.Length);
     }
@@ -369,9 +407,9 @@ public partial class MarkdownEditor : UserControl
     private void InsertImage()
     {
         if (_viewModel == null || _editor == null) return;
-        
+
         var (_, newCaret) = _viewModel.InsertImage(_editor.CaretOffset);
-        
+
         UpdateEditorContent();
         _editor.CaretOffset = Math.Min(newCaret, _editor.Text.Length);
     }
@@ -379,9 +417,9 @@ public partial class MarkdownEditor : UserControl
     private void InsertCodeBlock()
     {
         if (_viewModel == null || _editor == null) return;
-        
+
         var (_, newCaret) = _viewModel.InsertCodeBlock(_editor.CaretOffset);
-        
+
         UpdateEditorContent();
         _editor.CaretOffset = Math.Min(newCaret, _editor.Text.Length);
     }
@@ -389,11 +427,11 @@ public partial class MarkdownEditor : UserControl
     private void InsertInlineCode()
     {
         if (_viewModel == null || _editor == null) return;
-        
+
         var (_, newCaret) = _viewModel.InsertInlineCode(
-            _editor.SelectionStart, 
+            _editor.SelectionStart,
             _editor.SelectionLength);
-        
+
         UpdateEditorContent();
         _editor.CaretOffset = Math.Min(newCaret, _editor.Text.Length);
     }
@@ -401,9 +439,9 @@ public partial class MarkdownEditor : UserControl
     private void InsertBulletList()
     {
         if (_viewModel == null || _editor == null) return;
-        
+
         var (_, newCaret) = _viewModel.InsertBulletList(_editor.CaretOffset);
-        
+
         UpdateEditorContent();
         _editor.CaretOffset = Math.Min(newCaret, _editor.Text.Length);
     }
@@ -411,9 +449,9 @@ public partial class MarkdownEditor : UserControl
     private void InsertNumberedList()
     {
         if (_viewModel == null || _editor == null) return;
-        
+
         var (_, newCaret) = _viewModel.InsertNumberedList(_editor.CaretOffset);
-        
+
         UpdateEditorContent();
         _editor.CaretOffset = Math.Min(newCaret, _editor.Text.Length);
     }
@@ -421,9 +459,9 @@ public partial class MarkdownEditor : UserControl
     private void InsertTaskList()
     {
         if (_viewModel == null || _editor == null) return;
-        
+
         var (_, newCaret) = _viewModel.InsertTaskList(_editor.CaretOffset);
-        
+
         UpdateEditorContent();
         _editor.CaretOffset = Math.Min(newCaret, _editor.Text.Length);
     }
@@ -431,9 +469,9 @@ public partial class MarkdownEditor : UserControl
     private void InsertQuote()
     {
         if (_viewModel == null || _editor == null) return;
-        
+
         var (_, newCaret) = _viewModel.InsertQuote(_editor.CaretOffset);
-        
+
         UpdateEditorContent();
         _editor.CaretOffset = Math.Min(newCaret, _editor.Text.Length);
     }
@@ -441,9 +479,9 @@ public partial class MarkdownEditor : UserControl
     private void InsertHorizontalRule()
     {
         if (_viewModel == null || _editor == null) return;
-        
+
         var (_, newCaret) = _viewModel.InsertHorizontalRule(_editor.CaretOffset);
-        
+
         UpdateEditorContent();
         _editor.CaretOffset = Math.Min(newCaret, _editor.Text.Length);
     }

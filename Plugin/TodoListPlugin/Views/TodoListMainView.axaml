@@ -25,19 +25,6 @@
             <Setter Property="MaxWidth" Value="320"/>
         </Style>
         
-        <!-- 待办卡片样式 -->
-        <Style Selector="Border.todo-card">
-            <Setter Property="Background" Value="{DynamicResource ControlFillColorDefaultBrush}"/>
-            <Setter Property="CornerRadius" Value="6"/>
-            <Setter Property="Padding" Value="12,10"/>
-            <Setter Property="Margin" Value="0,4"/>
-            <Setter Property="Cursor" Value="Hand"/>
-        </Style>
-        
-        <Style Selector="Border.todo-card:pointerover">
-            <Setter Property="Background" Value="{DynamicResource ControlFillColorSecondaryBrush}"/>
-        </Style>
-        
         <!-- 添加按钮样式 -->
         <Style Selector="Button.add-button">
             <Setter Property="Background" Value="Transparent"/>
@@ -93,12 +80,11 @@
                          Background="Transparent">
                     <ListBox.ItemTemplate>
                         <DataTemplate x:DataType="vm:ProjectBoardViewModel">
-                            <Grid ColumnDefinitions="Auto,*,Auto" Tag="{Binding}">
+                            <Grid ColumnDefinitions="Auto,*,Auto" Tag="{Binding}"
+                                  ToolTip.Tip="{Binding Description}">
                                 <Grid.ContextMenu>
                                     <ContextMenu Opening="OnProjectContextMenuOpening">
-                                        <MenuItem Header="重命名" Click="OnRenameProjectClick" Tag="{Binding}"/>
-                                        <MenuItem Header="修改颜色" Click="OnChangeProjectColorClick" Tag="{Binding}"/>
-                                        <Separator/>
+                                        <MenuItem Header="编辑" Click="OnEditProjectClick" Tag="{Binding}"/>
                                         <MenuItem Header="删除" Click="OnDeleteProjectClick" Tag="{Binding}"/>
                                     </ContextMenu>
                                 </Grid.ContextMenu>
@@ -225,91 +211,15 @@
                                     <ScrollViewer Grid.Row="1"
                                                   VerticalScrollBarVisibility="Auto"
                                                   HorizontalScrollBarVisibility="Disabled">
-                                        <ItemsControl ItemsSource="{Binding Items}">
+                                        <ItemsControl ItemsSource="{Binding Items}" Name="TodoItemsControl">
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate x:DataType="vm:TodoItemViewModel">
-                                                    <Border Classes="todo-card"
-                                                            Tag="{Binding}"
-                                                            IsVisible="{Binding IsVisible}"
-                                                            PointerPressed="OnTodoCardPointerPressed">
-                                                        <Border.ContextMenu>
-                                                            <ContextMenu DataContext="{Binding}">
-                                                                <MenuItem Header="编辑" Click="OnEditTodoClick" Tag="{Binding}"/>
-                                                                <MenuItem Header="移动到其他项目" Click="OnMoveTodoClick" Tag="{Binding}"/>
-                                                                <Separator/>
-                                                                <MenuItem Header="删除" Click="OnDeleteTodoClick" Tag="{Binding}"/>
-                                                            </ContextMenu>
-                                                        </Border.ContextMenu>
-                                                        <Grid RowDefinitions="Auto,Auto,Auto,Auto">
-                                                            <!-- 标题 -->
-                                                            <TextBlock Grid.Row="0"
-                                                                       Text="{Binding Title}"
-                                                                       TextWrapping="Wrap"
-                                                                       FontWeight="Medium"/>
-                                                            
-                                                            <!-- 描述（如果有）-->
-                                                            <TextBlock Grid.Row="1"
-                                                                       Text="{Binding Description}"
-                                                                       TextWrapping="Wrap"
-                                                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                                                       FontSize="12"
-                                                                       Margin="0,4,0,0"
-                                                                       MaxLines="2"
-                                                                       IsVisible="{Binding ShouldShowDescriptionOnCard}"/>
-                                                            
-                                                            <!-- 自定义字段显示 -->
-                                                            <ItemsControl Grid.Row="2"
-                                                                          ItemsSource="{Binding DisplayCustomFields}"
-                                                                          IsVisible="{Binding HasDisplayCustomFields}"
-                                                                          Margin="0,6,0,0">
-                                                                <ItemsControl.ItemTemplate>
-                                                                    <DataTemplate>
-                                                                        <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,2,0,0">
-                                                                            <TextBlock Text="{Binding Key}"
-                                                                                       FontSize="11"
-                                                                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                                                                            <TextBlock Text=":"
-                                                                                       FontSize="11"
-                                                                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                                                                            <TextBlock Text="{Binding Value}"
-                                                                                       FontSize="11"
-                                                                                       FontWeight="Medium"
-                                                                                       MaxLines="1"
-                                                                                       TextTrimming="CharacterEllipsis"/>
-                                                                        </StackPanel>
-                                                                    </DataTemplate>
-                                                                </ItemsControl.ItemTemplate>
-                                                            </ItemsControl>
-                                                            
-                                                            <!-- 底部信息 -->
-                                                            <StackPanel Grid.Row="3"
-                                                                        Orientation="Horizontal"
-                                                                        Spacing="8"
-                                                                        Margin="0,8,0,0">
-                                                                <!-- 优先级 -->
-                                                                <Border Background="{Binding PriorityColor, FallbackValue=#808080}"
-                                                                        CornerRadius="4"
-                                                                        Padding="6,2"
-                                                                        IsVisible="{Binding ShouldShowPriorityOnCard}">
-                                                                    <TextBlock Text="{Binding PriorityName, FallbackValue=普通}"
-                                                                               FontSize="10"
-                                                                               Foreground="White"/>
-                                                                </Border>
-                                                                
-                                                                <!-- 截止日期 -->
-                                                                <StackPanel Orientation="Horizontal"
-                                                                            Spacing="4"
-                                                                            IsVisible="{Binding ShouldShowDueDateOnCard}">
-                                                                    <PathIcon Data="M19,4H18V2H16V4H8V2H6V4H5C3.89,4 3,4.9 3,6V20A2,2 0 0,0 5,22H19A2,2 0 0,0 21,20V6A2,2 0 0,0 19,4M19,20H5V10H19V20M19,8H5V6H19V8Z"
-                                                                              Width="12" Height="12"
-                                                                              Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                                                                    <TextBlock Text="{Binding DueDateText}"
-                                                                               FontSize="11"
-                                                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                                                                </StackPanel>
-                                                            </StackPanel>
-                                                        </Grid>
-                                                    </Border>
+                                                    <views:TodoCardView DataContext="{Binding}"
+                                                                        CardClicked="OnTodoCardClicked"
+                                                                        DragStarted="OnTodoCardDragStarted"
+                                                                        EditRequested="OnTodoCardEditRequested"
+                                                                        MoveRequested="OnTodoCardMoveRequested"
+                                                                        DeleteRequested="OnTodoCardDeleteRequested"/>
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>
                                         </ItemsControl>

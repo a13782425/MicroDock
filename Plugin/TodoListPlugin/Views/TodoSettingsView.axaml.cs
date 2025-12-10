@@ -73,7 +73,7 @@ namespace TodoListPlugin.Views
                     Color = content.SelectedColor,
                     IsDefault = content.IsDefault
                 };
-                await _viewModel.AddStatusColumnAsync(status);
+                _viewModel.AddStatusColumn(status);
                 RefreshLists();
             }
         }
@@ -96,7 +96,7 @@ namespace TodoListPlugin.Views
                 status.Name = content.StatusName;
                 status.Color = content.SelectedColor;
                 status.IsDefault = content.IsDefault;
-                await _viewModel.UpdateStatusColumnAsync(status);
+                _viewModel.UpdateStatusColumn(status);
                 RefreshLists();
             }
         }
@@ -115,7 +115,7 @@ namespace TodoListPlugin.Views
             var confirm = await DialogHelper.ShowDeleteConfirmAsync(status.Name);
             if (confirm)
             {
-                await _viewModel.DeleteStatusColumnAsync(status.Id);
+                _viewModel.DeleteStatusColumn(status.Id);
                 RefreshLists();
             }
         }
@@ -142,7 +142,7 @@ namespace TodoListPlugin.Views
                     Color = content.SelectedColor,
                     Level = content.Level
                 };
-                await _viewModel.AddPriorityAsync(priority);
+                _viewModel.AddPriority(priority);
                 RefreshLists();
             }
         }
@@ -165,7 +165,7 @@ namespace TodoListPlugin.Views
                 priority.Name = content.PriorityName;
                 priority.Color = content.SelectedColor;
                 priority.Level = content.Level;
-                await _viewModel.UpdatePriorityAsync(priority);
+                _viewModel.UpdatePriority(priority);
                 RefreshLists();
             }
         }
@@ -178,7 +178,7 @@ namespace TodoListPlugin.Views
             var confirm = await DialogHelper.ShowDeleteConfirmAsync(priority.Name);
             if (confirm)
             {
-                await _viewModel.DeletePriorityAsync(priority.Name);
+                _viewModel.DeletePriority(priority.Name);
                 RefreshLists();
             }
         }
@@ -204,7 +204,7 @@ namespace TodoListPlugin.Views
                     Name = content.TagName,
                     Color = content.SelectedColor
                 };
-                await _viewModel.AddTagAsync(tag);
+                _viewModel.AddTag(tag);
                 RefreshLists();
             }
         }
@@ -226,7 +226,7 @@ namespace TodoListPlugin.Views
             {
                 tag.Name = content.TagName;
                 tag.Color = content.SelectedColor;
-                await _viewModel.UpdateTagAsync(tag);
+                _viewModel.UpdateTag(tag);
                 RefreshLists();
             }
         }
@@ -239,7 +239,7 @@ namespace TodoListPlugin.Views
             var confirm = await DialogHelper.ShowDeleteConfirmAsync(tag.Name);
             if (confirm)
             {
-                await _viewModel.DeleteTagAsync(tag.Name);
+                _viewModel.DeleteTag(tag.Name);
                 RefreshLists();
             }
         }
@@ -268,7 +268,7 @@ namespace TodoListPlugin.Views
                     Required = content.Required,
                     ShowOnCard = content.ShowOnCard
                 };
-                await _viewModel.AddFieldTemplateAsync(field);
+                _viewModel.AddFieldTemplate(field);
                 RefreshLists();
             }
         }
@@ -293,7 +293,7 @@ namespace TodoListPlugin.Views
                 field.DefaultValue = content.DefaultValue;
                 field.Required = content.Required;
                 field.ShowOnCard = content.ShowOnCard;
-                await _viewModel.UpdateFieldTemplateAsync(field);
+                _viewModel.UpdateFieldTemplate(field);
                 RefreshLists();
             }
         }
@@ -306,7 +306,7 @@ namespace TodoListPlugin.Views
             var confirm = await DialogHelper.ShowDeleteConfirmAsync(field.Name);
             if (confirm)
             {
-                await _viewModel.DeleteFieldTemplateAsync(field.Id);
+                _viewModel.DeleteFieldTemplate(field.Id);
                 RefreshLists();
             }
         }
@@ -314,25 +314,25 @@ namespace TodoListPlugin.Views
         /// <summary>
         /// 字段必填状态变更
         /// </summary>
-        private async void OnFieldRequiredChanged(object? sender, RoutedEventArgs e)
+        private void OnFieldRequiredChanged(object? sender, RoutedEventArgs e)
         {
             if (_viewModel == null) return;
             if (sender is not CheckBox checkBox || checkBox.Tag is not CustomFieldTemplate field) return;
 
             field.Required = checkBox.IsChecked == true;
-            await _viewModel.UpdateFieldTemplateAsync(field);
+            _viewModel.UpdateFieldTemplate(field);
         }
 
         /// <summary>
         /// 字段显示状态变更
         /// </summary>
-        private async void OnFieldShowOnCardChanged(object? sender, RoutedEventArgs e)
+        private void OnFieldShowOnCardChanged(object? sender, RoutedEventArgs e)
         {
             if (_viewModel == null) return;
             if (sender is not CheckBox checkBox || checkBox.Tag is not CustomFieldTemplate field) return;
 
             field.ShowOnCard = checkBox.IsChecked == true;
-            await _viewModel.UpdateFieldTemplateAsync(field);
+            _viewModel.UpdateFieldTemplate(field);
         }
 
         #endregion

@@ -56,7 +56,7 @@ public class MarkdownEditorViewModel : ReactiveObject, IDisposable
 
         // 当内容变化时更新预览
         this.WhenAnyValue(x => x.MarkdownContent)
-            .Throttle(TimeSpan.FromMilliseconds(300))
+            .Throttle(TimeSpan.FromMilliseconds(500))
             .ObserveOn(RxApp.MainThreadScheduler)
             .Subscribe(_ => UpdatePreview());
     }
@@ -94,7 +94,12 @@ public class MarkdownEditorViewModel : ReactiveObject, IDisposable
     public string HtmlContent
     {
         get => _htmlContent;
-        private set => this.RaiseAndSetIfChanged(ref _htmlContent, value);
+        private set
+        {
+            _htmlContent = value;
+            this.RaisePropertyChanged(nameof(HtmlContent));
+            //this.RaiseAndSetIfChanged(ref _htmlContent, value);
+        }
     }
 
     /// <summary>

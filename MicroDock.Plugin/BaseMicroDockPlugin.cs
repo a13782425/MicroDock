@@ -22,9 +22,6 @@ public abstract class BaseMicroDockPlugin : IMicroDockPlugin
         }
         
         Context = context ?? throw new ArgumentNullException(nameof(context));
-        
-        // Initialize 之后调用 OnInit
-        OnInit();
     }
 
     public abstract IMicroTab[] Tabs { get; }

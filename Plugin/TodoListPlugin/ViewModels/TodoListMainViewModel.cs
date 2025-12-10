@@ -4,7 +4,6 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
 using TodoListPlugin.Models;
 using TodoListPlugin.Services;
 
@@ -163,7 +162,7 @@ namespace TodoListPlugin.ViewModels
         /// <summary>
         /// 添加新项目
         /// </summary>
-        public Task<ProjectBoardViewModel> AddProjectAsync(string name, string color = "#2196F3", string? icon = null)
+        public ProjectBoardViewModel AddProject(string name, string color = "#2196F3", string? icon = null)
         {
             var project = new Project
             {
@@ -186,16 +185,16 @@ namespace TodoListPlugin.ViewModels
                 SelectedProject = projectVm;
             }
 
-            return Task.FromResult(projectVm);
+            return projectVm;
         }
 
         /// <summary>
         /// 删除项目
         /// </summary>
-        public Task DeleteProjectAsync(string projectId)
+        public void DeleteProject(string projectId)
         {
             var projectVm = _projects.FirstOrDefault(p => p.Id == projectId);
-            if (projectVm == null) return Task.CompletedTask;
+            if (projectVm == null) return;
 
             _dataService.DeleteProject(projectId);
             _projects.Remove(projectVm);
@@ -204,47 +203,43 @@ namespace TodoListPlugin.ViewModels
             {
                 SelectedProject = _projects.FirstOrDefault();
             }
-            return Task.CompletedTask;
         }
 
         /// <summary>
         /// 更新项目
         /// </summary>
-        public Task UpdateProjectAsync(ProjectBoardViewModel projectVm)
+        public void UpdateProject(ProjectBoardViewModel projectVm)
         {
             _dataService.UpdateProject(projectVm.Model);
-            return Task.CompletedTask;
         }
 
         /// <summary>
         /// 重命名项目
         /// </summary>
-        public Task RenameProjectAsync(string projectId, string newName)
+        public void RenameProject(string projectId, string newName)
         {
             var projectVm = _projects.FirstOrDefault(p => p.Id == projectId);
-            if (projectVm == null) return Task.CompletedTask;
+            if (projectVm == null) return;
 
             projectVm.Name = newName;
             _dataService.UpdateProject(projectVm.Model);
-            return Task.CompletedTask;
         }
 
         /// <summary>
         /// 修改项目颜色
         /// </summary>
-        public Task ChangeProjectColorAsync(string projectId, string newColor)
+        public void ChangeProjectColor(string projectId, string newColor)
         {
             var projectVm = _projects.FirstOrDefault(p => p.Id == projectId);
-            if (projectVm == null) return Task.CompletedTask;
+            if (projectVm == null) return;
 
             projectVm.Color = newColor;
             _dataService.UpdateProject(projectVm.Model);
-            return Task.CompletedTask;
         }
         /// <summary>
         /// 添加待办事项
         /// </summary>
-        public Task<TodoItemViewModel> AddTodoItemAsync(string title, string? statusColumnId = null)
+        public TodoItemViewModel AddTodoItem(string title, string? statusColumnId = null)
         {
             if (SelectedProject == null)
                 throw new InvalidOperationException("请先选择一个项目");
@@ -268,7 +263,7 @@ namespace TodoListPlugin.ViewModels
             itemVm.SetFieldTemplates(FieldTemplates);
             SelectedProject.AddItem(itemVm);
 
-            return Task.FromResult(itemVm);
+            return itemVm;
         }
 
         /// <summary>
@@ -287,37 +282,35 @@ namespace TodoListPlugin.ViewModels
         /// <summary>
         /// 删除待办事项
         /// </summary>
-        public Task DeleteTodoItemAsync(string itemId)
+        public void DeleteTodoItem(string itemId)
         {
-            if (SelectedProject == null) return Task.CompletedTask;
+            if (SelectedProject == null) return;
 
             _dataService.DeleteItem(SelectedProject.Id, itemId);
             SelectedProject.RemoveItem(itemId);
-            return Task.CompletedTask;
         }
 
         /// <summary>
         /// 移动待办事项到其他状态
         /// </summary>
-        public Task MoveItemToStatusAsync(string itemId, string targetStatusId)
+        public void MoveItemToStatus(string itemId, string targetStatusId)
         {
-            if (SelectedProject == null) return Task.CompletedTask;
+            if (SelectedProject == null) return;
 
             _dataService.MoveItemToStatus(SelectedProject.Id, itemId, targetStatusId);
             SelectedProject.MoveItemToStatus(itemId, targetStatusId);
-            return Task.CompletedTask;
         }
 
         /// <summary>
         /// 移动待办事项到其他项目
         /// </summary>
-        public Task MoveItemToProjectAsync(string itemId, string targetProjectId)
+        public void MoveItemToProject(string itemId, string targetProjectId)
         {
-            if (SelectedProject == null) return Task.CompletedTask;
-            if (SelectedProject.Id == targetProjectId) return Task.CompletedTask;
+            if (SelectedProject == null) return;
+            if (SelectedProject.Id == targetProjectId) return;
 
             var itemVm = SelectedProject.GetItem(itemId);
-            if (itemVm == null) return Task.CompletedTask;
+            if (itemVm == null) return;
 
             _dataService.MoveItemToProject(SelectedProject.Id, itemId, targetProjectId);
 
@@ -331,35 +324,33 @@ namespace TodoListPlugin.ViewModels
                 itemVm.ProjectId = targetProjectId;
                 targetProject.AddItem(itemVm);
             }
-            return Task.CompletedTask;
         }
 
         /// <summary>
         /// 更新待办事项
         /// </summary>
-        public Task UpdateTodoItemAsync(TodoItemViewModel itemVm)
+        public void UpdateTodoItem(TodoItemViewModel itemVm)
         {
-            if (itemVm == null) return Task.CompletedTask;
+            if (itemVm == null) return;
             _dataService.UpdateItem(itemVm.Model);
-            return Task.CompletedTask;
         }
 
         /// <summary>
         /// 删除待办事项（重载版本）
         /// </summary>
-        public Task DeleteTodoItemAsync(TodoItemViewModel itemVm)
+        public void DeleteTodoItem(TodoItemViewModel itemVm)
         {
-            if (itemVm == null) return Task.CompletedTask;
-            return DeleteTodoItemAsync(itemVm.Id);
+            if (itemVm == null) return;
+            DeleteTodoItem(itemVm.Id);
         }
 
         /// <summary>
         /// 移动待办事项到其他项目（重载版本）
         /// </summary>
-        public Task MoveTodoItemToProjectAsync(TodoItemViewModel itemVm, string targetProjectId)
+        public void MoveTodoItemToProject(TodoItemViewModel itemVm, string targetProjectId)
         {
-            if (itemVm == null) return Task.CompletedTask;
-            return MoveItemToProjectAsync(itemVm.Id, targetProjectId);
+            if (itemVm == null) return;
+            MoveItemToProject(itemVm.Id, targetProjectId);
         }
 
         /// <summary>
@@ -393,127 +384,115 @@ namespace TodoListPlugin.ViewModels
         /// <summary>
         /// 添加状态列
         /// </summary>
-        public Task AddStatusColumnAsync(StatusColumn column)
+        public void AddStatusColumn(StatusColumn column)
         {
             _dataService.AddStatusColumn(column);
             OnPropertyChanged(nameof(StatusColumns));
 
             // 更新所有项目的状态列
             RefreshProjects();
-            return Task.CompletedTask;
         }
 
         /// <summary>
         /// 更新状态列
         /// </summary>
-        public Task UpdateStatusColumnAsync(StatusColumn column)
+        public void UpdateStatusColumn(StatusColumn column)
         {
             _dataService.UpdateStatusColumn(column);
             OnPropertyChanged(nameof(StatusColumns));
-            return Task.CompletedTask;
         }
 
         /// <summary>
         /// 删除状态列
         /// </summary>
-        public Task DeleteStatusColumnAsync(string columnId)
+        public void DeleteStatusColumn(string columnId)
         {
             _dataService.DeleteStatusColumn(columnId);
             OnPropertyChanged(nameof(StatusColumns));
 
             // 更新所有项目的状态列
             RefreshProjects();
-            return Task.CompletedTask;
         }
 
         /// <summary>
         /// 添加优先级
         /// </summary>
-        public Task AddPriorityAsync(PriorityGroup priority)
+        public void AddPriority(PriorityGroup priority)
         {
             _dataService.AddPriority(priority);
             OnPropertyChanged(nameof(Priorities));
-            return Task.CompletedTask;
         }
 
         /// <summary>
         /// 更新优先级
         /// </summary>
-        public Task UpdatePriorityAsync(PriorityGroup priority)
+        public void UpdatePriority(PriorityGroup priority)
         {
             _dataService.UpdatePriority(priority);
             OnPropertyChanged(nameof(Priorities));
-            return Task.CompletedTask;
         }
 
         /// <summary>
         /// 删除优先级
         /// </summary>
-        public Task DeletePriorityAsync(string priorityId)
+        public void DeletePriority(string priorityId)
         {
             _dataService.DeletePriority(priorityId);
             OnPropertyChanged(nameof(Priorities));
-            return Task.CompletedTask;
         }
 
         /// <summary>
         /// 添加标签
         /// </summary>
-        public Task AddTagAsync(TagGroup tag)
+        public void AddTag(TagGroup tag)
         {
             _dataService.AddTag(tag);
             OnPropertyChanged(nameof(Tags));
-            return Task.CompletedTask;
         }
 
         /// <summary>
         /// 更新标签
         /// </summary>
-        public Task UpdateTagAsync(TagGroup tag)
+        public void UpdateTag(TagGroup tag)
         {
             _dataService.UpdateTag(tag);
             OnPropertyChanged(nameof(Tags));
-            return Task.CompletedTask;
         }
 
         /// <summary>
         /// 删除标签
         /// </summary>
-        public Task DeleteTagAsync(string tagId)
+        public void DeleteTag(string tagId)
         {
             _dataService.DeleteTag(tagId);
             OnPropertyChanged(nameof(Tags));
-            return Task.CompletedTask;
         }
 
         /// <summary>
         /// 添加字段模板
         /// </summary>
-        public Task AddFieldTemplateAsync(CustomFieldTemplate template)
+        public void AddFieldTemplate(CustomFieldTemplate template)
         {
             _dataService.AddFieldTemplate(template);
             OnPropertyChanged(nameof(FieldTemplates));
-            return Task.CompletedTask;
         }
 
         /// <summary>
         /// 更新字段模板
         /// </summary>
-        public Task UpdateFieldTemplateAsync(CustomFieldTemplate template)
+        public void UpdateFieldTemplate(CustomFieldTemplate template)
         {
             _dataService.UpdateFieldTemplate(template);
             OnPropertyChanged(nameof(FieldTemplates));
-            return Task.CompletedTask;
         }
 
         /// <summary>
         /// 删除字段模板
         /// </summary>
-        public Task DeleteFieldTemplateAsync(string templateId)
+        public void DeleteFieldTemplate(string templateId)
         {
             _dataService.DeleteFieldTemplate(templateId);
             OnPropertyChanged(nameof(FieldTemplates));
-            return Task.CompletedTask;
         }
 
         #endregion

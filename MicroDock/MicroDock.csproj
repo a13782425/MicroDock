@@ -32,6 +32,9 @@
 		<PackageReference Include="Avalonia.Controls.DataGrid" Version="11.3.8" />
 		<PackageReference Include="Avalonia.Win32" Version="11.3.8" />
 		<PackageReference Include="ReactiveUI.Avalonia" Version="11.3.8" />
+		<!-- WebView Support -->
+		<PackageReference Include="WebView.Avalonia" Version="11.0.0.1" />
+		<PackageReference Include="WebView.Avalonia.Desktop" Version="11.0.0.1" />
 		<!--Condition below is needed to remove Avalonia.Diagnostics package from build output in Release configuration.-->
 		<PackageReference Include="Avalonia.Diagnostics" Version="11.3.8">
 			<IncludeAssets Condition="'$(Configuration)' != 'Debug'">None</IncludeAssets>

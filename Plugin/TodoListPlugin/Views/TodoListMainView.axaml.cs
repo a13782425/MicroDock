@@ -6,7 +6,6 @@ using Avalonia.VisualTree;
 using FluentAvalonia.UI.Controls;
 using System;
 using System.Linq;
-using System.Threading.Tasks;
 using TodoListPlugin.Helpers;
 using TodoListPlugin.Models;
 using TodoListPlugin.ViewModels;
@@ -59,7 +58,7 @@ namespace TodoListPlugin.Views
 
             if (result == ContentDialogResult.Primary)
             {
-                await _viewModel.AddProjectAsync(content.ProjectName, content.SelectedColor, null);
+                _viewModel.AddProject(content.ProjectName, content.SelectedColor, null);
             }
         }
 
@@ -111,9 +110,9 @@ namespace TodoListPlugin.Views
         }
 
         /// <summary>
-        /// 重命名项目
+        /// 编辑项目（名称、颜色、描述）
         /// </summary>
-        private async void OnRenameProjectClick(object? sender, RoutedEventArgs e)
+        private async void OnEditProjectClick(object? sender, RoutedEventArgs e)
         {
             if (_viewModel == null) return;
             
@@ -121,41 +120,20 @@ namespace TodoListPlugin.Views
             var project = (sender as MenuItem)?.Tag as ProjectBoardViewModel ?? _contextMenuProject;
             if (project == null) return;
 
-            var textBox = new TextBox { Text = project.Name, Width = 300 };
-            var result = await DialogHelper.ShowContentDialogAsync(
-                "重命名项目",
-                textBox,
-                "确定",
-                "取消");
-
-            if (result == ContentDialogResult.Primary && !string.IsNullOrWhiteSpace(textBox.Text))
-            {
-                await _viewModel.RenameProjectAsync(project.Id, textBox.Text.Trim());
-            }
-        }
-
-        /// <summary>
-        /// 修改项目颜色
-        /// </summary>
-        private async void OnChangeProjectColorClick(object? sender, RoutedEventArgs e)
-        {
-            if (_viewModel == null) return;
-
-            var project = (sender as MenuItem)?.Tag as ProjectBoardViewModel ?? _contextMenuProject;
-            if (project == null) return;
-
             var content = new AddProjectContent();
-            content.SetColor(project.Color);
+            content.SetProject(project.Name, project.Color, project.Description);
             
-            var result = await DialogHelper.ShowContentDialogAsync(
-                "修改颜色",
+            var result = await DialogHelper.ShowContentDialogWithValidationAsync(
+                "编辑项目",
                 content,
-                "确定",
-                "取消");
+                () => content.IsValid);
 
             if (result == ContentDialogResult.Primary)
             {
-                await _viewModel.ChangeProjectColorAsync(project.Id, content.SelectedColor);
+                project.Name = content.ProjectName;
+                project.Color = content.SelectedColor;
+                project.Description = content.ProjectDescription;
+                _viewModel.UpdateProject(project);
             }
         }
 
@@ -172,32 +150,57 @@ namespace TodoListPlugin.Views
             var confirm = await DialogHelper.ShowDeleteConfirmAsync(project.Name);
             if (confirm)
             {
-                await _viewModel.DeleteProjectAsync(project.Id);
+                _viewModel.DeleteProject(project.Id);
             }
         }
 
         #endregion
 
-        #region 待办右键菜单
+        #region TodoCardView 事件处理
 
         /// <summary>
-        /// 编辑待办（打开详情面板）
+        /// 卡片点击 - 打开详情
         /// </summary>
-        private void OnEditTodoClick(object? sender, RoutedEventArgs e)
+        private void OnTodoCardClicked(object? sender, TodoItemViewModel item)
         {
-            if (sender is not MenuItem menuItem || menuItem.Tag is not TodoItemViewModel item) return;
             OpenTodoDetail(item);
         }
 
         /// <summary>
-        /// 移动待办到其他项目
+        /// 卡片拖拽开始
         /// </summary>
-        private async void OnMoveTodoClick(object? sender, RoutedEventArgs e)
+        private async void OnTodoCardDragStarted(object? sender, (TodoItemViewModel Item, PointerEventArgs Args) args)
+        {
+            _draggedItem = args.Item;
+            _isDragging = true;
+
+            // 开始拖放操作
+            #pragma warning disable CS0618 // Type or member is obsolete
+            var data = new DataObject();
+            data.Set("TodoItem", _draggedItem);
+            await DragDrop.DoDragDrop(args.Args, data, DragDropEffects.Move);
+            #pragma warning restore CS0618
+
+            // 拖放完成，清理状态
+            _draggedItem = null;
+            _isDragging = false;
+        }
+
+        /// <summary>
+        /// 卡片编辑请求
+        /// </summary>
+        private void OnTodoCardEditRequested(object? sender, TodoItemViewModel item)
+        {
+            OpenTodoDetail(item);
+        }
+
+        /// <summary>
+        /// 卡片移动请求
+        /// </summary>
+        private async void OnTodoCardMoveRequested(object? sender, TodoItemViewModel item)
         {
             if (_viewModel?.SelectedProject == null) return;
-            if (sender is not MenuItem menuItem || menuItem.Tag is not TodoItemViewModel item) return;
 
-            // 调用移动逻辑（与详情面板相同）
             var content = new StackPanel { Spacing = 8 };
             var projectComboBox = new ComboBox
             {
@@ -217,22 +220,21 @@ namespace TodoListPlugin.Views
 
             if (result == ContentDialogResult.Primary && projectComboBox.SelectedItem is ProjectBoardViewModel targetProject)
             {
-                await _viewModel.MoveTodoItemToProjectAsync(item, targetProject.Id);
+                _viewModel.MoveTodoItemToProject(item, targetProject.Id);
             }
         }
 
         /// <summary>
-        /// 删除待办
+        /// 卡片删除请求
         /// </summary>
-        private async void OnDeleteTodoClick(object? sender, RoutedEventArgs e)
+        private async void OnTodoCardDeleteRequested(object? sender, TodoItemViewModel item)
         {
             if (_viewModel == null) return;
-            if (sender is not MenuItem menuItem || menuItem.Tag is not TodoItemViewModel item) return;
 
             var confirm = await DialogHelper.ShowDeleteConfirmAsync(item.Title);
             if (confirm)
             {
-                await _viewModel.DeleteTodoItemAsync(item);
+                _viewModel.DeleteTodoItem(item);
             }
         }
 
@@ -263,7 +265,7 @@ namespace TodoListPlugin.Views
 
             if (result == ContentDialogResult.Primary)
             {
-                var itemVm = await _viewModel.AddTodoItemAsync(content.TodoTitle, content.SelectedStatusId);
+                var itemVm = _viewModel.AddTodoItem(content.TodoTitle, content.SelectedStatusId);
                 
                 // 设置必填字段值到自定义字段
                 if (content.RequiredFieldValues.Count > 0)
@@ -275,83 +277,9 @@ namespace TodoListPlugin.Views
                             itemVm.CustomFields[field.Name] = value;
                         }
                     }
-                    await _viewModel.UpdateTodoItemAsync(itemVm);
+                    _viewModel.UpdateTodoItem(itemVm);
                 }
             }
-        }
-
-        /// <summary>
-        /// 待办卡片鼠标按下 - 开始拖拽
-        /// </summary>
-        private void OnTodoCardPointerPressed(object? sender, PointerPressedEventArgs e)
-        {
-            if (sender is not Border border) return;
-            if (border.Tag is not TodoItemViewModel itemVm) return;
-
-            var point = e.GetCurrentPoint(border);
-            if (point.Properties.IsLeftButtonPressed)
-            {
-                _draggedItem = itemVm;
-                _dragStartPoint = e.GetPosition(this);
-                _isDragging = false;
-
-                border.PointerMoved += OnTodoCardPointerMoved;
-                border.PointerReleased += OnTodoCardPointerReleased;
-            }
-        }
-
-        /// <summary>
-        /// 待办卡片鼠标移动 - 检测拖拽
-        /// </summary>
-        private async void OnTodoCardPointerMoved(object? sender, PointerEventArgs e)
-        {
-            if (_draggedItem == null || sender is not Border border) return;
-
-            var currentPoint = e.GetPosition(this);
-            var diff = currentPoint - _dragStartPoint;
-
-            // 检测是否开始拖拽（移动超过一定距离）
-            if (!_isDragging && (Math.Abs(diff.X) > 5 || Math.Abs(diff.Y) > 5))
-            {
-                _isDragging = true;
-
-                // 开始拖放操作
-                var data = new DataObject();
-                data.Set("TodoItem", _draggedItem);
-
-                var result = await DragDrop.DoDragDrop(e, data, DragDropEffects.Move);
-
-                // 拖放完成，清理状态
-                CleanupDrag(border);
-            }
-        }
-
-        /// <summary>
-        /// 待办卡片鼠标释放
-        /// </summary>
-        private void OnTodoCardPointerReleased(object? sender, PointerReleasedEventArgs e)
-        {
-            if (sender is Border border)
-            {
-                CleanupDrag(border);
-
-                // 如果没有进入拖拽模式，视为点击，打开详情
-                if (!_isDragging && _draggedItem != null)
-                {
-                    OpenTodoDetail(_draggedItem);
-                }
-            }
-        }
-
-        /// <summary>
-        /// 清理拖拽状态
-        /// </summary>
-        private void CleanupDrag(Border border)
-        {
-            border.PointerMoved -= OnTodoCardPointerMoved;
-            border.PointerReleased -= OnTodoCardPointerReleased;
-            _draggedItem = null;
-            _isDragging = false;
         }
 
         /// <summary>
@@ -361,7 +289,9 @@ namespace TodoListPlugin.Views
         {
             e.DragEffects = DragDropEffects.None;
             
+            #pragma warning disable CS0618
             if (!e.Data.Contains("TodoItem")) return;
+            #pragma warning restore CS0618
             
             // 查找目标状态列
             var targetColumn = FindStatusColumnFromEvent(e);
@@ -374,19 +304,21 @@ namespace TodoListPlugin.Views
         /// <summary>
         /// 看板放置
         /// </summary>
-        private async void OnKanbanDrop(object? sender, DragEventArgs e)
+        private void OnKanbanDrop(object? sender, DragEventArgs e)
         {
+            #pragma warning disable CS0618
             if (!e.Data.Contains("TodoItem")) return;
             if (_viewModel == null) return;
 
             var todoItem = e.Data.Get("TodoItem") as TodoItemViewModel;
+            #pragma warning restore CS0618
             if (todoItem == null) return;
 
             // 查找目标状态列
             var targetColumn = FindStatusColumnFromEvent(e);
             if (targetColumn != null && targetColumn.Id != todoItem.StatusColumnId)
             {
-                await _viewModel.MoveItemToStatusAsync(todoItem.Id, targetColumn.Id);
+                _viewModel.MoveItemToStatus(todoItem.Id, targetColumn.Id);
             }
         }
 
@@ -479,19 +411,19 @@ namespace TodoListPlugin.Views
         /// <summary>
         /// 详情面板项目变更
         /// </summary>
-        private async void OnDetailPanelItemChanged(object? sender, TodoItemViewModel item)
+        private void OnDetailPanelItemChanged(object? sender, TodoItemViewModel item)
         {
             if (_viewModel == null) return;
-            await _viewModel.UpdateTodoItemAsync(item);
+            _viewModel.UpdateTodoItem(item);
         }
 
         /// <summary>
         /// 详情面板删除项目
         /// </summary>
-        private async void OnDetailPanelItemDeleted(object? sender, TodoItemViewModel item)
+        private void OnDetailPanelItemDeleted(object? sender, TodoItemViewModel item)
         {
             if (_viewModel == null) return;
-            await _viewModel.DeleteTodoItemAsync(item);
+            _viewModel.DeleteTodoItem(item);
             HideDetailPanel();
         }
 
@@ -522,7 +454,7 @@ namespace TodoListPlugin.Views
 
             if (result == ContentDialogResult.Primary && projectComboBox.SelectedItem is ProjectBoardViewModel targetProject)
             {
-                await _viewModel.MoveTodoItemToProjectAsync(item, targetProject.Id);
+                _viewModel.MoveTodoItemToProject(item, targetProject.Id);
                 HideDetailPanel();
             }
         }

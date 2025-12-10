@@ -64,6 +64,16 @@ namespace TodoListPlugin.Views.Dialogs
         }
 
         /// <summary>
+        /// 设置项目数据（用于编辑）
+        /// </summary>
+        public void SetProject(string name, string color, string? description)
+        {
+            NameTextBox.Text = name;
+            SetColor(color);
+            DescriptionTextBox.Text = description ?? string.Empty;
+        }
+
+        /// <summary>
         /// 聚焦到名称输入框
         /// </summary>
         public void FocusName()

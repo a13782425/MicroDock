@@ -382,3 +382,27 @@ public static class BoolConverters
     public static FuncValueConverter<bool, Avalonia.Media.FontWeight> ToFontWeight { get; } =
         new(isRoot => isRoot ? Avalonia.Media.FontWeight.SemiBold : Avalonia.Media.FontWeight.Normal);
 }
+
+/// <summary>
+/// 视图模式转换器，用于控制编辑器和预览的布局
+/// </summary>
+public static class ViewModeConverters
+{
+    /// <summary>
+    /// 编辑器列跨度：分屏模式时跨1列，编辑模式时跨3列(占满)
+    /// </summary>
+    public static FuncValueConverter<bool, int> EditorColumnSpan { get; } =
+        new(isSplitMode => isSplitMode ? 1 : 3);
+
+    /// <summary>
+    /// 预览列位置：分屏模式时在第2列，预览模式时在第0列
+    /// </summary>
+    public static FuncValueConverter<bool, int> PreviewColumn { get; } =
+        new(isSplitMode => isSplitMode ? 2 : 0);
+
+    /// <summary>
+    /// 预览列跨度：分屏模式时跨1列，预览模式时跨3列(占满)
+    /// </summary>
+    public static FuncValueConverter<bool, int> PreviewColumnSpan { get; } =
+        new(isSplitMode => isSplitMode ? 1 : 3);
+}

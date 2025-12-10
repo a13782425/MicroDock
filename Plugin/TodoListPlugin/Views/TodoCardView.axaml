@@ -1,0 +1,108 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:TodoListPlugin.ViewModels"
+             mc:Ignorable="d"
+             x:Class="TodoListPlugin.Views.TodoCardView"
+             x:DataType="vm:TodoItemViewModel">
+    
+    <UserControl.Styles>
+        <!-- 待办卡片样式 -->
+        <Style Selector="Border.todo-card">
+            <Setter Property="Background" Value="{DynamicResource ControlFillColorDefaultBrush}"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="12,10"/>
+            <Setter Property="Margin" Value="0,4"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        
+        <Style Selector="Border.todo-card:pointerover">
+            <Setter Property="Background" Value="{DynamicResource ControlFillColorSecondaryBrush}"/>
+        </Style>
+    </UserControl.Styles>
+    
+    <Border Classes="todo-card"
+            Tag="{Binding}"
+            IsVisible="{Binding IsVisible}"
+            PointerPressed="OnCardPointerPressed">
+        <Border.ContextMenu>
+            <ContextMenu>
+                <MenuItem Header="编辑" Click="OnEditClick"/>
+                <MenuItem Header="移动到其他项目" Click="OnMoveClick"/>
+                <Separator/>
+                <MenuItem Header="删除" Click="OnDeleteClick"/>
+            </ContextMenu>
+        </Border.ContextMenu>
+        
+        <Grid RowDefinitions="Auto,Auto,Auto,Auto">
+            <!-- 标题 -->
+            <TextBlock Grid.Row="0"
+                       Text="{Binding Title}"
+                       TextWrapping="Wrap"
+                       FontWeight="Medium"/>
+            
+            <!-- 描述（如果有）-->
+            <TextBlock Grid.Row="1"
+                       Text="{Binding Description}"
+                       TextWrapping="Wrap"
+                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                       FontSize="12"
+                       Margin="0,4,0,0"
+                       MaxLines="2"
+                       IsVisible="{Binding ShouldShowDescriptionOnCard}"/>
+            
+            <!-- 自定义字段显示 -->
+            <ItemsControl Grid.Row="2"
+                          ItemsSource="{Binding DisplayCustomFields}"
+                          IsVisible="{Binding HasDisplayCustomFields}"
+                          Margin="0,6,0,0">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,2,0,0">
+                            <TextBlock Text="{Binding Key}"
+                                       FontSize="11"
+                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                            <TextBlock Text=":"
+                                       FontSize="11"
+                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                            <TextBlock Text="{Binding Value}"
+                                       FontSize="11"
+                                       FontWeight="Medium"
+                                       MaxLines="1"
+                                       TextTrimming="CharacterEllipsis"/>
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            
+            <!-- 底部信息 -->
+            <StackPanel Grid.Row="3"
+                        Orientation="Horizontal"
+                        Spacing="8"
+                        Margin="0,8,0,0">
+                <!-- 优先级 -->
+                <Border Background="{Binding PriorityColor, FallbackValue=#808080}"
+                        CornerRadius="4"
+                        Padding="6,2"
+                        IsVisible="{Binding ShouldShowPriorityOnCard}">
+                    <TextBlock Text="{Binding PriorityName, FallbackValue=普通}"
+                               FontSize="10"
+                               Foreground="White"/>
+                </Border>
+                
+                <!-- 截止日期 -->
+                <StackPanel Orientation="Horizontal"
+                            Spacing="4"
+                            IsVisible="{Binding ShouldShowDueDateOnCard}">
+                    <PathIcon Data="M19,4H18V2H16V4H8V2H6V4H5C3.89,4 3,4.9 3,6V20A2,2 0 0,0 5,22H19A2,2 0 0,0 21,20V6A2,2 0 0,0 19,4M19,20H5V10H19V20M19,8H5V6H19V8Z"
+                              Width="12" Height="12"
+                              Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                    <TextBlock Text="{Binding DueDateText}"
+                               FontSize="11"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                </StackPanel>
+            </StackPanel>
+        </Grid>
+    </Border>
+</UserControl>

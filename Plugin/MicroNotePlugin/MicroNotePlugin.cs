@@ -1,4 +1,6 @@
-using Microsoft.Extensions.DependencyInjection;
+using Avalonia.WebView.Desktop;
+using AvaloniaWebView.Shared;
+using DryIoc.Shared.Extensions;
 using MicroDock.Plugin;
 using MicroNotePlugin.Core.Interfaces;
 using MicroNotePlugin.Infrastructure.Database;
@@ -6,7 +8,9 @@ using MicroNotePlugin.Infrastructure.Repositories;
 using MicroNotePlugin.Infrastructure.Services;
 using MicroNotePlugin.Services;
 using MicroNotePlugin.Views;
-using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
+using WebViewCore;
+using WebViewCore.Ioc;
 
 namespace MicroNotePlugin;
 
@@ -44,12 +48,12 @@ public class MicroNotePlugin : BaseMicroDockPlugin
 
     public override async Task OnInitAsync()
     {
+        await base.OnInitAsync();
         if (Context == null)
         {
             LogError("插件上下文未初始化");
             return;
         }
-
         // 初始化服务容器
         await InitializeServices(Context.DataPath);
 

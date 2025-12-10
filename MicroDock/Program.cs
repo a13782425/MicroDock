@@ -1,5 +1,6 @@
 ﻿using Avalonia;
 using Avalonia.Controls.Notifications;
+using Avalonia.WebView.Desktop;
 using DesktopNotifications.Avalonia;
 using ReactiveUI.Avalonia;
 using Serilog;
@@ -14,12 +15,14 @@ namespace MicroDock
         /// <summary>
         /// 系统托盘通知管理器
         /// </summary>
-        public static DesktopNotifications.INotificationManager NotificationManager = null!;
+        public static DesktopNotificationManager NotificationManager = null!;
 
         /// <summary>
         /// 应用内窗口通知管理器（Toast通知）
         /// </summary>
         public static WindowNotificationManager? WindowNotificationManager { get; set; }
+
+        public static AppBuilder Builder { get; private set; }
 
         // Initialization code. Don't use any Avalonia, third-party APIs or any
         // SynchronizationContext-reliant code before AppMain is called: things aren't initialized
@@ -53,8 +56,8 @@ namespace MicroDock
                 }
 #endif
 
-                BuildAvaloniaApp()
-                    .StartWithClassicDesktopLifetime(args);
+                Builder = BuildAvaloniaApp();
+                Builder.StartWithClassicDesktopLifetime(args);
                 //MicroDock.Infrastructure.ServiceLocator.Get<MicroDock.Services.LogService>().IsInit = true;
             }
             catch (Exception ex)
@@ -123,6 +126,7 @@ namespace MicroDock
                 .WithInterFont()
                 .SetupDesktopNotifications(out NotificationManager!)
                 .LogToTrace()
+                .UseDesktopWebView()
                 .UseReactiveUI();
     }
 }

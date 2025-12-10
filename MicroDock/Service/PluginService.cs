@@ -598,7 +598,6 @@ namespace MicroDock.Service
                 string[] dependencies = manifest.Dependencies?.Keys.ToArray() ?? Array.Empty<string>();
                 PluginContextImpl context = new PluginContextImpl(manifest.Name, pluginFolder);
                 dockPlugin.Initialize(context);
-
                 // 异步初始化插件
                 await dockPlugin.OnInitAsync();
                 Log.Debug("插件 {Name} 异步初始化完成", manifest.Name);
@@ -612,7 +611,7 @@ namespace MicroDock.Service
                     if (tab is Control control)
                         tabControls.Add(control);
                     else
-                        Log.Warning("插件 {Name} 的标签页 {TabName} 不是 Control 类型", manifest.Name, tab.TabName);
+                        LogWarning($"插件 {manifest.Name} 的标签页 {tab.TabName} 不是 Control 类型");
                 }
 
                 Log.Information("成功加载插件: {DisplayName} ({Name}) v{Version}, 依赖: [{Dependencies}], 标签页数: {TabCount}",

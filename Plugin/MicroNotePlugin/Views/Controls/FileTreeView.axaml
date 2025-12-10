@@ -71,7 +71,7 @@
                 <TextBox x:Name="SearchBox"
                          Grid.Column="0"
                          Watermark="🔍 搜索笔记..."
-                         Text="{Binding SearchKeyword, Mode=TwoWay}"
+                         Text="{Binding SearchText, Mode=TwoWay}"
                          Padding="8,6"/>
                 <Button x:Name="ClearSearchButton"
                         Grid.Column="1"
@@ -79,7 +79,7 @@
                         Padding="6"
                         Margin="4,0,0,0"
                         Background="Transparent"
-                        IsVisible="{Binding SearchKeyword, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                        IsVisible="{Binding SearchText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
                     <TextBlock Text="✕" FontSize="12"/>
                 </Button>
             </Grid>

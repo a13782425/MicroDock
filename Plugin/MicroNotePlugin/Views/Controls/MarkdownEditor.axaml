@@ -57,8 +57,10 @@
                   ColumnDefinitions="*,Auto,*">
                 
                 <!-- 编辑器（编辑模式和分屏模式显示） -->
+                <!-- 编辑模式时跨越所有列，分屏模式时只占第0列 -->
                 <ae:TextEditor x:Name="Editor"
                                Grid.Column="0"
+                               Grid.ColumnSpan="{Binding IsSplitMode, Converter={x:Static local:ViewModeConverters.EditorColumnSpan}}"
                                IsVisible="{Binding ShowEditor}"
                                IsReadOnly="False"
                                Focusable="True"
@@ -75,7 +77,9 @@
                               Background="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"/>
                 
                 <!-- 预览（预览模式和分屏模式显示） -->
-                <Border Grid.Column="2" 
+                <!-- 预览模式时从第0列开始跨越所有列，分屏模式时只占第2列 -->
+                <Border Grid.Column="{Binding IsSplitMode, Converter={x:Static local:ViewModeConverters.PreviewColumn}}"
+                        Grid.ColumnSpan="{Binding IsSplitMode, Converter={x:Static local:ViewModeConverters.PreviewColumnSpan}}"
                         IsVisible="{Binding ShowPreview}">
                     <wv:WebView x:Name="PreviewWebView"/>
                 </Border>
