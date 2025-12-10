@@ -1,10 +1,9 @@
 using System.Security.Cryptography;
 using Avalonia.Input.Platform;
-using MicroNotePlugin.Core.Entities;
-using MicroNotePlugin.Core.Interfaces;
-using MicroNotePlugin.Infrastructure.Database;
+using MicroNotePlugin.Entities;
+using MicroNotePlugin.Database;
 
-namespace MicroNotePlugin.Infrastructure.Repositories;
+namespace MicroNotePlugin.Services;
 
 /// <summary>
 /// SQLite 图片仓储实现
@@ -54,7 +53,7 @@ public class SqliteImageRepository : IImageService
 #pragma warning disable CS0618
         var formats = await clipboard.GetFormatsAsync();
         if (formats == null) return null;
-        
+
         // 检查是否有图片数据
         if (formats.Contains("image/png") || formats.Contains("PNG"))
         {

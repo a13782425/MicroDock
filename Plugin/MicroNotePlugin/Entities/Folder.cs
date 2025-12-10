@@ -1,6 +1,6 @@
 using SQLite;
 
-namespace MicroNotePlugin.Core.Entities;
+namespace MicroNotePlugin.Entities;
 
 /// <summary>
 /// 文件夹实体
@@ -13,7 +13,7 @@ public class Folder
     /// </summary>
     [PrimaryKey]
     [Column("id")]
-    public string Id { get; set; } = Guid.NewGuid().ToString();
+    public string Id { get; set; } = Guid.NewGuid().ToString("N");
 
     /// <summary>
     /// 文件夹名称

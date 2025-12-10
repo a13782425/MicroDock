@@ -1,7 +1,7 @@
 using SQLite;
-using MicroNotePlugin.Core.Entities;
+using MicroNotePlugin.Entities;
 
-namespace MicroNotePlugin.Infrastructure.Database;
+namespace MicroNotePlugin.Database;
 
 /// <summary>
 /// 数据库上下文 - 管理 SQLite 连接

@@ -1,8 +1,7 @@
-using MicroNotePlugin.Core.Entities;
-using MicroNotePlugin.Core.Interfaces;
-using MicroNotePlugin.Infrastructure.Database;
+using MicroNotePlugin.Entities;
+using MicroNotePlugin.Database;
 
-namespace MicroNotePlugin.Infrastructure.Repositories;
+namespace MicroNotePlugin.Services;
 
 /// <summary>
 /// SQLite 文件夹仓储实现
@@ -44,7 +43,7 @@ public class SqliteFolderRepository : IFolderRepository
                 .OrderBy(f => f.Name)
                 .ToListAsync();
         }
-        
+
         return await _context.Connection.Table<Folder>()
             .Where(f => f.ParentId == parentId)
             .OrderBy(f => f.Name)
@@ -98,12 +97,12 @@ public class SqliteFolderRepository : IFolderRepository
         {
             var currentPath = currentFolder == null ? "/" + part : currentFolder.Path + "/" + part;
             var folder = await GetByPathAsync(currentPath);
-            
+
             if (folder == null)
             {
                 folder = await CreateAsync(part, currentParentId);
             }
-            
+
             currentFolder = folder;
             currentParentId = folder.Id;
         }

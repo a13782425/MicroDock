@@ -3,7 +3,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using AvaloniaEdit;
-using MicroNotePlugin.Core.Interfaces;
+using MicroNotePlugin.Services;
 using MicroNotePlugin.ViewModels;
 using AvaloniaWebView;
 using System.Text.Json;

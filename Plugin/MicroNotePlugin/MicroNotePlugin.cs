@@ -1,16 +1,9 @@
-using Avalonia.WebView.Desktop;
-using AvaloniaWebView.Shared;
 using DryIoc.Shared.Extensions;
 using MicroDock.Plugin;
-using MicroNotePlugin.Core.Interfaces;
-using MicroNotePlugin.Infrastructure.Database;
-using MicroNotePlugin.Infrastructure.Repositories;
-using MicroNotePlugin.Infrastructure.Services;
+using MicroNotePlugin.Database;
 using MicroNotePlugin.Services;
 using MicroNotePlugin.Views;
 using Microsoft.Extensions.DependencyInjection;
-using WebViewCore;
-using WebViewCore.Ioc;
 
 namespace MicroNotePlugin;
 

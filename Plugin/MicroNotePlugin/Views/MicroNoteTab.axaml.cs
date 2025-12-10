@@ -3,7 +3,7 @@ using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Microsoft.Extensions.DependencyInjection;
 using MicroDock.Plugin;
-using MicroNotePlugin.Core.Interfaces;
+using MicroNotePlugin.Services;
 using MicroNotePlugin.ViewModels;
 using MicroNotePlugin.Views.Controls;
 

@@ -1,6 +1,5 @@
 using ReactiveUI;
 using Microsoft.Extensions.DependencyInjection;
-using MicroNotePlugin.Core.Interfaces;
 using MicroNotePlugin.Services;
 
 namespace MicroNotePlugin.ViewModels;

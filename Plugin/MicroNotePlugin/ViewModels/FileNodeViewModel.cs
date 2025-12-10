@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using ReactiveUI;
-using MicroNotePlugin.Core.Entities;
+using MicroNotePlugin.Entities;
+using FluentAvalonia.UI.Controls;
 
 namespace MicroNotePlugin.ViewModels;
 
@@ -19,6 +20,27 @@ public enum FileNodeType
     Tag
 }
 
+
+
+/// <summary>
+/// 文件树节点子类型（用于特殊图标显示）
+/// </summary>
+public enum FileNodeSubType
+{
+    /// <summary>普通节点（默认）</summary>
+    None,
+    /// <summary>收藏根节点</summary>
+    FavoritesRoot,
+    /// <summary>常用根节点</summary>
+    FrequentRoot,
+    /// <summary>标签根节点</summary>
+    TagsRoot,
+    /// <summary>全部文件根节点</summary>
+    AllFilesRoot,
+    /// <summary>搜索结果根节点</summary>
+    SearchResultsRoot
+}
+
 /// <summary>
 /// 文件树节点 ViewModel
 /// </summary>
@@ -29,6 +51,7 @@ public class FileNodeViewModel : ReactiveObject
     private string? _folderId;
     private string _folderPath = string.Empty;
     private FileNodeType _nodeType;
+    private FileNodeSubType _subType;
     private bool _isFavorite;
     private bool _isExpanded;
     private bool _isSelected;
@@ -80,6 +103,45 @@ public class FileNodeViewModel : ReactiveObject
     {
         get => _nodeType;
         set => this.RaiseAndSetIfChanged(ref _nodeType, value);
+    }
+
+    /// <summary>
+    /// 节点子类型
+    /// </summary>
+    public FileNodeSubType SubType
+    {
+        get => _subType;
+        set => this.RaiseAndSetIfChanged(ref _subType, value);
+    }
+
+    /// <summary>
+    /// 图标符号
+    /// </summary>
+    public Symbol IconSymbol
+    {
+        get
+        {
+            if (SubType != FileNodeSubType.None)
+            {
+                return SubType switch
+                {
+                    FileNodeSubType.FavoritesRoot => Symbol.Star,
+                    FileNodeSubType.FrequentRoot => Symbol.Clock,
+                    FileNodeSubType.AllFilesRoot => Symbol.Library,
+                    FileNodeSubType.TagsRoot => Symbol.Tag,
+                    FileNodeSubType.SearchResultsRoot => Symbol.Find,
+                    _ => Symbol.Folder
+                };
+            }
+
+            return NodeType switch
+            {
+                FileNodeType.Folder => Symbol.Folder,
+                FileNodeType.File => Symbol.Document,
+                FileNodeType.Tag => Symbol.Tag,
+                _ => Symbol.Document
+            };
+        }
     }
 
     /// <summary>
@@ -236,13 +298,14 @@ public class FileNodeViewModel : ReactiveObject
     /// <summary>
     /// 创建根节点
     /// </summary>
-    public static FileNodeViewModel CreateRoot(string name, string id = "")
+    public static FileNodeViewModel CreateRoot(string name, string id = "", FileNodeSubType subType = FileNodeSubType.None)
     {
         return new FileNodeViewModel
         {
             Id = id,
             Name = name,
             NodeType = FileNodeType.Root,
+            SubType = subType,
             IsExpanded = true
         };
     }

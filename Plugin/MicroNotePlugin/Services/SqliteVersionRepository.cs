@@ -1,8 +1,7 @@
-using MicroNotePlugin.Core.Entities;
-using MicroNotePlugin.Core.Interfaces;
-using MicroNotePlugin.Infrastructure.Database;
+using MicroNotePlugin.Entities;
+using MicroNotePlugin.Database;
 
-namespace MicroNotePlugin.Infrastructure.Repositories;
+namespace MicroNotePlugin.Services;
 
 /// <summary>
 /// SQLite 版本仓储实现

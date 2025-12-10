@@ -1,6 +1,6 @@
-using MicroNotePlugin.Core.Entities;
+using MicroNotePlugin.Entities;
 
-namespace MicroNotePlugin.Core.Interfaces;
+namespace MicroNotePlugin.Services;
 
 /// <summary>
 /// 标签仓储接口

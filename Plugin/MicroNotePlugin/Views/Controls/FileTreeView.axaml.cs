@@ -8,6 +8,8 @@ using Avalonia.VisualTree;
 using MicroNotePlugin.ViewModels;
 using System.Globalization;
 
+using FluentAvalonia.UI.Controls;
+
 namespace MicroNotePlugin.Views.Controls;
 
 public partial class FileTreeView : UserControl
@@ -334,36 +336,9 @@ public partial class FileTreeView : UserControl
     }
 }
 
-/// <summary>
-/// 节点图标转换器
-/// </summary>
-public class NodeIconConverter : IMultiValueConverter
-{
-    public object? Convert(IList<object?> values, Type targetType, object? parameter, CultureInfo culture)
-    {
-        if (values.Count < 2 || values[0] is not FileNodeType nodeType)
-            return "📄";
 
-        var name = values[1] as string ?? "";
 
-        return nodeType switch
-        {
-            FileNodeType.Root => name switch
-            {
-                "收藏" => "⭐",
-                "常用" => "📊",
-                "全部文件" => "📁",
-                "标签" => "🏷️",
-                _ when name.StartsWith("搜索") => "🔍",
-                _ => "📂"
-            },
-            FileNodeType.Folder => "📂",
-            FileNodeType.File => "📄",
-            FileNodeType.Tag => "🏷️",
-            _ => "📄"
-        };
-    }
-}
+
 
 /// <summary>
 /// 大于零转换器

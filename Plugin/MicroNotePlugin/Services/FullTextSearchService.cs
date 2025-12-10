@@ -1,8 +1,7 @@
-using MicroNotePlugin.Core.Entities;
-using MicroNotePlugin.Core.Interfaces;
-using MicroNotePlugin.Infrastructure.Database;
+using MicroNotePlugin.Entities;
+using MicroNotePlugin.Database;
 
-namespace MicroNotePlugin.Infrastructure.Services;
+namespace MicroNotePlugin.Services;
 
 /// <summary>
 /// 全文搜索服务实现

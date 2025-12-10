@@ -2,8 +2,8 @@ using System.Collections.ObjectModel;
 using System.Reactive;
 using System.Reactive.Linq;
 using ReactiveUI;
-using MicroNotePlugin.Core.Entities;
-using MicroNotePlugin.Core.Interfaces;
+using MicroNotePlugin.Entities;
+using MicroNotePlugin.Services;
 
 namespace MicroNotePlugin.ViewModels;
 
@@ -39,11 +39,21 @@ public class FileTreeViewModel : ReactiveObject
         _searchService = searchService;
 
         // 初始化命令
-        CreateNoteCommand = ReactiveCommand.CreateFromTask<string?>(CreateNoteAsync);
-        CreateFolderCommand = ReactiveCommand.CreateFromTask<string?>(CreateFolderAsync);
-        DeleteNodeCommand = ReactiveCommand.CreateFromTask<FileNodeViewModel>(DeleteNodeAsync);
-        RenameNodeCommand = ReactiveCommand.CreateFromTask<(FileNodeViewModel node, string newName)>(
-            tuple => RenameNodeAsync(tuple.node, tuple.newName));
+        // 注意：XAML 中 CommandParameter="{Binding}" 传递的是 FileNodeViewModel 对象
+        CreateNoteCommand = ReactiveCommand.CreateFromTask<FileNodeViewModel?>(async node =>
+        {
+            // 从节点提取 folderId：如果是文件夹则用其 Id，如果是文件则用其所属 FolderId
+            var folderId = node?.IsFolder == true ? node.Id : node?.FolderId;
+            await CreateNoteAsync(folderId);
+        });
+        CreateFolderCommand = ReactiveCommand.CreateFromTask<FileNodeViewModel?>(async node =>
+        {
+            // 只有当选中的是文件夹时，才在其下创建子文件夹
+            var parentId = node?.IsFolder == true ? node.Id : null;
+            await CreateFolderAsync(parentId);
+        });
+        DeleteCommand = ReactiveCommand.CreateFromTask<FileNodeViewModel>(DeleteNodeAsync);
+        StartRenameCommand = ReactiveCommand.Create<FileNodeViewModel>(node => node?.StartEditing());
         ToggleFavoriteCommand = ReactiveCommand.CreateFromTask<FileNodeViewModel>(ToggleFavoriteAsync);
         RefreshCommand = ReactiveCommand.CreateFromTask(RefreshTreeAsync);
 
@@ -109,10 +119,10 @@ public class FileTreeViewModel : ReactiveObject
 
     #region Commands
 
-    public ReactiveCommand<string?, Unit> CreateNoteCommand { get; }
-    public ReactiveCommand<string?, Unit> CreateFolderCommand { get; }
-    public ReactiveCommand<FileNodeViewModel, Unit> DeleteNodeCommand { get; }
-    public ReactiveCommand<(FileNodeViewModel node, string newName), Unit> RenameNodeCommand { get; }
+    public ReactiveCommand<FileNodeViewModel?, Unit> CreateNoteCommand { get; }
+    public ReactiveCommand<FileNodeViewModel?, Unit> CreateFolderCommand { get; }
+    public ReactiveCommand<FileNodeViewModel, Unit> DeleteCommand { get; }
+    public ReactiveCommand<FileNodeViewModel, Unit> StartRenameCommand { get; }
     public ReactiveCommand<FileNodeViewModel, Unit> ToggleFavoriteCommand { get; }
     public ReactiveCommand<Unit, Unit> RefreshCommand { get; }
 
@@ -128,22 +138,22 @@ public class FileTreeViewModel : ReactiveObject
         RootNodes.Clear();
 
         // 创建收藏节点
-        _favoritesNode = FileNodeViewModel.CreateRoot("收藏", "favorites");
+        _favoritesNode = FileNodeViewModel.CreateRoot("收藏", "favorites", FileNodeSubType.FavoritesRoot);
         await RefreshFavoritesAsync();
         RootNodes.Add(_favoritesNode);
 
         // 创建常用节点
-        _frequentNode = FileNodeViewModel.CreateRoot("常用", "frequent");
+        _frequentNode = FileNodeViewModel.CreateRoot("常用", "frequent", FileNodeSubType.FrequentRoot);
         await RefreshFrequentAsync();
         RootNodes.Add(_frequentNode);
 
         // 创建标签节点
-        _tagsNode = FileNodeViewModel.CreateRoot("标签", "tags");
+        _tagsNode = FileNodeViewModel.CreateRoot("标签", "tags", FileNodeSubType.TagsRoot);
         await RefreshTagsAsync();
         RootNodes.Add(_tagsNode);
 
         // 创建全部文件节点
-        _allFilesNode = FileNodeViewModel.CreateRoot("全部文件", "all");
+        _allFilesNode = FileNodeViewModel.CreateRoot("全部文件", "all", FileNodeSubType.AllFilesRoot);
         await RefreshAllFilesAsync();
         RootNodes.Add(_allFilesNode);
     }
@@ -162,7 +172,7 @@ public class FileTreeViewModel : ReactiveObject
             // 更新搜索结果节点
             if (_searchResultsNode == null)
             {
-                _searchResultsNode = FileNodeViewModel.CreateRoot($"搜索: {keyword}", "search");
+                _searchResultsNode = FileNodeViewModel.CreateRoot($"搜索: {keyword}", "search", FileNodeSubType.SearchResultsRoot);
                 RootNodes.Insert(0, _searchResultsNode);
             }
             else

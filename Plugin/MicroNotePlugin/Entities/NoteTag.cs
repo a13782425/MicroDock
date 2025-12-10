@@ -1,6 +1,6 @@
 using SQLite;
 
-namespace MicroNotePlugin.Core.Entities;
+namespace MicroNotePlugin.Entities;
 
 /// <summary>
 /// 笔记-标签关联实体

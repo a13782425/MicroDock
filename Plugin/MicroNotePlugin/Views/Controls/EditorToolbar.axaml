@@ -1,182 +1,182 @@
 <UserControl xmlns="https://github.com/avaloniaui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="40"
-             x:Class="MicroNotePlugin.Views.Controls.EditorToolbar">
+			 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+			 xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+			 xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+			 mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="40"
+			 xmlns:fa="clr-namespace:FluentAvalonia.UI.Controls;assembly=FluentAvalonia"
+			 x:Class="MicroNotePlugin.Views.Controls.EditorToolbar">
 
-    <UserControl.Styles>
-        <Style Selector="Button.toolbar-btn">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Padding" Value="8,4"/>
-            <Setter Property="MinWidth" Value="32"/>
-            <Setter Property="MinHeight" Value="28"/>
-            <Setter Property="CornerRadius" Value="4"/>
-        </Style>
-        <Style Selector="Button.toolbar-btn:pointerover">
-            <Setter Property="Background" Value="{DynamicResource SystemControlHighlightListLowBrush}"/>
-        </Style>
-        <Style Selector="Button.toolbar-btn:pressed">
-            <Setter Property="Background" Value="{DynamicResource SystemControlHighlightListMediumBrush}"/>
-        </Style>
-        <Style Selector="Button.mode-toggle">
-            <Setter Property="Background" Value="{DynamicResource SystemAccentColorLight2}"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="Padding" Value="12,4"/>
-        </Style>
-        <Style Selector="Border.separator">
-            <Setter Property="Width" Value="1"/>
-            <Setter Property="Background" Value="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"/>
-            <Setter Property="Margin" Value="4,4"/>
-        </Style>
-    </UserControl.Styles>
+	<UserControl.Styles>
+		<Style Selector="Button.toolbar-btn">
+			<Setter Property="Background" Value="Transparent"/>
+			<Setter Property="Padding" Value="8,4"/>
+			<Setter Property="MinWidth" Value="32"/>
+			<Setter Property="MinHeight" Value="28"/>
+			<Setter Property="CornerRadius" Value="4"/>
+		</Style>
+		<Style Selector="Button.toolbar-btn:pointerover">
+			<Setter Property="Background" Value="{DynamicResource SystemControlHighlightListLowBrush}"/>
+		</Style>
+		<Style Selector="Button.toolbar-btn:pressed">
+			<Setter Property="Background" Value="{DynamicResource SystemControlHighlightListMediumBrush}"/>
+		</Style>
+		<Style Selector="Button.mode-toggle">
+			<Setter Property="Background" Value="{DynamicResource SystemAccentColorLight2}"/>
+			<Setter Property="Foreground" Value="White"/>
+		</Style>
+		<Style Selector="Border.separator">
+			<Setter Property="Width" Value="1"/>
+			<Setter Property="Background" Value="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"/>
+			<Setter Property="Margin" Value="4,4"/>
+		</Style>
+	</UserControl.Styles>
 
-    <Border Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
-            BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
-            BorderThickness="0,0,0,1"
-            Padding="8,4">
-        <Grid ColumnDefinitions="*,Auto">
-            <!-- 左侧格式工具 -->
-            <StackPanel Grid.Column="0" 
-                        Orientation="Horizontal" 
-                        Spacing="2">
-                <!-- 加粗 -->
-                <Button x:Name="BoldButton" 
-                        Classes="toolbar-btn"
-                        ToolTip.Tip="加粗 (Ctrl+B)">
-                    <TextBlock Text="B" FontWeight="Bold" FontSize="14"/>
-                </Button>
-                
-                <!-- 斜体 -->
-                <Button x:Name="ItalicButton" 
-                        Classes="toolbar-btn"
-                        ToolTip.Tip="斜体 (Ctrl+I)">
-                    <TextBlock Text="I" FontStyle="Italic" FontSize="14"/>
-                </Button>
-                
-                <!-- 删除线 -->
-                <Button x:Name="StrikethroughButton" 
-                        Classes="toolbar-btn"
-                        ToolTip.Tip="删除线">
-                    <TextBlock Text="S" TextDecorations="Strikethrough" FontSize="14"/>
-                </Button>
-                
-                <Border Classes="separator"/>
-                
-                <!-- 标题 H1 -->
-                <Button x:Name="H1Button" 
-                        Classes="toolbar-btn"
-                        ToolTip.Tip="一级标题">
-                    <TextBlock Text="H1" FontWeight="Bold" FontSize="12"/>
-                </Button>
-                
-                <!-- 标题 H2 -->
-                <Button x:Name="H2Button" 
-                        Classes="toolbar-btn"
-                        ToolTip.Tip="二级标题">
-                    <TextBlock Text="H2" FontWeight="SemiBold" FontSize="12"/>
-                </Button>
-                
-                <!-- 标题 H3 -->
-                <Button x:Name="H3Button" 
-                        Classes="toolbar-btn"
-                        ToolTip.Tip="三级标题">
-                    <TextBlock Text="H3" FontSize="12"/>
-                </Button>
-                
-                <Border Classes="separator"/>
-                
-                <!-- 链接 -->
-                <Button x:Name="LinkButton" 
-                        Classes="toolbar-btn"
-                        ToolTip.Tip="插入链接 (Ctrl+K)">
-                    <TextBlock Text="🔗" FontSize="14"/>
-                </Button>
-                
-                <!-- 图片 -->
-                <Button x:Name="ImageButton" 
-                        Classes="toolbar-btn"
-                        ToolTip.Tip="插入图片">
-                    <TextBlock Text="🖼️" FontSize="14"/>
-                </Button>
-                
-                <Border Classes="separator"/>
-                
-                <!-- 代码块 -->
-                <Button x:Name="CodeBlockButton" 
-                        Classes="toolbar-btn"
-                        ToolTip.Tip="代码块">
-                    <TextBlock Text="\{ \}" FontFamily="Consolas" FontSize="12"/>
-                </Button>
-                
-                <!-- 行内代码 -->
-                <Button x:Name="InlineCodeButton" 
-                        Classes="toolbar-btn"
-                        ToolTip.Tip="行内代码">
-                    <TextBlock Text="`" FontFamily="Consolas" FontSize="14" FontWeight="Bold"/>
-                </Button>
-                
-                <Border Classes="separator"/>
-                
-                <!-- 无序列表 -->
-                <Button x:Name="BulletListButton" 
-                        Classes="toolbar-btn"
-                        ToolTip.Tip="无序列表">
-                    <TextBlock Text="•" FontSize="16"/>
-                </Button>
-                
-                <!-- 有序列表 -->
-                <Button x:Name="NumberedListButton" 
-                        Classes="toolbar-btn"
-                        ToolTip.Tip="有序列表">
-                    <TextBlock Text="1." FontSize="12"/>
-                </Button>
-                
-                <!-- 任务列表 -->
-                <Button x:Name="TaskListButton" 
-                        Classes="toolbar-btn"
-                        ToolTip.Tip="任务列表">
-                    <TextBlock Text="☐" FontSize="14"/>
-                </Button>
-                
-                <Border Classes="separator"/>
-                
-                <!-- 引用 -->
-                <Button x:Name="QuoteButton" 
-                        Classes="toolbar-btn"
-                        ToolTip.Tip="引用块">
-                    <TextBlock Text="❝" FontSize="14"/>
-                </Button>
-                
-                <!-- 分隔线 -->
-                <Button x:Name="HorizontalRuleButton" 
-                        Classes="toolbar-btn"
-                        ToolTip.Tip="分隔线">
-                    <TextBlock Text="—" FontSize="14"/>
-                </Button>
-            </StackPanel>
-            
-            <!-- 右侧模式切换 -->
-            <StackPanel Grid.Column="1" 
-                        Orientation="Horizontal" 
-                        Spacing="4">
-                <Button x:Name="EditModeButton" 
-                        Classes="toolbar-btn mode-toggle"
-                        ToolTip.Tip="编辑模式">
-                    <TextBlock Text="✏️ 编辑" FontSize="12"/>
-                </Button>
-                <Button x:Name="SplitModeButton" 
-                        Classes="toolbar-btn"
-                        ToolTip.Tip="分屏模式">
-                    <TextBlock Text="⬚ 分屏" FontSize="12"/>
-                </Button>
-                <Button x:Name="PreviewModeButton" 
-                        Classes="toolbar-btn"
-                        ToolTip.Tip="预览模式">
-                    <TextBlock Text="👁️ 预览" FontSize="12"/>
-                </Button>
-            </StackPanel>
-        </Grid>
-    </Border>
+	<Border Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
+			BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+			BorderThickness="0,0,0,1"
+			Padding="8,4">
+		<Grid ColumnDefinitions="*,Auto">
+			<!-- 左侧格式工具 -->
+			<StackPanel Grid.Column="0"
+						Orientation="Horizontal"
+						Spacing="2">
+				<!-- 加粗 -->
+				<Button x:Name="BoldButton"
+						Classes="toolbar-btn"
+						ToolTip.Tip="加粗 (Ctrl+B)">
+					<fa:SymbolIcon Symbol="Bold" />
+				</Button>
+
+				<!-- 斜体 -->
+				<Button x:Name="ItalicButton"
+						Classes="toolbar-btn"
+						ToolTip.Tip="斜体 (Ctrl+I)">
+					<fa:SymbolIcon Symbol="Italic" />
+				</Button>
+
+				<!-- 删除线 -->
+				<Button x:Name="StrikethroughButton"
+						Classes="toolbar-btn"
+						ToolTip.Tip="删除线">
+					<TextBlock Text="S" TextDecorations="Strikethrough" FontSize="14"/>
+				</Button>
+
+				<Border Classes="separator"/>
+
+				<!-- 标题 H1 -->
+				<Button x:Name="H1Button"
+						Classes="toolbar-btn"
+						ToolTip.Tip="一级标题">
+					<TextBlock Text="H1" FontWeight="Bold" FontSize="12"/>
+				</Button>
+
+				<!-- 标题 H2 -->
+				<Button x:Name="H2Button"
+						Classes="toolbar-btn"
+						ToolTip.Tip="二级标题">
+					<TextBlock Text="H2" FontWeight="SemiBold" FontSize="12"/>
+				</Button>
+
+				<!-- 标题 H3 -->
+				<Button x:Name="H3Button"
+						Classes="toolbar-btn"
+						ToolTip.Tip="三级标题">
+					<TextBlock Text="H3" FontSize="12"/>
+				</Button>
+
+				<Border Classes="separator"/>
+
+				<!-- 链接 -->
+				<Button x:Name="LinkButton"
+						Classes="toolbar-btn"
+						ToolTip.Tip="插入链接 (Ctrl+K)">
+					<fa:SymbolIcon Symbol="Link" />
+				</Button>
+
+				<!-- 图片 -->
+				<Button x:Name="ImageButton"
+						Classes="toolbar-btn"
+						ToolTip.Tip="插入图片">
+					<fa:SymbolIcon Symbol="Image" />
+				</Button>
+
+				<Border Classes="separator"/>
+
+				<!-- 代码块 -->
+				<Button x:Name="CodeBlockButton"
+						Classes="toolbar-btn"
+						ToolTip.Tip="代码块">
+					<fa:SymbolIcon Symbol="Code" />
+				</Button>
+
+				<!-- 行内代码 -->
+				<Button x:Name="InlineCodeButton"
+						Classes="toolbar-btn"
+						ToolTip.Tip="行内代码">
+					<fa:SymbolIcon Symbol="CodeHTML" />
+				</Button>
+
+				<Border Classes="separator"/>
+
+				<!-- 无序列表 -->
+				<Button x:Name="BulletListButton"
+						Classes="toolbar-btn"
+						ToolTip.Tip="无序列表">
+					<fa:SymbolIcon Symbol="List" />
+				</Button>
+
+				<!-- 有序列表 -->
+				<Button x:Name="NumberedListButton"
+						Classes="toolbar-btn"
+						ToolTip.Tip="有序列表">
+					<TextBlock Text="1." FontSize="12"/>
+				</Button>
+
+				<!-- 任务列表 -->
+				<Button x:Name="TaskListButton"
+						Classes="toolbar-btn"
+						ToolTip.Tip="任务列表">
+					<fa:SymbolIcon Symbol="Stop" />
+				</Button>
+
+				<Border Classes="separator"/>
+
+				<!-- 引用 -->
+				<Button x:Name="QuoteButton"
+						Classes="toolbar-btn"
+						ToolTip.Tip="引用块">
+					<fa:SymbolIcon Symbol="ChevronRight" />
+				</Button>
+
+				<!-- 分隔线 -->
+				<Button x:Name="HorizontalRuleButton"
+						Classes="toolbar-btn"
+						ToolTip.Tip="分隔线">
+					<fa:SymbolIcon Symbol="Remove" />
+				</Button>
+			</StackPanel>
+
+			<!-- 右侧模式切换 -->
+			<StackPanel Grid.Column="1"
+						Orientation="Horizontal"
+						Spacing="4">
+				<Button x:Name="EditModeButton"
+						Classes="toolbar-btn mode-toggle"
+						ToolTip.Tip="编辑模式">
+					<fa:SymbolIcon Symbol="Edit" />
+				</Button>
+				<Button x:Name="SplitModeButton"
+						Classes="toolbar-btn"
+						ToolTip.Tip="分屏模式">
+					<fa:SymbolIcon Symbol="TwoPage" />
+				</Button>
+				<Button x:Name="PreviewModeButton"
+						Classes="toolbar-btn"
+						ToolTip.Tip="预览模式">
+					<fa:SymbolIcon Symbol="View" />
+				</Button>
+			</StackPanel>
+		</Grid>
+	</Border>
 </UserControl>
 

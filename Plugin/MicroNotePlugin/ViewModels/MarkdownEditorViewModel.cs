@@ -1,7 +1,6 @@
 using System.Reactive.Linq;
 using ReactiveUI;
-using MicroNotePlugin.Core.Entities;
-using MicroNotePlugin.Core.Interfaces;
+using MicroNotePlugin.Entities;
 using MicroNotePlugin.Services;
 
 namespace MicroNotePlugin.ViewModels;
