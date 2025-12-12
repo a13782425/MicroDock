@@ -1,11 +1,8 @@
-using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Platform.Storage;
-using HarfBuzzSharp;
 using MicroDock.Database;
 using MicroDock.Extension;
 using MicroDock.Model;
-using MicroDock.Plugin;
 using MicroDock.Service;
 using MicroDock.Utils;
 using MicroDock.Views.Dialog;
@@ -14,7 +11,6 @@ using Serilog;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reactive;
@@ -31,6 +27,7 @@ public class SettingsTabViewModel : ViewModelBase
     private bool _autoHide;
     private bool _alwaysOnTop;
     private bool _showLogViewer;
+    private bool _showResViewer;
     private string _selectedTheme = string.Empty;
 
     // Command to save order after reordering
@@ -160,6 +157,21 @@ public class SettingsTabViewModel : ViewModelBase
             SaveSetting(nameof(ShowLogViewer), value);
             // 通过事件请求改变日志查看器可见性
             ServiceLocator.Get<EventService>().Publish(new NavigationTabVisibilityChangedMessage(NAVIGATION_LOG_ID, value));
+        }
+    }
+
+    /// <summary>
+    /// 是否显示日志查看器标签页
+    /// </summary>
+    public bool ShowResViewer
+    {
+        get => _showResViewer;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _showResViewer, value);
+            SaveSetting(nameof(ShowResViewer), value);
+            // 通过事件请求改变日志查看器可见性
+            ServiceLocator.Get<EventService>().Publish(new NavigationTabVisibilityChangedMessage(NAVIGATION_RES_ID, value));
         }
     }
 
@@ -617,22 +629,26 @@ public class SettingsTabViewModel : ViewModelBase
         _autoHide = settings.AutoHide;
         _alwaysOnTop = settings.AlwaysOnTop;
         _showLogViewer = settings.ShowLogViewer;
+        _showLogViewer = settings.ShowResViewer;
         _selectedTheme = settings.SelectedTheme;
 
         // 加载服务器与备份设置
         _serverAddress = settings.ServerAddress ?? string.Empty;
         _backupServerAddress = settings.BackupServerAddress ?? string.Empty;
         _backupPassword = settings.BackupPassword ?? string.Empty;
+        _serverValidationKey = settings.ServerValidationKey ?? string.Empty;
 
         // 通知UI更新（仅UI，不触发setter中的事件发布）
         this.RaisePropertyChanged(nameof(AutoStartup));
         this.RaisePropertyChanged(nameof(AutoHide));
         this.RaisePropertyChanged(nameof(AlwaysOnTop));
         this.RaisePropertyChanged(nameof(ShowLogViewer));
+        this.RaisePropertyChanged(nameof(ShowResViewer));
         this.RaisePropertyChanged(nameof(SelectedTheme));
         this.RaisePropertyChanged(nameof(ServerAddress));
         this.RaisePropertyChanged(nameof(BackupServerAddress));
         this.RaisePropertyChanged(nameof(BackupPassword));
+        this.RaisePropertyChanged(nameof(ServerValidationKey));
 
         // 更新备份时间显示
         UpdateLastBackupTime();
@@ -732,6 +748,9 @@ public class SettingsTabViewModel : ViewModelBase
                 case nameof(ShowLogViewer):
                     settings.ShowLogViewer = value;
                     break;
+                case nameof(ShowResViewer):
+                    settings.ShowResViewer = value;
+                    break;
             }
         });
     }
@@ -742,6 +761,7 @@ public class SettingsTabViewModel : ViewModelBase
     private string _backupServerAddress = string.Empty;
     private string _backupPassword = string.Empty;
     private string _lastAppBackupTimeText = "从未备份";
+    private string _serverValidationKey = string.Empty;
 
     /// <summary>
     /// 服务器地址
@@ -784,6 +804,21 @@ public class SettingsTabViewModel : ViewModelBase
             if (this.RaiseAndSetIfChanged(ref _backupPassword, value) == value)
             {
                 DBContext.UpdateSetting(s => s.BackupPassword = value);
+            }
+        }
+    }
+
+    /// <summary>
+    /// 服务器验证Key（用于插件上传，防止恶意提交）
+    /// </summary>
+    public string ServerValidationKey
+    {
+        get => _serverValidationKey;
+        set
+        {
+            if (this.RaiseAndSetIfChanged(ref _serverValidationKey, value) == value)
+            {
+                DBContext.UpdateSetting(s => s.ServerValidationKey = value);
             }
         }
     }

@@ -1,0 +1,124 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+			 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+			 xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+			 xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+			 xmlns:vm="using:MicroDock.ViewModels"
+			 mc:Ignorable="d"
+			 d:DesignWidth="600"
+			 d:DesignHeight="450"
+			 x:Class="MicroDock.Views.ResourceBrowserTabView"
+             x:DataType="vm:ResourceBrowserTabViewModel">
+	<Design.DataContext>
+		<vm:ResourceBrowserTabViewModel />
+	</Design.DataContext>
+	<Grid RowDefinitions="Auto,*">
+        <!-- 工具栏 -->
+        <Border Grid.Row="0" 
+                Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                BorderThickness="0,0,0,1"
+                Padding="12,8">
+            <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto">
+                <TextBlock Text="类型:" 
+                           VerticalAlignment="Center" 
+                           Margin="0,0,8,0"/>
+                <ComboBox Grid.Column="1"
+                          ItemsSource="{Binding ResourceTypes}"
+                          SelectedItem="{Binding SelectedType}"
+                          Width="150"
+                          Margin="0,0,16,0"/>
+                <TextBox Grid.Column="2"
+                         Watermark="搜索 Key 或值..."
+                         Text="{Binding SearchText}"
+                         Margin="0,0,16,0"/>
+                <TextBlock Grid.Column="3"
+                           Text="{Binding TotalCount, StringFormat='共 {0} 项'}"
+                           VerticalAlignment="Center"
+                           Foreground="Gray"
+                           Margin="0,0,16,0"/>
+                <Button Grid.Column="4"
+                        Content="刷新"
+                        Command="{Binding RefreshCommand}"/>
+            </Grid>
+        </Border>
+        
+        <!-- 资源列表 -->
+        <DataGrid Grid.Row="1"
+                  ItemsSource="{Binding FilteredResources}"
+                  AutoGenerateColumns="False"
+                  IsReadOnly="True"
+                  GridLinesVisibility="Horizontal"
+                  BorderThickness="0"
+                  RowHeight="32">
+            <DataGrid.Columns>
+                <!-- Key 列 -->
+                <DataGridTemplateColumn Header="Key" Width="1.5*">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate DataType="vm:ResourceItemModel">
+                            <TextBlock Text="{Binding Key}"
+                                       FontFamily="Consolas"
+                                       FontSize="12"
+                                       VerticalAlignment="Center"
+                                       TextTrimming="CharacterEllipsis"
+                                       DoubleTapped="onKeyDoubleTapped"
+                                       Cursor="Hand"
+                                       ToolTip.Tip="双击复制"
+                                       Margin="8,0"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                
+                <!-- Type 列 -->
+                <DataGridTemplateColumn Header="Type" Width="120">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate DataType="vm:ResourceItemModel">
+                            <TextBlock Text="{Binding TypeName}"
+                                       Foreground="Gray"
+                                       FontSize="11"
+                                       VerticalAlignment="Center"
+                                       Margin="8,0"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                
+                <!-- Source 列 -->
+                <DataGridTemplateColumn Header="Source" Width="120">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate DataType="vm:ResourceItemModel">
+                            <TextBlock Text="{Binding SourceDisplay}"
+                                       Foreground="Gray"
+                                       FontSize="10"
+                                       VerticalAlignment="Center"
+                                       Margin="8,0"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                
+                <!-- Value 列 (带颜色预览) -->
+                <DataGridTemplateColumn Header="Value" Width="*">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate DataType="vm:ResourceItemModel">
+                            <StackPanel Orientation="Horizontal" 
+                                        VerticalAlignment="Center"
+                                        Margin="8,0">
+                                <!-- 颜色预览方块 -->
+                                <Border Width="16" Height="16"
+                                        CornerRadius="2"
+                                        BorderBrush="Gray"
+                                        BorderThickness="1"
+                                        Background="{Binding PreviewBrush}"
+                                        IsVisible="{Binding HasPreviewBrush}"
+                                        Margin="0,0,8,0"/>
+                                <!-- 显示值 -->
+                                <TextBlock Text="{Binding DisplayValue}"
+                                           FontFamily="Consolas"
+                                           FontSize="11"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+            </DataGrid.Columns>
+        </DataGrid>
+    </Grid>
+</UserControl>

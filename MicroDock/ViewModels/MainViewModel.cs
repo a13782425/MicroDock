@@ -107,6 +107,17 @@ public class MainViewModel : ViewModelBase, IDisposable
         };
         NavigationItems.Add(logNavItem);
 
+        var resNavItem = new NavigationItemModel(null)
+        {
+            Title = "资源",
+            Icon = "Memo",
+            Content = new ResourceBrowserTabView(),
+            UniqueId = NAVIGATION_RES_ID,
+            NavType = NavigationType.System,
+            IsVisible = settings.ShowResViewer
+        };
+        NavigationItems.Add(resNavItem);
+
         // 创建设置导航项
         SettingsNavItem = new NavigationItemModel(null)
         {
@@ -329,7 +340,7 @@ public class MainViewModel : ViewModelBase, IDisposable
 
     private void OnLogViewerVisibilityChanged(NavigationTabVisibilityChangedMessage message)
     {
-        var logItem = NavigationItems.FirstOrDefault(n => n.Title == "日志");
+        var logItem = NavigationItems.FirstOrDefault(n => n.UniqueId == message.TabUniqueId);
         if (logItem != null)
             logItem.IsVisible = message.IsVisible;
     }

@@ -35,6 +35,11 @@ internal class SettingDB
     public bool ShowLogViewer { get; set; } = false;
 
     /// <summary>
+    /// 是否显示资源Key
+    /// </summary>
+    public bool ShowResViewer { get; set; } = false;
+
+    /// <summary>
     /// 窗口X坐标
     /// </summary>
     public int WindowX { get; set; } = 0;
@@ -70,6 +75,11 @@ internal class SettingDB
     /// 备份密码（用于数据备份和恢复）
     /// </summary>
     public string BackupPassword { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 服务器验证Key（用于插件上传，防止恶意提交）
+    /// </summary>
+    public string ServerValidationKey { get; set; } = string.Empty;
 
     /// <summary>
     /// 上次主程序备份时间（Unix时间戳）

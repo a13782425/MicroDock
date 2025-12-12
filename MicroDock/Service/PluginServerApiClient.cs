@@ -239,6 +239,14 @@ public class PluginServerApiClient
     }
 
     /// <summary>
+    /// 获取服务器验证的Key
+    /// </summary>
+    private static string GetServerValidationKey()
+    {
+        return DBContext.GetSetting().ServerValidationKey ?? string.Empty;
+    }
+
+    /// <summary>
     /// 构建完整 URL
     /// </summary>
     private static string BuildUrl(string endpoint)
@@ -630,7 +638,7 @@ public class PluginServerApiClient
     public static async Task<(bool success, string message)> UploadPluginAsync(string pluginFolderPath, string pluginKey)
     {
         string serverAddress = GetServerAddress();
-
+        string serverKey = GetServerValidationKey();
         if (string.IsNullOrEmpty(serverAddress))
         {
             return (false, "请先在高级设置中配置服务器地址");
@@ -640,7 +648,10 @@ public class PluginServerApiClient
         {
             return (false, "上传验证 Key 不能为空");
         }
-
+        if (string.IsNullOrEmpty(serverKey))
+        {
+            return (false, "服务器验证 Key 不能为空");
+        }
         if (!Directory.Exists(pluginFolderPath))
         {
             return (false, $"插件文件夹不存在: {pluginFolderPath}");
@@ -662,7 +673,7 @@ public class PluginServerApiClient
             await CreatePluginZipAsync(pluginFolderPath, tempZipPath);
 
             // 上传到服务器
-            var result = await UploadPluginZipAsync(tempZipPath, pluginKey, serverAddress);
+            var result = await UploadPluginZipAsync(tempZipPath, serverKey, pluginKey, serverAddress);
 
             return result;
         }
@@ -747,7 +758,7 @@ public class PluginServerApiClient
     /// <summary>
     /// 上传 ZIP 文件到服务器
     /// </summary>
-    private static async Task<(bool success, string message)> UploadPluginZipAsync(string zipFilePath, string pluginKey, string serverAddress)
+    private static async Task<(bool success, string message)> UploadPluginZipAsync(string zipFilePath, string serverValidationKey, string pluginKey, string serverAddress)
     {
         try
         {
@@ -761,6 +772,7 @@ public class PluginServerApiClient
 
             // 添加 plugin_key 作为表单参数（符合 API 规范）
             content.Add(new StringContent(pluginKey), "plugin_key");
+            content.Add(new StringContent(serverValidationKey), "upload_secret");
 
             string url = $"{serverAddress.TrimEnd('/')}/api/plugins/upload";
             Log.Debug("[{Tag}] 上传插件到: {Url}", LOG_TAG, url);

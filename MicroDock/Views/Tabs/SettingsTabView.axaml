@@ -393,7 +393,20 @@
 									  OnContent=""
 									  OffContent=""/>
 					</Grid>
-
+					<!-- 显示资源查看器选项 -->
+					<Grid Margin="0,4">
+						<Grid.ColumnDefinitions>
+							<ColumnDefinition Width="*"/>
+							<ColumnDefinition Width="Auto"/>
+						</Grid.ColumnDefinitions>
+						<TextBlock Text="显示资源查看器"
+								   VerticalAlignment="Center"
+								   Grid.Column="0"/>
+						<ToggleSwitch IsChecked="{Binding ShowResViewer, Mode=TwoWay}"
+									  Grid.Column="1"
+									  OnContent=""
+									  OffContent=""/>
+					</Grid>
 					<!-- 服务器设置 -->
 					<TextBlock Text="服务器设置"
 							   FontSize="13"
@@ -429,7 +442,19 @@
 								 Watermark="可选，为空时使用服务器地址"
 								 Grid.Column="1"/>
 					</Grid>
-
+					<Grid Margin="0,4">
+						<Grid.ColumnDefinitions>
+							<ColumnDefinition Width="100"/>
+							<ColumnDefinition Width="*"/>
+						</Grid.ColumnDefinitions>
+						<TextBlock Text="服务器Key"
+								   VerticalAlignment="Center"
+								   Grid.Column="0"/>
+						<TextBox Text="{Binding ServerValidationKey, Mode=TwoWay}"
+								 PasswordChar="●"
+								 Watermark="用于验证客户端身份，防止恶意提交"
+								 Grid.Column="1"/>
+					</Grid>
 					<!-- 数据备份 -->
 					<TextBlock Text="数据备份"
 							   FontSize="13"

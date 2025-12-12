@@ -760,7 +760,12 @@ public class PluginSettingItem : ViewModelBase
                 ShowNotification("上传失败", "请先在高级设置中配置服务器地址", AppNotificationType.Warning);
                 return;
             }
-
+            // 检查服务器验证Key
+            if (string.IsNullOrEmpty(settings.ServerValidationKey))
+            {
+                ShowNotification("上传失败", "请先在高级设置中配置服务器验证Key", AppNotificationType.Warning);
+                return;
+            }
             // 弹窗输入上传验证Key
             var uploadKey = await ShowInputDialogAsync(
                 $"上传插件: {PluginName}",
