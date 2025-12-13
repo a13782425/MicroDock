@@ -138,7 +138,13 @@ public class PluginSettingItem : ViewModelBase
     public bool IsPendingUpdate
     {
         get => _isPendingUpdate;
-        set => this.RaiseAndSetIfChanged(ref _isPendingUpdate, value);
+        set
+        {
+            if (this.RaiseAndSetIfChanged(ref _isPendingUpdate, value) == value)
+            {
+                this.RaisePropertyChanged(nameof(DisplayVersion));
+            }
+        }
     }
 
     /// <summary>
@@ -150,6 +156,13 @@ public class PluginSettingItem : ViewModelBase
         get => _pendingVersion;
         set => this.RaiseAndSetIfChanged(ref _pendingVersion, value);
     }
+
+    /// <summary>
+    /// 显示的版本号（待更新时显示新版本，否则显示当前版本）
+    /// </summary>
+    public string DisplayVersion => IsPendingUpdate && !string.IsNullOrEmpty(PendingVersion)
+        ? PendingVersion
+        : Version;
 
     /// <summary>
     /// 状态文本
