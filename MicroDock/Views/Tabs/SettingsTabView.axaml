@@ -115,10 +115,14 @@
 										Margin="0,4">
 									<Grid Background="Transparent">
 										<Grid.ColumnDefinitions>
-											<ColumnDefinition Width="Auto"/> <!-- IsVisible -->
-											<ColumnDefinition Width="*"/>    <!-- Name -->
-											<ColumnDefinition Width="Auto"/> <!-- Lock Badge -->
-											<ColumnDefinition Width="Auto"/> <!-- Lock Button -->
+											<ColumnDefinition Width="Auto"/>
+											<!-- IsVisible -->
+											<ColumnDefinition Width="*"/>
+											<!-- Name -->
+											<ColumnDefinition Width="Auto"/>
+											<!-- Lock Badge -->
+											<ColumnDefinition Width="Auto"/>
+											<!-- Lock Button -->
 										</Grid.ColumnDefinitions>
 
 										<CheckBox IsChecked="{Binding IsVisible}" Grid.Column="0" Margin="0,0,12,0" ToolTip.Tip="是否显示"/>
@@ -169,207 +173,7 @@
 				<ItemsControl ItemsSource="{Binding PluginSettings}" Margin="0,0,0,0">
 					<ItemsControl.ItemTemplate>
 						<DataTemplate x:DataType="vm:PluginSettingItem">
-							<fa:SettingsExpander Margin="0,4"
-												 Description="{Binding StatusText}">
-								<fa:SettingsExpander.Header>
-									<StackPanel Orientation="Horizontal" Spacing="8">
-										<TextBlock Text="{Binding PluginName}"
-												   FontWeight="SemiBold"
-												   VerticalAlignment="Center"/>
-										<TextBlock Text="{Binding UniqueName}"
-												   FontSize="11"
-												   Foreground="Gray"
-												   Cursor="Hand"
-												   VerticalAlignment="Bottom"
-												   PointerPressed="PluginUniqueName_PointerPressed"/>
-
-										<!-- 待删除标记 -->
-										<Border Background="Orange" CornerRadius="3" Padding="4,2"
-												IsVisible="{Binding IsPendingDelete}">
-											<TextBlock Text="待删除" FontSize="10" Foreground="White"/>
-										</Border>
-
-										<!-- 待更新标记 -->
-										<Border Background="DodgerBlue" CornerRadius="3" Padding="4,2"
-												IsVisible="{Binding IsPendingUpdate}">
-											<TextBlock Text="{Binding PendingVersion, StringFormat='待更新至 v{0}'}" FontSize="10" Foreground="White"/>
-										</Border>
-									</StackPanel>
-								</fa:SettingsExpander.Header>
-
-								<fa:SettingsExpander.Footer>
-									<StackPanel Orientation="Horizontal" Spacing="8">
-										<!-- 启用/禁用开关（待删除或待更新时禁用） -->
-										<ToggleSwitch IsChecked="{Binding IsEnabled, Mode=TwoWay}"
-													  IsEnabled="{Binding !IsPendingDelete}"
-													  OnContent="已启用"
-													  OffContent="已禁用"/>
-
-										<!-- 更多操作下拉菜单 -->
-										<Button Content="更多 ▾">
-											<Button.Flyout>
-												<MenuFlyout Placement="BottomEdgeAlignedRight">
-													<MenuItem Header="打开文件夹"
-															  Command="{Binding OpenFolderCommand}"/>
-													<Separator/>
-													<MenuItem Header="备份数据"
-															  Command="{Binding BackupDataCommand}"/>
-													<MenuItem Header="恢复数据"
-															  Command="{Binding RestoreDataCommand}"/>
-													<MenuItem Header="上传插件..."
-															  Command="{Binding UploadPluginCommand}"/>
-													<Separator/>
-													<MenuItem Header="删除插件"
-															  Command="{Binding DeleteCommand}"
-															  IsVisible="{Binding !IsPendingDelete}"/>
-												</MenuFlyout>
-											</Button.Flyout>
-										</Button>
-
-										<!-- 取消更新按钮（仅待更新时显示） -->
-										<Button Content="取消更新"
-												Command="{Binding CancelUpdateCommand}"
-												IsVisible="{Binding IsPendingUpdate}"
-												Classes="accent"/>
-
-										<!-- 取消删除按钮（仅待删除时显示） -->
-										<Button Content="取消删除"
-												Command="{Binding CancelDeleteCommand}"
-												IsVisible="{Binding IsPendingDelete}"
-												Classes="accent"/>
-									</StackPanel>
-								</fa:SettingsExpander.Footer>
-
-								<StackPanel Margin="10,5" Spacing="8">
-									<!-- 插件信息 -->
-									<StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
-										<TextBlock Text="安装时间："
-												   FontSize="11"
-												   Foreground="Gray"/>
-										<TextBlock Text="{Binding InstalledAtText}"
-												   FontSize="11"
-												   Foreground="Gray"/>
-										<TextBlock Text="·" FontSize="11" Foreground="Gray"/>
-										<TextBlock Text="{Binding ToolCountText}"
-												   FontSize="11"
-												   Foreground="Gray"/>
-									</StackPanel>
-									<!-- 插件设置控件 -->
-									<ContentControl Content="{Binding SettingsControl}"
-													IsVisible="{Binding HasSettings}"/>
-
-									<!-- 工具列表 -->
-									<StackPanel IsVisible="{Binding HasTools}">
-										<TextBlock Text="注册的工具："
-												   FontWeight="SemiBold"
-												   FontSize="12"
-												   Margin="0,4,0,4"/>
-
-										<ItemsControl ItemsSource="{Binding Tools}">
-											<ItemsControl.ItemTemplate>
-												<DataTemplate DataType="plugin:ToolInfo">
-													<Border Background="{DynamicResource SubtleFillColorSecondaryBrush}"
-															BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
-															BorderThickness="1"
-															Padding="10,6"
-															CornerRadius="6"
-															Margin="0,3">
-														<StackPanel>
-															<TextBlock Text="{Binding Name}"
-																	   FontFamily="Consolas"
-																	   FontSize="12"
-																	   FontWeight="SemiBold"
-																	   Foreground="{DynamicResource TextFillColorPrimaryBrush}"
-																	   Cursor="Hand"
-																	   PointerPressed="ToolName_PointerPressed"/>
-
-															<!-- 工具提示显示详细信息 -->
-															<ToolTip.Tip>
-																<StackPanel MaxWidth="360" Spacing="8">
-																	<!-- 警告：首次调用创建实例 -->
-																	<Border Background="#40FFA500"
-																			BorderBrush="Orange"
-																			BorderThickness="1"
-																			CornerRadius="4"
-																			Padding="8,4"
-																			IsVisible="{Binding NeedsLazyInstance}">
-																		<StackPanel Orientation="Horizontal" Spacing="6">
-																			<TextBlock Text="⚠️" FontSize="12"/>
-																			<TextBlock Text="首次调用创建实例，后续复用"
-																					   Foreground="Orange"
-																					   FontSize="11"
-																					   FontWeight="SemiBold"/>
-																		</StackPanel>
-																	</Border>
-																	<!-- 描述 -->
-																	<TextBlock Text="{Binding Description}"
-																			   FontWeight="Bold"
-																			   TextWrapping="Wrap"
-																			   IsVisible="{Binding Description, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
-
-																	<!-- 返回值 -->
-																	<StackPanel IsVisible="{Binding ReturnDescription, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-																		<TextBlock Text="返回值："
-																				   FontWeight="SemiBold"
-																				   FontSize="11"/>
-																		<TextBlock Text="{Binding ReturnDescription}"
-																				   TextWrapping="Wrap"
-																				   FontSize="11"
-																				   Margin="0,2,0,0"/>
-																	</StackPanel>
-
-																	<!-- 参数列表 -->
-																	<StackPanel IsVisible="{Binding !!Parameters.Count}">
-																		<TextBlock Text="参数："
-																				   FontWeight="SemiBold"
-																				   FontSize="11"/>
-																		<ItemsControl ItemsSource="{Binding Parameters}" Margin="0,2,0,0">
-																			<ItemsControl.ItemTemplate>
-																				<DataTemplate>
-																					<StackPanel Orientation="Horizontal"
-																								Spacing="4"
-																								Margin="0,1">
-																						<TextBlock Text="{Binding Name}"
-																								   FontFamily="Consolas"
-																								   FontSize="10"
-																								   FontWeight="SemiBold"/>
-																						<TextBlock Text=":"
-																								   FontSize="10"/>
-																						<TextBlock Text="{Binding TypeName}"
-																								   Foreground="Gray"
-																								   FontSize="10"/>
-																						<TextBlock Text="-"
-																								   FontSize="10"
-																								   IsVisible="{Binding Description, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
-																						<TextBlock Text="{Binding Description}"
-																								   TextWrapping="Wrap"
-																								   FontSize="10"
-																								   IsVisible="{Binding Description, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
-																						<TextBlock Text="(可选)"
-																								   FontSize="10"
-																								   Foreground="Orange"
-																								   IsVisible="{Binding !Required}"/>
-																					</StackPanel>
-																				</DataTemplate>
-																			</ItemsControl.ItemTemplate>
-																		</ItemsControl>
-																	</StackPanel>
-																</StackPanel>
-															</ToolTip.Tip>
-														</StackPanel>
-													</Border>
-												</DataTemplate>
-											</ItemsControl.ItemTemplate>
-										</ItemsControl>
-									</StackPanel>
-
-									<!-- 无工具提示 -->
-									<TextBlock Text="（该插件未注册任何工具）"
-											   Foreground="Gray"
-											   FontSize="11"
-											   IsVisible="{Binding !HasTools}"/>
-								</StackPanel>
-							</fa:SettingsExpander>
+							<controls:PluginSettingCard/>
 						</DataTemplate>
 					</ItemsControl.ItemTemplate>
 				</ItemsControl>
