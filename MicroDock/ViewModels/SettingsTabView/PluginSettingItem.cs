@@ -1,5 +1,4 @@
 using Avalonia.Controls;
-using Avalonia.Controls.Primitives;
 using MicroDock.Model;
 using MicroDock.Plugin;
 using MicroDock.Service;
@@ -8,7 +7,6 @@ using MicroDock.Views.Dialog;
 using ReactiveUI;
 using System;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reactive;

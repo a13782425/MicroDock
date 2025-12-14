@@ -1,5 +1,6 @@
-using System;
+using Avalonia;
 using Avalonia.Controls;
+using System;
 
 namespace MicroDock.Service;
 
@@ -8,6 +9,12 @@ namespace MicroDock.Service;
 /// </summary>
 public interface IPlatformService : IDisposable
 {
+
+    /// <summary>
+    /// 是否支持鼠标
+    /// </summary>
+    bool SupportedCursor { get; }
+
     /// <summary>
     /// 初始化服务（传入主窗口）
     /// </summary>
@@ -22,6 +29,13 @@ public interface IPlatformService : IDisposable
     /// </summary>
     /// <param name="filePath"></param>
     bool OpenExplorer(string filePath);
+    /// <summary>
+    /// 尝试获取当前鼠标光标的屏幕位置
+    /// </summary>
+    /// <param name="position">输出参数，鼠标位置（屏幕坐标）</param>
+    /// <returns>成功返回true，失败返回false</returns>
+    bool TryGetCursorPosition(out Point position);
+
     /// <summary>
     /// 注册全局热键
     /// </summary>

@@ -42,10 +42,13 @@
 						<!-- 第二行：版本信息 -->
 						<StackPanel Orientation="Horizontal" Spacing="4" Margin="0,4,0,0">
 							<!-- 当前版本（待更新时显示为灰色旧版本） -->
-							<TextBlock Text="{Binding Version, StringFormat='v{0}'}"
-									   FontSize="10" Foreground="Gray"
-									   IsVisible="{Binding IsPendingUpdate}"/>
+							<Border Background="#20808080" CornerRadius="3" Padding="6,2"
+									IsVisible="{Binding IsPendingUpdate}">
+								<TextBlock Text="{Binding Version, StringFormat='v{0}'}"
+										   FontSize="10" Foreground="Gray"/>
+							</Border>
 							<TextBlock Text="→" FontSize="10" Foreground="Gray"
+									   VerticalAlignment="Center"
 									   IsVisible="{Binding IsPendingUpdate}"/>
 							<!-- 版本徽章：正常时显示当前版本，待更新时显示新版本 -->
 							<Border Background="#30007ACC" CornerRadius="3" Padding="6,2">

@@ -1,11 +1,10 @@
-using System;
-using System.Timers;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Platform;
 using Avalonia.Threading;
-using MicroDock.Service.Platform;
+using System;
+using System.Timers;
 
 namespace MicroDock.Service;
 
@@ -15,7 +14,7 @@ namespace MicroDock.Service;
 public class AutoHideService : IWindowService, IDisposable
 {
     private Window? _window;
-    private IPlatformCursorService? _cursorService;
+    private IPlatformService? _platformService;
     private bool _isEnabled;
     private bool _isInitialized;
     private Timer? _hideTimer;
@@ -24,10 +23,10 @@ public class AutoHideService : IWindowService, IDisposable
 
     // 配置参数（QQ 风格）
     private const int EDGE_THRESHOLD = 5;        // 触发靠边的阈值
-    private const int HIDE_OFFSET = 2;           // 隐藏后可见像素（更接近QQ）
+    private const int HIDE_OFFSET = 12;           // 隐藏后可见像素（更接近QQ）
     private const int SHOW_TRIGGER_ZONE = 25;    // 显示触发热区
     private const int TRIGGER_EXTEND_MARGIN = 5; // 热区延伸到屏幕外
-    private const int HIDE_DELAY = 1000;         // 隐藏延迟（毫秒）
+    private const int HIDE_DELAY = 500;         // 隐藏延迟（毫秒）
     private const int ANIMATION_DURATION = 250;  // 动画时长（毫秒）
     private const int ANIMATION_FPS = 60;        // 动画帧率
 
@@ -80,7 +79,7 @@ public class AutoHideService : IWindowService, IDisposable
         }
 
         _window = window;
-        _cursorService = PlatformServiceFactory.CreateCursorService();
+        _platformService = ServiceLocator.Get<IPlatformService>();
 
         _hideTimer = new Timer(HIDE_DELAY);
         _hideTimer.Elapsed += OnHideTimerElapsed;
@@ -236,11 +235,39 @@ public class AutoHideService : IWindowService, IDisposable
         {
             if (_isEnabled && _state == AutoHideState.Visible && _hiddenEdge != EdgePosition.None)
             {
-                HideWindow(_hiddenEdge);
+                // 检查光标是否在窗口内
+                if (!IsCursorInsideWindow())
+                {
+                    HideWindow(_hiddenEdge);
+                }
+                else
+                {
+                    // 光标在窗口内，重新启动计时器
+                    _hideTimer?.Start();
+                }
             }
         });
     }
+    /// <summary>
+    /// 检查光标是否在窗口内
+    /// </summary>
+    private bool IsCursorInsideWindow()
+    {
+        if (_platformService == null || !_platformService.SupportedCursor)
+            return false;
+        if (!_platformService.TryGetCursorPosition(out Point mousePosition))
+            return false;
+        PixelPoint windowPos = _window!.Position;
+        Size? frameSize = _window.FrameSize;
 
+        // 如果 FrameSize 不可用，使用 Width/Height
+        double windowWidth = frameSize?.Width ?? _window.Width * _window.DesktopScaling;
+        double windowHeight = frameSize?.Height ?? _window.Height * _window.DesktopScaling;
+        return mousePosition.X >= windowPos.X &&
+               mousePosition.X <= windowPos.X + windowWidth &&
+               mousePosition.Y >= windowPos.Y &&
+               mousePosition.Y <= windowPos.Y + windowHeight;
+    }
     /// <summary>
     /// 显示检查计时器
     /// </summary>
@@ -328,19 +355,20 @@ public class AutoHideService : IWindowService, IDisposable
 
         PixelRect workingArea = screen.WorkingArea;
         PixelPoint targetPosition = _window.Position;
-        int windowWidth = (int)(_window.Width * _window.DesktopScaling);
-        int windowHeight = (int)(_window.Height * _window.DesktopScaling);
 
+        int windowWidth = (int)(_window.FrameSize.Value.Width * _window.DesktopScaling);
+        int windowHeight = (int)(_window.FrameSize.Value.Height * _window.DesktopScaling);
+        int offset = (int)(HIDE_OFFSET * _window.DesktopScaling);
         switch (edge)
         {
             case EdgePosition.Left:
-                targetPosition = new PixelPoint(workingArea.X - windowWidth + HIDE_OFFSET, _window.Position.Y);
+                targetPosition = new PixelPoint(workingArea.X - windowWidth + offset, _window.Position.Y);
                 break;
             case EdgePosition.Right:
-                targetPosition = new PixelPoint(workingArea.Right - HIDE_OFFSET, _window.Position.Y);
+                targetPosition = new PixelPoint(workingArea.Right - offset, _window.Position.Y);
                 break;
             case EdgePosition.Top:
-                targetPosition = new PixelPoint(_window.Position.X, workingArea.Y - windowHeight + HIDE_OFFSET);
+                targetPosition = new PixelPoint(_window.Position.X, workingArea.Y - windowHeight + offset);
                 break;
         }
 
@@ -366,28 +394,23 @@ public class AutoHideService : IWindowService, IDisposable
 
         PixelRect workingArea = screen.WorkingArea;
         PixelPoint targetPosition = _positionBeforeHide;
-        int windowWidth = (int)_window.Width;
-        int windowHeight = (int)_window.Height;
+        int windowWidth = (int)(_window.FrameSize.Value.Width * _window.DesktopScaling);
+        int windowHeight = (int)(_window.FrameSize.Value.Height * _window.DesktopScaling);
 
-        // 验证保存的位置是否仍然有效
-        bool positionValid = false;// IsPositionValid(_positionBeforeHide, workingArea, windowWidth, windowHeight);
-
-        if (!positionValid)
+        // 位置已失效，根据边缘重新计算安全位置
+        switch (_hiddenEdge)
         {
-            // 位置已失效，根据边缘重新计算安全位置
-            switch (_hiddenEdge)
-            {
-                case EdgePosition.Left:
-                    targetPosition = new PixelPoint(workingArea.X, _window.Position.Y);
-                    break;
-                case EdgePosition.Right:
-                    targetPosition = new PixelPoint(workingArea.Right - windowWidth, _window.Position.Y);
-                    break;
-                case EdgePosition.Top:
-                    targetPosition = new PixelPoint(_window.Position.X, workingArea.Y);
-                    break;
-            }
+            case EdgePosition.Left:
+                targetPosition = new PixelPoint(workingArea.X, _window.Position.Y);
+                break;
+            case EdgePosition.Right:
+                targetPosition = new PixelPoint(workingArea.Right - windowWidth, _window.Position.Y);
+                break;
+            case EdgePosition.Top:
+                targetPosition = new PixelPoint(_window.Position.X, workingArea.Y);
+                break;
         }
+
 
         _state = AutoHideState.Showing;
         StartAnimation(_window.Position, targetPosition, () =>
@@ -416,45 +439,27 @@ public class AutoHideService : IWindowService, IDisposable
         int windowWidth = (int)_window.Width;
         int windowHeight = (int)_window.Height;
 
-        bool positionValid = IsPositionValid(_positionBeforeHide, workingArea, windowWidth, windowHeight);
 
-        if (positionValid)
+        // 计算安全位置
+        PixelPoint safePosition = _positionBeforeHide;
+        switch (_hiddenEdge)
         {
-            _window.Position = _positionBeforeHide;
+            case EdgePosition.Left:
+                safePosition = new PixelPoint(workingArea.X, _window.Position.Y);
+                break;
+            case EdgePosition.Right:
+                safePosition = new PixelPoint(workingArea.Right - windowWidth, _window.Position.Y);
+                break;
+            case EdgePosition.Top:
+                safePosition = new PixelPoint(_window.Position.X, workingArea.Y);
+                break;
         }
-        else
-        {
-            // 计算安全位置
-            PixelPoint safePosition = _positionBeforeHide;
-            switch (_hiddenEdge)
-            {
-                case EdgePosition.Left:
-                    safePosition = new PixelPoint(workingArea.X, _window.Position.Y);
-                    break;
-                case EdgePosition.Right:
-                    safePosition = new PixelPoint(workingArea.Right - windowWidth, _window.Position.Y);
-                    break;
-                case EdgePosition.Top:
-                    safePosition = new PixelPoint(_window.Position.X, workingArea.Y);
-                    break;
-            }
-            _window.Position = safePosition;
-        }
+        _window.Position = safePosition;
+
 
         _state = AutoHideState.Visible;
         _hiddenEdge = EdgePosition.None;
         _hiddenScreen = null;
-    }
-
-    /// <summary>
-    /// 验证位置是否有效
-    /// </summary>
-    private bool IsPositionValid(PixelPoint position, PixelRect workingArea, int windowWidth, int windowHeight)
-    {
-        return position.X >= workingArea.X - windowWidth / 2 &&
-               position.X <= workingArea.Right - windowWidth / 2 &&
-               position.Y >= workingArea.Y - windowHeight / 2 &&
-               position.Y <= workingArea.Bottom - windowHeight / 2;
     }
 
     /// <summary>
@@ -466,11 +471,11 @@ public class AutoHideService : IWindowService, IDisposable
             return false;
 
         // 使用平台光标服务获取鼠标位置
-        if (_cursorService == null || !_cursorService.IsSupported)
+        if (_platformService == null || !_platformService.SupportedCursor)
             return false;
 
         // 获取全局鼠标位置
-        if (!_cursorService.TryGetCursorPosition(out Point mousePosition))
+        if (!_platformService.TryGetCursorPosition(out Point mousePosition))
             return false;
 
         // 转换为整数坐标

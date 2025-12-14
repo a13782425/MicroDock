@@ -65,7 +65,38 @@ public class TrayService
                 else
                 {
                     desktop.MainWindow.Show();
+                    // 如果窗口处于最小化状态，需要还原
+                    if (desktop.MainWindow.WindowState == WindowState.Minimized)
+                    {
+                        desktop.MainWindow.WindowState = WindowState.Normal;
+                    }
+
                     desktop.MainWindow.Activate();
+                    // 2. 智能置顶逻辑
+                    // 只有当窗口当前【不是】置顶状态时，才执行"临时置顶"策略
+                    // 这样既能把窗口拉到最前，又不会误关掉用户开启的"始终置顶"
+                    if (!desktop.MainWindow.Topmost)
+                    {
+                        desktop.MainWindow.Topmost = true;
+
+                        // 使用 Post 确保在下一帧或当前UI操作完成后执行，
+                        // 这样能让操作系统有足够时间响应 Topmost=true 的状态，把窗口层级拉上来
+                        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                        {
+                            // 再次检查确认用户没有在这一瞬间开启了全局置顶（极端情况防御），然后还原
+                            if (desktop.MainWindow != null && !ServiceLocator.Get<TopMostService>().IsEnabled)
+                            {
+                                // 注意：这里最好结合你的 SettingDB 或 TopMostService 状态来判断
+                                // 如果不想依赖 Service，最简单的做法是直接还原:
+                                desktop.MainWindow.Topmost = false;
+                            }
+                            else
+                            {
+                                // 如果稍微复杂点，不依赖Service的简单写法：
+                                desktop.MainWindow.Topmost = false;
+                            }
+                        });
+                    }
                 }
             }
         };

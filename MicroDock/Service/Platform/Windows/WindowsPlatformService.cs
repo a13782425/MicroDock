@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Win32.Input;
@@ -58,6 +59,43 @@ public class WindowsPlatformService : IPlatformService
             Log.Information("WindowsPlatformService initialized with handle: {Handle}", _handle);
         }
     }
+
+    #region 光标相关
+    public bool SupportedCursor => true;
+    [StructLayout(LayoutKind.Sequential)]
+    private struct POINT
+    {
+        public int X;
+        public int Y;
+    }
+
+    [DllImport("user32.dll")]
+    private static extern bool GetCursorPos(out POINT lpPoint);
+    public bool TryGetCursorPosition(out Point position)
+    {
+        position = default;
+
+        if (!SupportedCursor)
+        {
+            return false;
+        }
+
+        try
+        {
+            if (GetCursorPos(out POINT point))
+            {
+                position = new Point(point.X, point.Y);
+                return true;
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Debug(ex, "Windows API获取鼠标位置失败");
+        }
+
+        return false;
+    } 
+    #endregion
 
     public bool TryStartProcess(string path)
     {

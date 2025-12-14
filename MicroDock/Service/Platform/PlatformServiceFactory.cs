@@ -68,24 +68,5 @@ public static class PlatformServiceFactory
         return null;
     }
 
-    /// <summary>
-    /// 创建平台鼠标光标服务
-    /// </summary>
-    /// <returns>平台特定的光标服务实现，如果平台不支持则返回null</returns>
-    public static IPlatformCursorService? CreateCursorService()
-    {
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        {
-            return new WindowsCursorService();
-        }
-        
-        // macOS 和 Linux 实现待添加
-        // if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-        // {
-        //     return new MacOSCursorService();
-        // }
-        
-        return null;
-    }
 }
 
