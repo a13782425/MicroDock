@@ -1242,61 +1242,61 @@ public class PluginServerApiClient
         }
     }
 
-    /// <summary>
-    /// 检查并执行待恢复的数据库（应在程序启动时调用，数据库初始化之前）
-    /// </summary>
-    public static void ApplyPendingRestore()
-    {
-        try
-        {
-            if (!File.Exists(PendingRestoreDbPath))
-            {
-                return;
-            }
+    ///// <summary>
+    ///// 检查并执行待恢复的数据库（应在程序启动时调用，数据库初始化之前）
+    ///// </summary>
+    //public static void ApplyPendingRestore()
+    //{
+    //    try
+    //    {
+    //        if (!File.Exists(PendingRestoreDbPath))
+    //        {
+    //            return;
+    //        }
 
-            string dbPath = Path.Combine(AppConfig.CONFIG_FOLDER, "microdock");
-            string backupPath = dbPath + "_backup_" + DateTime.Now.ToString("yyyyMMddHHmmss");
+    //        string dbPath = Path.Combine(AppConfig.CONFIG_FOLDER, "microdock");
+    //        string backupPath = dbPath + "_backup_" + DateTime.Now.ToString("yyyyMMddHHmmss");
 
-            Log.Information("[{Tag}] 检测到待恢复的数据库，开始恢复", LOG_TAG);
+    //        Log.Information("[{Tag}] 检测到待恢复的数据库，开始恢复", LOG_TAG);
 
-            // 备份当前数据库
-            if (File.Exists(dbPath))
-            {
-                File.Copy(dbPath, backupPath, true);
-            }
+    //        // 备份当前数据库
+    //        if (File.Exists(dbPath))
+    //        {
+    //            File.Copy(dbPath, backupPath, true);
+    //        }
 
-            try
-            {
-                // 用待恢复文件替换当前数据库
-                File.Copy(PendingRestoreDbPath, dbPath, true);
+    //        try
+    //        {
+    //            // 用待恢复文件替换当前数据库
+    //            File.Copy(PendingRestoreDbPath, dbPath, true);
 
-                // 删除待恢复文件
-                File.Delete(PendingRestoreDbPath);
+    //            // 删除待恢复文件
+    //            File.Delete(PendingRestoreDbPath);
 
-                // 删除旧备份
-                if (File.Exists(backupPath))
-                {
-                    File.Delete(backupPath);
-                }
+    //            // 删除旧备份
+    //            if (File.Exists(backupPath))
+    //            {
+    //                File.Delete(backupPath);
+    //            }
 
-                Log.Information("[{Tag}] 主程序数据恢复成功", LOG_TAG);
-            }
-            catch
-            {
-                // 恢复失败，还原原数据
-                if (File.Exists(backupPath))
-                {
-                    File.Copy(backupPath, dbPath, true);
-                    File.Delete(backupPath);
-                }
-                throw;
-            }
-        }
-        catch (Exception ex)
-        {
-            LogError("应用待恢复数据失败", LOG_TAG, ex);
-        }
-    }
+    //            Log.Information("[{Tag}] 主程序数据恢复成功", LOG_TAG);
+    //        }
+    //        catch
+    //        {
+    //            // 恢复失败，还原原数据
+    //            if (File.Exists(backupPath))
+    //            {
+    //                File.Copy(backupPath, dbPath, true);
+    //                File.Delete(backupPath);
+    //            }
+    //            throw;
+    //        }
+    //    }
+    //    catch (Exception ex)
+    //    {
+    //        LogError("应用待恢复数据失败", LOG_TAG, ex);
+    //    }
+    //}
 
     #endregion
 }

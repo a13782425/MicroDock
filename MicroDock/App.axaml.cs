@@ -1,4 +1,3 @@
-using System;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
@@ -6,6 +5,7 @@ using MicroDock.Database;
 using MicroDock.Service;
 using MicroDock.ViewModels;
 using MicroDock.Views;
+using System;
 
 namespace MicroDock
 {
@@ -34,41 +34,41 @@ namespace MicroDock
                 ApplyThemeOnStartup();
 
                 // 3. 创建主窗口
-                var mainWindow = new MainWindow
+                AppConfig.MicroMainWindow = new MainWindow
                 {
                     DataContext = new MainWindowViewModel(),
                 };
 
                 // 4. 初始化需要窗口的服务
-                ServiceLocator.Get<Service.AutoHideService>()?.Initialize(mainWindow);
-                ServiceLocator.Get<Service.TopMostService>()?.Initialize(mainWindow);
+                ServiceLocator.Get<Service.AutoHideService>()?.Initialize(AppConfig.MicroMainWindow);
+                ServiceLocator.Get<Service.TopMostService>()?.Initialize(AppConfig.MicroMainWindow);
                 ServiceLocator.Get<Service.TrayService>()?.Initialize();
-                
-                // 初始化平台服务 (Windows Hook)
-                ServiceLocator.Get<Service.IPlatformService>()?.Initialize(mainWindow);
 
-                desktop.MainWindow = mainWindow;
+                // 初始化平台服务 (Windows Hook)
+                ServiceLocator.Get<Service.IPlatformService>()?.Initialize(AppConfig.MicroMainWindow);
+
+                desktop.MainWindow = AppConfig.MicroMainWindow;
 
                 // 5. 启动命名管道服务器，监听其他实例的显示窗口请求
 #if !DEBUG
-                SingleInstanceService.StartPipeServer(() =>
+                ServiceLocator.Get<SingleInstanceService>()?.StartPipeServer(() =>
                 {
                     // 在 UI 线程上执行窗口显示操作
                     Avalonia.Threading.Dispatcher.UIThread.Post(() =>
                     {
                         try
                         {
-                            if (mainWindow != null)
+                            if (AppConfig.MainWindow != null)
                             {
                                 // 如果窗口最小化，先恢复
-                                if (mainWindow.WindowState == Avalonia.Controls.WindowState.Minimized)
+                                if (AppConfig.MainWindow.WindowState == Avalonia.Controls.WindowState.Minimized)
                                 {
-                                    mainWindow.WindowState = Avalonia.Controls.WindowState.Normal;
+                                    AppConfig.MainWindow.WindowState = Avalonia.Controls.WindowState.Normal;
                                 }
 
                                 // 显示并激活窗口
-                                mainWindow.Show();
-                                mainWindow.Activate();
+                                AppConfig.MainWindow.Show();
+                                AppConfig.MainWindow.Activate();
 
                                 Serilog.Log.Information("已显示并激活主窗口（响应其他实例请求）");
                             }
@@ -80,21 +80,21 @@ namespace MicroDock
                     });
                 });
 #endif
-
-                // 6. 退出时清理
-                desktop.Exit += (s, e) =>
+                // 退出时清理
+                desktop.ShutdownRequested += async (s, e) =>
                 {
-#if !DEBUG
-                    SingleInstanceService.StopPipeServer();
-                    SingleInstanceService.ReleaseMutex();
-#endif
+                    await ServiceLocator.OnApplicationStopping();
                     ServiceLocator.Get<AutoHideService>()?.Dispose();
                     ServiceLocator.Get<TopMostService>()?.Dispose();
                     ServiceLocator.Get<DelayStorageService>()?.Dispose();
                     ServiceLocator.Get<PluginService>()?.Dispose();
                     ServiceLocator.Get<TabLockService>()?.Dispose();
                     DBContext.Close();
-                    ServiceLocator.Clear();
+                };
+                // 6. 退出时清理
+                desktop.Exit += (s, e) =>
+                {
+
                 };
             }
 

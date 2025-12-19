@@ -2,7 +2,10 @@ using MicroDock.Service.Platform;
 using MicroDock.Service.Platform.Windows;
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 
 namespace MicroDock.Service;
 
@@ -11,8 +14,35 @@ namespace MicroDock.Service;
 /// </summary>
 public static class ServiceLocator
 {
-    private static readonly Dictionary<Type, object> _services = new();
+    /// <summary>
+    /// 一对一
+    /// </summary>
+    private static readonly HashSet<IMicroService> _services = new();
     private static readonly object _lock = new();
+
+    /// <summary>
+    /// 多对一
+    /// </summary>
+    private static readonly Dictionary<Type, object> _servicesMappingDict = new();
+
+
+    public static void AutoInitializeServices()
+    {
+        var types = Assembly.GetExecutingAssembly()
+            .GetTypes()
+            .Where(t => t.GetCustomAttribute<AutoRegisterAttribute>() != null
+                && typeof(IMicroService).IsAssignableFrom(t)  // 方向修正
+                && t.IsClass
+                && !t.IsAbstract)
+            .OrderBy(t => t.GetCustomAttribute<AutoRegisterAttribute>()!.Priority);
+        foreach (var type in types)
+        {
+            var instance = Activator.CreateInstance(type) as IMicroService;
+            if (instance != null)
+                Register(instance);
+        }
+        //可以手动注册
+    }
 
     /// <summary>
     /// 初始化所有应用级服务（在 App 启动时调用一次）
@@ -20,7 +50,7 @@ public static class ServiceLocator
     public static void InitializeServices()
     {
         // 1. 注册不依赖窗口的服务
-        Register(new EventService());
+        //Register(new EventService());
         Register(new AutoStartupService());
         Register(new TrayService());
         Register(new DelayStorageService());
@@ -38,7 +68,7 @@ public static class ServiceLocator
         // 3. 注册原本使用 Instance 单例的服务
         // 注意：IconService 是静态类，不需要注册
         // 注意：LogService 在 Program.InitializeLogger() 中已提前注册
-        Register(new PluginService());
+        //Register(new PluginService());
         Register(new ToolRegistry());
         Register(new ThemeService());
         Register(new TabLockService());
@@ -54,7 +84,48 @@ public static class ServiceLocator
 
         lock (_lock)
         {
-            _services[typeof(T)] = service;
+            _servicesMappingDict[typeof(T)] = service;
+        }
+    }
+
+    /// <summary>
+    /// 注册服务
+    /// </summary>
+    /// <param name="service"></param>
+    /// <exception cref="ArgumentNullException"></exception>
+    public static void Register(IMicroService service)
+    {
+        if (service == null)
+            throw new ArgumentNullException(nameof(service));
+        lock (_lock)
+        {
+            if (_services.Contains(service))
+                return;
+
+            var concreteType = service.GetType();
+
+            // 1. 注册具体类型
+            _services.Add(service);
+            _servicesMappingDict[concreteType] = service;
+            // 2. 注册所有实现的接口（继承自 IMicroService 的）
+            foreach (var interfaceType in concreteType.GetInterfaces())
+            {
+                if (typeof(IMicroService).IsAssignableFrom(interfaceType)
+                    && interfaceType != typeof(IMicroService)
+                    && interfaceType != typeof(IDisposable))
+                {
+                    _servicesMappingDict[interfaceType] = service;
+                }
+            }
+
+            // 3. 注册所有父类（继承自 IMicroService 的）
+            var baseType = concreteType.BaseType;
+            while (baseType != null && baseType != typeof(object))
+            {
+                _servicesMappingDict[baseType] = service;
+                baseType = baseType.BaseType;
+            }
+
         }
     }
 
@@ -65,7 +136,7 @@ public static class ServiceLocator
     {
         lock (_lock)
         {
-            if (_services.TryGetValue(typeof(T), out object? service))
+            if (_servicesMappingDict.TryGetValue(typeof(T), out object? service))
             {
                 return service as T;
             }
@@ -80,7 +151,7 @@ public static class ServiceLocator
     {
         lock (_lock)
         {
-            return _services.ContainsKey(typeof(T));
+            return _servicesMappingDict.ContainsKey(typeof(T));
         }
     }
 
@@ -92,6 +163,120 @@ public static class ServiceLocator
         lock (_lock)
         {
             _services.Clear();
+        }
+    }
+
+    /// <summary>
+    /// 服务注册完成后的回调（在所有服务注册后调用一次）
+    /// </summary>
+    /// <returns></returns>
+    internal static async Task OnRegistered()
+    {
+        foreach (var item in _services)
+        {
+            try
+            {
+                await item.OnRegistered();
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Error($"服务OnRegistered失败,服务: {item.GetType().FullName}, ex: {ex.Message}");
+            }
+        }
+    }
+
+    /// <summary>
+    /// 应用程序构建器完成后的回调（在应用构建器配置完成后调用一次）
+    /// </summary>
+    /// <returns></returns>
+    internal static async Task OnAfterAppBuilder()
+    {
+        foreach (var item in _services)
+        {
+            try
+            {
+                await item.OnAfterAppBuilder();
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Error($"服务OnBeforeSplashScreen失败,服务: {item.GetType().FullName}, ex: {ex.Message}");
+            }
+        }
+    }
+
+
+    /// <summary>
+    /// 应用程序显示启动画面之前的回调（在显示启动画面之前调用一次）
+    /// </summary>
+    /// <returns></returns>
+    internal static async Task OnBeforeSplashScreen()
+    {
+        foreach (var item in _services)
+        {
+            try
+            {
+                await item.OnBeforeSplashScreen();
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Error($"服务OnBeforeSplashScreen失败,服务: {item.GetType().FullName}, ex: {ex.Message}");
+            }
+        }
+    }
+
+    /// <summary>
+    /// 应用程序显示启动画面后的回调（在显示启动画面后调用一次）
+    /// </summary>
+    /// <returns></returns>
+    internal static async Task OnAfterSplashScreen()
+    {
+        foreach (var item in _services)
+        {
+            try
+            {
+                await item.OnAfterSplashScreen();
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Error($"服务OnAfterSplashScreen失败,服务: {item.GetType().FullName}, ex: {ex.Message}");
+            }
+        }
+    }
+
+    /// <summary>
+    /// 应用程序显示后的回调（在应用显示后调用一次）
+    /// </summary>
+    /// <returns></returns>
+    internal static async Task OnApplicationStarted()
+    {
+        foreach (var item in _services)
+        {
+            try
+            {
+                await item.OnApplicationStarted();
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Error($"服务OnApplicationStarted失败,服务: {item.GetType().FullName}, ex: {ex.Message}");
+            }
+        }
+    }
+
+    /// <summary>
+    /// 应用程序停止时的回调（在应用退出前调用一次）
+    /// </summary>
+    /// <returns></returns>
+    internal static async Task OnApplicationStopping()
+    {
+        foreach (var item in _services)
+        {
+            try
+            {
+                await item.OnApplicationStopping();
+            }
+            catch (Exception)
+            {
+            }
         }
     }
 }

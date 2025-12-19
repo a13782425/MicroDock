@@ -241,7 +241,7 @@ internal class PluginContextImpl : IPluginContext
     {
         try
         {
-            if (Program.WindowNotificationManager != null)
+            if (MicroWindowNotificationManager != null)
             {
                 // 将插件的NotificationType转换为Avalonia的NotificationType
                 AppNotificationType avaloniaType = type switch
@@ -256,7 +256,7 @@ internal class PluginContextImpl : IPluginContext
                 // 需要在UI线程上显示通知
                 Avalonia.Threading.Dispatcher.UIThread.Post(() =>
                 {
-                    Program.WindowNotificationManager.Show(new Avalonia.Controls.Notifications.Notification(
+                    MicroWindowNotificationManager.Show(new Avalonia.Controls.Notifications.Notification(
                         title,
                         message,
                         avaloniaType,
@@ -299,7 +299,7 @@ internal class PluginContextImpl : IPluginContext
             // 需要在UI线程上显示通知
             Avalonia.Threading.Dispatcher.UIThread.Post(() =>
             {
-                Program.NotificationManager.ShowNotification(notification, DateTimeOffset.Now + TimeSpan.FromSeconds(5));
+                MicroNotificationManager.ShowNotification(notification, DateTimeOffset.Now + TimeSpan.FromSeconds(5));
             });
 
             LogDebug($"显示系统托盘通知: {title}");

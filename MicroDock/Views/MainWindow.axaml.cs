@@ -76,18 +76,20 @@ public partial class MainWindow : AppWindow
     private void OnSplashLoadingCompleted(object? sender, EventArgs e)
     {
         // 启动完成，切换到主视图
-        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        Avalonia.Threading.Dispatcher.UIThread.Post(async () =>
         {
             if (sender is AppSplashViewModel splashVm)
             {
                 splashVm.LoadingCompleted -= OnSplashLoadingCompleted;
             }
+          
             // 获取 MainWindowViewModel 并设置主内容
             if (DataContext is MainWindowViewModel mainWindowVm)
             {
                 // 创建并显示主视图
                 mainWindowVm.MainContent = new MainViewModel();
             }
+            await ServiceLocator.OnApplicationStarted();
         });
     }
     /// <summary>
@@ -99,15 +101,15 @@ public partial class MainWindow : AppWindow
         InitializeWindowNotificationManager();
 
         // 注册通知事件
-        Program.NotificationManager.NotificationActivated += OnNotificationActivated;
-        Program.NotificationManager.NotificationDismissed += OnNotificationDismissed;
+        MicroNotificationManager.NotificationActivated += OnNotificationActivated;
+        MicroNotificationManager.NotificationDismissed += OnNotificationDismissed;
 
         // 从数据库加载设置并应用服务状态
         InitializeServicesFromSettings();
     }
     private void InitializeWindowNotificationManager()
     {
-        Program.WindowNotificationManager = new WindowNotificationManager(this)
+        MicroWindowNotificationManager = new WindowNotificationManager(this)
         {
             Position = NotificationPosition.TopRight,
             MaxItems = 3
@@ -250,7 +252,7 @@ public partial class MainWindow : AppWindow
         e.Cancel = true;
         this.WindowState = WindowState.Minimized;
         Hide();
-        Program.NotificationManager.ShowNotification(new DesktopNotifications.Notification() { Title = "MicroDock 已最小化到托盘", Body = "您可以通过系统托盘图标重新打开主窗口。" });
+        MicroNotificationManager.ShowNotification(new DesktopNotifications.Notification() { Title = "MicroDock 已最小化到托盘", Body = "您可以通过系统托盘图标重新打开主窗口。" });
     }
 
     /// <summary>

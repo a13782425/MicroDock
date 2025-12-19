@@ -1,6 +1,7 @@
 ﻿using Avalonia.Media;
 using FluentAvalonia.UI.Windowing;
 using MicroDock.Procedure;
+using MicroDock.Service;
 using MicroDock.Views;
 using ReactiveUI;
 using System;
@@ -45,7 +46,7 @@ public class AppSplashViewModel : ViewModelBase, IApplicationSplashScreen
         try
         {
             // 尝试获取应用版本
-            return AppConfig.AppVersion.ToString();
+            return AppConfig.MicroAppVersion.ToString();
         }
         catch
         {
@@ -76,7 +77,7 @@ public class AppSplashViewModel : ViewModelBase, IApplicationSplashScreen
 
 
         await Task.Delay(100); // 最终延迟
-
+        await ServiceLocator.OnAfterSplashScreen();
         // 通知初始化完成
         LoadingCompleted?.Invoke(this, EventArgs.Empty);
 

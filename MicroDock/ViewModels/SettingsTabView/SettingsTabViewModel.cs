@@ -509,12 +509,9 @@ public class SettingsTabViewModel : ViewModelBase
 
                 try
                 {
-                    // 获取插件目录
-                    string pluginDirectory = Path.Combine(AppConfig.ROOT_PATH, "plugins");
-
                     // 调用 PluginLoader 导入插件
                     PluginService pluginLoader = ServiceLocator.Get<PluginService>();
-                    var (success, message, pluginName) = await pluginLoader.ImportPluginAsync(zipFilePath, pluginDirectory);
+                    var (success, message, pluginName) = await pluginLoader.ImportPluginAsync(zipFilePath);
 
                     // 隐藏加载提示
                     ServiceLocator.Get<EventService>().Publish(new HideLoadingMessage());
@@ -1277,9 +1274,8 @@ public class SettingsTabViewModel : ViewModelBase
             try
             {
                 // 调用 PluginService 导入插件
-                string pluginDirectory = Path.Combine(AppConfig.ROOT_PATH, "plugins");
                 PluginService? pluginLoader = ServiceLocator.Get<PluginService>();
-                var (installSuccess, installMessage, installedPluginName) = await pluginLoader.ImportPluginAsync(tempZipPath, pluginDirectory);
+                var (installSuccess, installMessage, installedPluginName) = await pluginLoader.ImportPluginAsync(tempZipPath);
 
                 ServiceLocator.Get<EventService>()?.Publish(new HideLoadingMessage());
 

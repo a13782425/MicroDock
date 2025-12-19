@@ -12,17 +12,53 @@ namespace MicroDock.Service
     /// 单实例管理服务
     /// 使用全局互斥锁和命名管道实现进程间通信
     /// </summary>
-    public class SingleInstanceService : IDisposable
+    [AutoRegister]
+    public class SingleInstanceService : IMicroService
     {
         private const string MutexName = "Global\\MicroDock.SingleInstance";
         private const string PipeName = "MicroDock.IPC";
         private const string ShowWindowCommand = "SHOW_WINDOW";
-        
+
         private static Mutex? _singleInstanceMutex;
         private static NamedPipeServerStream? _pipeServer;
         private static CancellationTokenSource? _cancellationTokenSource;
         private static Action? _showWindowCallback;
         private static bool _isDisposed = false;
+
+        /// <summary>
+        /// 是否需要退出
+        /// </summary>
+        public bool IsExit { get; private set; } = false;
+
+#if !DEBUG
+        Task IMicroService.OnRegistered()
+        {
+            try
+            {
+                bool createdNew;
+                _singleInstanceMutex = new Mutex(true, MutexName, out createdNew);
+
+                if (createdNew)
+                {
+                    Log.Information("成功获取单实例互斥锁，这是第一个实例");
+                    return Task.CompletedTask;
+                }
+                else
+                {
+                    Log.Information("检测到已有实例正在运行");
+                    IsExit = true;
+                    return Task.CompletedTask;
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "获取单实例互斥锁失败");
+                // 发生异常时允许启动，避免因异常导致无法启动应用
+                IsExit = true;
+                return Task.CompletedTask;
+            }
+        }
+#endif
 
         /// <summary>
         /// 尝试获取单实例互斥锁
@@ -34,7 +70,7 @@ namespace MicroDock.Service
             {
                 bool createdNew;
                 _singleInstanceMutex = new Mutex(true, MutexName, out createdNew);
-                
+
                 if (createdNew)
                 {
                     Log.Information("成功获取单实例互斥锁，这是第一个实例");
@@ -57,24 +93,24 @@ namespace MicroDock.Service
         /// <summary>
         /// 通知已存在的实例显示窗口
         /// </summary>
-        public static void NotifyExistingInstance()
+        public void NotifyExistingInstance()
         {
             Task.Run(async () =>
             {
                 try
                 {
                     Log.Information("尝试通知已存在的实例显示窗口");
-                    
+
                     using (var pipeClient = new NamedPipeClientStream(".", PipeName, PipeDirection.Out))
                     {
                         // 尝试连接到已存在实例的管道服务器，超时时间 2 秒
                         await pipeClient.ConnectAsync(2000);
-                        
+
                         // 发送显示窗口命令
                         byte[] commandBytes = Encoding.UTF8.GetBytes(ShowWindowCommand);
                         await pipeClient.WriteAsync(commandBytes, 0, commandBytes.Length);
                         await pipeClient.FlushAsync();
-                        
+
                         Log.Information("成功发送显示窗口命令到已存在的实例");
                     }
                 }
@@ -93,7 +129,7 @@ namespace MicroDock.Service
         /// 启动命名管道服务器，监听显示窗口请求
         /// </summary>
         /// <param name="showWindowCallback">显示窗口的回调函数</param>
-        public static void StartPipeServer(Action showWindowCallback)
+        public void StartPipeServer(Action showWindowCallback)
         {
             if (_isDisposed)
             {
@@ -103,22 +139,22 @@ namespace MicroDock.Service
 
             _showWindowCallback = showWindowCallback;
             _cancellationTokenSource = new CancellationTokenSource();
-            
+
             // 在后台线程中运行管道服务器
             Task.Run(() => RunPipeServer(_cancellationTokenSource.Token), _cancellationTokenSource.Token);
-            
+
             Log.Information("命名管道服务器已启动，等待连接");
         }
 
         /// <summary>
         /// 运行命名管道服务器循环
         /// </summary>
-        private static async Task RunPipeServer(CancellationToken cancellationToken)
+        private async Task RunPipeServer(CancellationToken cancellationToken)
         {
             while (!cancellationToken.IsCancellationRequested && !_isDisposed)
             {
                 NamedPipeServerStream? pipeServer = null;
-                
+
                 try
                 {
                     // 创建命名管道服务器
@@ -128,35 +164,35 @@ namespace MicroDock.Service
                         1, // 最多 1 个实例
                         PipeTransmissionMode.Byte,
                         PipeOptions.Asynchronous);
-                    
+
                     _pipeServer = pipeServer;
-                    
+
                     // 等待客户端连接
                     await pipeServer.WaitForConnectionAsync(cancellationToken);
-                    
+
                     if (cancellationToken.IsCancellationRequested || _isDisposed)
                     {
                         break;
                     }
-                    
+
                     Log.Information("收到客户端连接");
-                    
+
                     // 读取客户端发送的命令
                     byte[] buffer = new byte[256];
                     int bytesRead = await pipeServer.ReadAsync(buffer, 0, buffer.Length, cancellationToken);
-                    
+
                     if (bytesRead > 0)
                     {
                         string command = Encoding.UTF8.GetString(buffer, 0, bytesRead);
                         Log.Information("收到命令: {Command}", command);
-                        
+
                         if (command == ShowWindowCommand)
                         {
                             // 调用显示窗口回调
                             _showWindowCallback?.Invoke();
                         }
                     }
-                    
+
                     // 断开连接
                     pipeServer.Disconnect();
                 }
@@ -180,14 +216,14 @@ namespace MicroDock.Service
                     pipeServer?.Dispose();
                 }
             }
-            
+
             Log.Information("命名管道服务器已停止");
         }
 
         /// <summary>
         /// 停止命名管道服务器
         /// </summary>
-        public static void StopPipeServer()
+        public void StopPipeServer()
         {
             try
             {
@@ -196,7 +232,7 @@ namespace MicroDock.Service
                 _pipeServer = null;
                 _cancellationTokenSource?.Dispose();
                 _cancellationTokenSource = null;
-                
+
                 Log.Information("命名管道服务器已停止");
             }
             catch (Exception ex)
@@ -208,8 +244,9 @@ namespace MicroDock.Service
         /// <summary>
         /// 释放单实例互斥锁
         /// </summary>
-        public static void ReleaseMutex()
+        public void ReleaseMutex()
         {
+#if !DEBUG
             try
             {
                 if (_singleInstanceMutex != null)
@@ -217,7 +254,7 @@ namespace MicroDock.Service
                     _singleInstanceMutex.ReleaseMutex();
                     _singleInstanceMutex.Dispose();
                     _singleInstanceMutex = null;
-                    
+
                     Log.Information("单实例互斥锁已释放");
                 }
             }
@@ -225,24 +262,23 @@ namespace MicroDock.Service
             {
                 Log.Error(ex, "释放单实例互斥锁时发生错误");
             }
+#endif
         }
 
-        /// <summary>
-        /// 释放所有资源
-        /// </summary>
-        public void Dispose()
+        Task IMicroService.OnApplicationStopping()
         {
             if (_isDisposed)
             {
-                return;
+                return Task.CompletedTask;
             }
 
             _isDisposed = true;
-            
+
             StopPipeServer();
             ReleaseMutex();
-            
+
             GC.SuppressFinalize(this);
+            return Task.CompletedTask;
         }
     }
 }

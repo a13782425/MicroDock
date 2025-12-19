@@ -8,9 +8,10 @@ namespace MicroDock.Service;
 /// 事件聚合器 - 用于组件间的松耦合通信
 /// 实现单例模式，使用弱引用避免内存泄漏
 /// </summary>
-public class EventService
+[AutoRegister]
+public class EventService : IMicroService
 {
-    
+
     private readonly Dictionary<Type, List<object>> _subscribers = new();
     private readonly object _lock = new();
 

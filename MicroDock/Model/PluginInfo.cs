@@ -33,6 +33,11 @@ public class PluginInfo : IDisposable
     public string AssemblyPath { get; set; } = string.Empty;
 
     /// <summary>
+    /// 插件地址
+    /// </summary>
+    public string PluginPath { get; set; } = string.Empty;
+
+    /// <summary>
     /// 插件加载上下文
     /// </summary>
     public PluginLoadContext? LoadContext { get; set; }

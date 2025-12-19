@@ -1,3 +1,5 @@
+using Avalonia;
+using Avalonia.WebView.Desktop;
 using DryIoc.Shared.Extensions;
 using MicroDock.Plugin;
 using MicroNotePlugin.Database;
@@ -121,5 +123,10 @@ public class MicroNotePlugin : BaseMicroDockPlugin
         _dbContext?.Dispose();
 
         LogInfo("随手记插件已销毁");
+    }
+
+    static void ConfigureAppBuilder(AppBuilder builder)
+    {
+        builder.UseDesktopWebView();
     }
 }

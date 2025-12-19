@@ -1,6 +1,7 @@
-﻿using Avalonia.Media;
+﻿using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Controls.Notifications;
 using System;
-using System.Collections.Generic;
 using System.IO;
 
 namespace MicroDock;
@@ -11,22 +12,49 @@ namespace MicroDock;
 internal static class AppConfig
 {
     //主要的, 次要的, 构建的, 修订的
-    public static Version AppVersion { get; set; } = new Version(1, 0, 0, 0);
+    public static Version MicroAppVersion { get; } = new Version(1, 0, 0, 0);
     /// <summary>
     /// 是否是真实退出应用
     /// </summary>
     public static bool RealExit { get; set; } = false;
-
-    private static string _configFolder = Path.Combine(System.AppContext.BaseDirectory, "config");
-    /// <summary>
-    /// 应用配置文件夹
-    /// </summary>
-    public static string CONFIG_FOLDER => _configFolder;
-
     /// <summary>
     /// 根目录
     /// </summary>
     public static string ROOT_PATH => System.AppContext.BaseDirectory;
+
+    /// <summary>
+    /// 应用配置文件夹
+    /// </summary>
+    public static string CONFIG_FOLDER { get; } = Path.Combine(ROOT_PATH, "config");
+
+    /// <summary>
+    /// 插件文件夹
+    /// </summary>
+    public static string PLUGIN_FOLDER { get; } = Path.Combine(ROOT_PATH, "plugins");
+
+
+
+    /// <summary>
+    /// 系统托盘通知管理器
+    /// </summary>
+    public static DesktopNotificationManager MicroNotificationManager { get; set; } = null!;
+
+    /// <summary>
+    /// 应用内窗口通知管理器（Toast通知）
+    /// </summary>
+    public static WindowNotificationManager? MicroWindowNotificationManager { get; set; }
+
+    /// <summary>
+    /// 主窗口实例
+    /// 禁止设置
+    /// </summary>
+    public static Window MicroMainWindow { get; set; }
+
+    /// <summary>
+    /// 应用构建器实例
+    /// 禁止设置
+    /// </summary>
+    public static AppBuilder MicroAppBuilder { get; set; }
 
     #region 临时目录配置
 
@@ -46,14 +74,16 @@ internal static class AppConfig
     public static string TEMP_BACKUP_FOLDER => Path.Combine(TEMP_FOLDER, "backup");
 
     /// <summary>
-    /// 插件导入解压临时目录
+    /// 临时目录每次启动清空
     /// </summary>
     public static string TEMP_IMPORT_FOLDER => Path.Combine(TEMP_FOLDER, "import");
 
     #endregion
 
 
+#pragma warning disable CS8618 // 在退出构造函数时，不可为 null 的字段必须包含非 null 值。请考虑添加 "required" 修饰符或声明为可为 null。
     static AppConfig()
+#pragma warning restore CS8618 // 在退出构造函数时，不可为 null 的字段必须包含非 null 值。请考虑添加 "required" 修饰符或声明为可为 null。
     {
         // 确保目录存在
         if (!Directory.Exists(CONFIG_FOLDER))

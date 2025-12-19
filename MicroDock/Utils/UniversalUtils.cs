@@ -35,12 +35,12 @@ internal static class UniversalUtils
     {
         try
         {
-            if (Program.WindowNotificationManager != null)
+            if (MicroWindowNotificationManager != null)
             {
                 // 确保在UI线程上执行
                 Dispatcher.UIThread.Post(() =>
                 {
-                    Program.WindowNotificationManager.Show(new Notification(
+                    MicroWindowNotificationManager.Show(new Notification(
                         title,
                         message,
                         type,
@@ -92,7 +92,7 @@ internal static class UniversalUtils
             // 确保在UI线程上执行
             Dispatcher.UIThread.Post(() =>
             {
-                Program.NotificationManager.ShowNotification(
+                MicroNotificationManager.ShowNotification(
                     notification,
                     DateTimeOffset.Now + TimeSpan.FromSeconds(seconds)
                 );
@@ -286,109 +286,6 @@ internal static class UniversalUtils
     }
 
     /// <summary>
-    /// 显示密码输入对话框
-    /// </summary>
-    /// <param name="title">对话框标题</param>
-    /// <param name="prompt">提示文本</param>
-    /// <returns>用户输入的密码，如果取消则返回 null</returns>
-    public static async Task<string?> ShowPasswordInputDialogAsync(string title, string prompt)
-    {
-        try
-        {
-            return await Dispatcher.UIThread.InvokeAsync(async () =>
-            {
-                var passwordBox = new TextBox
-                {
-                    Watermark = "请输入密码",
-                    MinWidth = 300,
-                    PasswordChar = '●',
-                    RevealPassword = false
-                };
-
-                var content = new StackPanel
-                {
-                    Spacing = 10,
-                    Children =
-                    {
-                        new TextBlock
-                        {
-                            Text = prompt,
-                            TextWrapping = Avalonia.Media.TextWrapping.Wrap
-                        },
-                        passwordBox
-                    }
-                };
-
-                var dialog = new ContentDialog
-                {
-                    Title = title,
-                    Content = content,
-                    PrimaryButtonText = "确定",
-                    CloseButtonText = "取消",
-                    DefaultButton = ContentDialogButton.Primary
-                };
-
-                var result = await dialog.ShowAsync();
-
-                if (result == ContentDialogResult.Primary)
-                {
-                    return passwordBox.Text;
-                }
-
-                return null;
-            });
-        }
-        catch (Exception ex)
-        {
-            LogError($"显示密码输入对话框失败: {title}", DEFAULT_LOG_TAG, ex);
-            return null;
-        }
-    }
-
-    /// <summary>
-    /// 显示自定义内容对话框
-    /// </summary>
-    /// <param name="title">对话框标题</param>
-    /// <param name="content">自定义内容（Control 或其他可显示对象）</param>
-    /// <param name="primaryText">主按钮文本（为空则不显示主按钮）</param>
-    /// <param name="closeText">关闭按钮文本</param>
-    /// <returns>对话框结果</returns>
-    public static async Task<ContentDialogResult> ShowCustomDialogAsync(
-        string title,
-        object content,
-        string? primaryText = null,
-        string closeText = "关闭")
-    {
-        try
-        {
-            return await Dispatcher.UIThread.InvokeAsync(async () =>
-            {
-                var dialog = new ContentDialog
-                {
-                    Title = title,
-                    Content = content,
-                    CloseButtonText = closeText,
-                    DefaultButton = string.IsNullOrEmpty(primaryText)
-                        ? ContentDialogButton.Close
-                        : ContentDialogButton.Primary
-                };
-
-                if (!string.IsNullOrEmpty(primaryText))
-                {
-                    dialog.PrimaryButtonText = primaryText;
-                }
-
-                return await dialog.ShowAsync();
-            });
-        }
-        catch (Exception ex)
-        {
-            LogError($"显示自定义对话框失败: {title}", DEFAULT_LOG_TAG, ex);
-            return ContentDialogResult.None;
-        }
-    }
-
-    /// <summary>
     /// 显示自定义内容对话框（泛型版本，支持验证和强类型返回）
     /// </summary>
     /// <typeparam name="TDialog">对话框类型，必须继承 UserControl 并实现 ICustomDialog</typeparam>
@@ -576,4 +473,39 @@ internal static class UniversalUtils
     }
 
     #endregion
+
+    #region 文件操作
+
+    /// <summary>
+    /// 递归复制目录
+    /// </summary>
+    public static void CopyDirectory(string sourceDir, string targetDir)
+    {
+        DirectoryInfo dir = new DirectoryInfo(sourceDir);
+
+        if (!dir.Exists)
+        {
+            throw new DirectoryNotFoundException($"源目录不存在: {sourceDir}");
+        }
+
+        // 复制所有文件
+        FileInfo[] files = dir.GetFiles();
+        foreach (FileInfo file in files)
+        {
+            string targetFilePath = Path.Combine(targetDir, file.Name);
+            file.CopyTo(targetFilePath, true);
+        }
+
+        // 递归复制子目录
+        DirectoryInfo[] dirs = dir.GetDirectories();
+        foreach (DirectoryInfo subDir in dirs)
+        {
+            string targetSubDir = Path.Combine(targetDir, subDir.Name);
+            Directory.CreateDirectory(targetSubDir);
+            CopyDirectory(subDir.FullName, targetSubDir);
+        }
+    }
+
+    #endregion
+
 }

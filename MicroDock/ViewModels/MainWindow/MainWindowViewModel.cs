@@ -30,18 +30,6 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
-    /// 开始启动流程
-    /// </summary>
-    public async Task StartStartupProcessAsync()
-    {
-        if (MainContent is AppSplashViewModel splashVm)
-        {
-            await splashVm.RunTasks(CancellationToken.None);
-        }
-    }
-
-
-    /// <summary>
     /// 当前显示的主内容 (SplashView 或 MainView)
     /// </summary>
     public object? MainContent

@@ -63,7 +63,12 @@ public class PluginManifest
     /// </summary>
     [JsonPropertyName("entryClass")]
     public string EntryClass { get; set; } = string.Empty;
-
+    /// <summary>
+    /// 应用构建器方法名称（可选）
+    /// 参数必须是Avalonia.AppBuilder
+    /// </summary>
+    [JsonPropertyName("appBuilderMethod")]
+    public string AppBuilderMethod { get; set; } = string.Empty;
     /// <summary>
     /// 插件依赖（键为插件名称，值为版本范围）
     /// </summary>

@@ -1,18 +1,21 @@
 using Avalonia.Threading;
 using MicroDock.Model;
+using Serilog;
 using Serilog.Core;
 using Serilog.Events;
 using System;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
+using System.Threading.Tasks;
 
 namespace MicroDock.Service;
 
 /// <summary>
 /// 日志服务，实现 Serilog 的 ILogEventSink 接口，管理内存中的日志条目
 /// </summary>
-public class LogService : ILogEventSink
+[AutoRegister(int.MinValue)]
+public class LogService : ILogEventSink, IMicroService
 {
     private const int MaxLogCount = 1000;
     private const string TagPropertyName = "Tag";
@@ -33,6 +36,43 @@ public class LogService : ILogEventSink
     public LogService()
     {
         Logs = new ObservableCollection<LogEntry>();
+    }
+
+    Task IMicroService.OnRegistered()
+    {
+        // 日志保存在软件目录下的Log文件夹
+        string logDirectory = Path.Combine(AppConfig.ROOT_PATH, "log");
+
+        // 确保日志目录存在
+        if (!Directory.Exists(logDirectory))
+        {
+            Directory.CreateDirectory(logDirectory);
+        }
+
+        string logFilePath = Path.Combine(logDirectory, "log-.txt");
+
+        Log.Logger = new LoggerConfiguration()
+#if DEBUG
+            .MinimumLevel.Debug()
+#else
+                .MinimumLevel.Information()
+#endif
+            .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+            .Enrich.FromLogContext()
+            .WriteTo.Console(
+                outputTemplate: "{Timestamp:HH:mm:ss} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
+            .WriteTo.File(
+                path: logFilePath,
+                rollingInterval: RollingInterval.Day,
+                retainedFileCountLimit: 30,
+                outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {Message:lj}{NewLine}{Exception}",
+                fileSizeLimitBytes: 10 * 1024 * 1024, // 10MB per file
+                rollOnFileSizeLimit: true)
+            .WriteTo.Sink(this)
+            .CreateLogger();
+
+        LogInformation($"日志系统初始化完成，日志目录: {logDirectory}");
+        return Task.CompletedTask;
     }
 
     /// <summary>

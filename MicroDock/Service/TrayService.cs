@@ -147,7 +147,7 @@ public class TrayService
             if (Avalonia.Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             {
                 AppConfig.RealExit = true;
-                desktop.Shutdown();
+                desktop.TryShutdown();
             }
         };
         

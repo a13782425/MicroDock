@@ -6,5 +6,6 @@
   "author": "MicroDock",
   "license": "MIT",
   "main": "MicroNotePlugin.dll",
-  "entryClass": "MicroNotePlugin.MicroNotePlugin"
+  "entryClass": "MicroNotePlugin.MicroNotePlugin",
+  "appBuilderMethod": "MicroNotePlugin.MicroNotePlugin.ConfigureAppBuilder"
 }
