@@ -6,7 +6,6 @@ using MicroDock.Service;
 using MicroDock.Views;
 using ReactiveUI;
 using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 

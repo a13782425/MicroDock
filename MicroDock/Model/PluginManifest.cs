@@ -56,6 +56,7 @@ public class PluginManifest
     /// 主 DLL 文件名（例如: PluginName.dll）
     /// </summary>
     [JsonPropertyName("main")]
+    [Obsolete("目前使用插件文件夹在第一个dll,依赖的库放置在dll文件里面")]
     public string Main { get; set; } = string.Empty;
 
     /// <summary>

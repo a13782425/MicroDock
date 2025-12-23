@@ -14,9 +14,10 @@ internal class PluginContextImpl : IPluginContext
 {
     private readonly string _pluginName;
     private readonly string _pluginDirectory;
+    private readonly string _assetsDirectory;
     private readonly string _configDirectory;
     private readonly string _dataDirectory;
-    private readonly string _tempDataDirectory;
+    private readonly string _dllDirectory;
 
     public PluginContextImpl(string pluginName, string pluginFolder)
     {
@@ -29,15 +30,18 @@ internal class PluginContextImpl : IPluginContext
         {
             Directory.CreateDirectory(_pluginDirectory);
         }
+        _assetsDirectory = Path.Combine(_pluginDirectory, "assets");
         _configDirectory = Path.Combine(_pluginDirectory, "config");
         _dataDirectory = Path.Combine(_pluginDirectory, "data");
-        _tempDataDirectory = Path.Combine(_pluginDirectory, "temp_data");
+        _dllDirectory = Path.Combine(_pluginDirectory, "dll");
+        if (!Directory.Exists(_assetsDirectory))
+            Directory.CreateDirectory(_assetsDirectory);
         if (!Directory.Exists(_configDirectory))
             Directory.CreateDirectory(_configDirectory);
         if (!Directory.Exists(_dataDirectory))
             Directory.CreateDirectory(_dataDirectory);
-        if (!Directory.Exists(_tempDataDirectory))
-            Directory.CreateDirectory(_tempDataDirectory);
+        if (!Directory.Exists(_dllDirectory))
+            Directory.CreateDirectory(_dllDirectory);
     }
 
     #region 日志 API
@@ -118,11 +122,13 @@ internal class PluginContextImpl : IPluginContext
 
     #region 路径 API
 
+    public string AssetsPath => _assetsDirectory;
+
     public string ConfigPath => _configDirectory;
 
     public string DataPath => _dataDirectory;
 
-    public string TempDataPath => _tempDataDirectory;
+    public string DllPath => _dllDirectory;
 
     #endregion
 

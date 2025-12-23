@@ -70,6 +70,11 @@ public interface IPluginContext
     #region 路径 API
     
     /// <summary>
+    /// 资源路径
+    /// </summary>
+    string AssetsPath { get; }
+
+    /// <summary>
     /// 获取插件配置目录（跟随插件更新而覆盖）
     /// </summary>
     string ConfigPath { get; }
@@ -80,14 +85,14 @@ public interface IPluginContext
     string DataPath { get; }
 
     /// <summary>
-    /// 获取插件临时数据目录
+    /// 依赖程序集路径
     /// </summary>
-    string TempDataPath { get; }
-    
+    string DllPath { get; }
+
     #endregion
-    
+
     #region 工具调用 API
-    
+
     /// <summary>
     /// 调用工具（异步）
     /// </summary>

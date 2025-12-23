@@ -3,7 +3,6 @@ using Avalonia.Input;
 using Avalonia.Platform.Storage;
 using MicroDock.ViewModels;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace MicroDock.Views;
 

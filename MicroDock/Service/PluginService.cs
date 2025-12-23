@@ -1,3 +1,8 @@
+using Avalonia.Controls;
+using MicroDock.Database;
+using MicroDock.Model;
+using MicroDock.Plugin;
+using Serilog;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -6,11 +11,6 @@ using System.Linq;
 using System.Reflection;
 using System.Text.Json;
 using System.Threading.Tasks;
-using Avalonia.Controls;
-using MicroDock.Database;
-using MicroDock.Model;
-using MicroDock.Plugin;
-using Serilog;
 
 namespace MicroDock.Service
 {
@@ -23,23 +23,71 @@ namespace MicroDock.Service
     {
         private readonly List<PluginInfo> _loadedPlugins = new List<PluginInfo>();
         /// <summary>
-        /// 公共构造函数，用于 ServiceLocator 注册
-        /// </summary>
-        public PluginService()
-        {
-        }
-
-        /// <summary>
         /// 获取所有已加载的插件信息
         /// </summary>
         public IReadOnlyList<PluginInfo> LoadedPlugins => _loadedPlugins.AsReadOnly();
 
-        Task IMicroService.OnRegistered()
+        async Task IMicroService.OnRegistered()
         {
             _loadedPlugins.Clear();
-            LoadPluginsManifest();
+            await PreLoadPlugins();
+        }
+
+        Task IMicroService.OnAfterAppBuilder()
+        {
+            foreach (var pluginInfo in _loadedPlugins)
+            {
+                var manifest = pluginInfo.Manifest;
+                if (string.IsNullOrEmpty(manifest.AppBuilderMethod))
+                {
+                    continue;
+                }
+                try
+                {
+                    // 解析完整方法名：命名空间.类型.方法名
+                    string fullMethodName = manifest.AppBuilderMethod;
+                    int lastDotIndex = fullMethodName.LastIndexOf('.');
+                    if (lastDotIndex <= 0)
+                    {
+                        LogWarning($"插件 {manifest.Name} 的 AppBuilderMethod '{fullMethodName}' 格式无效（应为 命名空间.类型.方法名），跳过", DEFAULT_LOG_TAG);
+                        continue;
+                    }
+                    string fullTypeName = fullMethodName.Substring(0, lastDotIndex);
+                    string methodName = fullMethodName.Substring(lastDotIndex + 1);
+                    // 从插件程序集中获取类型
+                    Type? targetType = pluginInfo.Assembly.GetType(fullTypeName);
+                    if (targetType == null)
+                    {
+                        LogWarning($"插件 {manifest.Name} 的类型 '{fullTypeName}' 未找到，跳过", DEFAULT_LOG_TAG);
+
+                        continue;
+                    }
+                    // 获取方法（支持静态）
+                    MethodInfo? method = targetType.GetMethod(methodName,
+                        BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
+                    if (method == null)
+                    {
+                        LogWarning($"插件 {manifest.Name} 的方法 '{methodName}' 在类型 '{fullTypeName}' 中未找到，跳过", DEFAULT_LOG_TAG);
+                        continue;
+                    }
+                    // 验证参数：需要一个 AppBuilder 参数
+                    var parameters = method.GetParameters();
+                    if (parameters.Length != 1 || parameters[0].ParameterType != typeof(Avalonia.AppBuilder))
+                    {
+                        LogWarning($"插件 {manifest.Name} 的 AppBuilderMethod '{fullMethodName}' 参数数量不匹配（需要1个参数Avalonia.AppBuilder），跳过", DEFAULT_LOG_TAG);
+                        continue;
+                    }
+                    method.Invoke(null, [MicroAppBuilder]);
+                    LogInformation($"插件 {manifest.Name} 的 AppBuilderMethod '{fullMethodName}' 已调用", DEFAULT_LOG_TAG);
+                }
+                catch (Exception ex)
+                {
+                    LogError($"调用插件 {manifest.Name} 的 AppBuilderMethod '{manifest.AppBuilderMethod}' 失败", DEFAULT_LOG_TAG, ex);
+                }
+            }
             return Task.CompletedTask;
         }
+
         /// <summary>
         /// 导入插件（从 ZIP 文件）
         /// </summary>
@@ -68,7 +116,7 @@ namespace MicroDock.Service
                     return (false, "ZIP 根目录缺少 plugin.json 文件", null);
                 }
                 // 4. 解析 plugin.json 获取插件名和版本
-                PluginManifest? manifest = LoadManifest(manifestPath);
+                PluginManifest? manifest = await LoadManifest(manifestPath);
                 if (manifest == null)
                 {
                     return (false, "plugin.json 解析失败", null);
@@ -137,11 +185,12 @@ namespace MicroDock.Service
 
                     // 验证插件加载
 
-                    PluginInfo pluginInfo = new PluginInfo();
-                    pluginInfo.Manifest = manifest;
-                    pluginInfo.PluginPath = targetPluginDir;
+                    PluginInfo pluginInfo = await PreLoadPlugin(targetPluginDir);
+                    if (pluginInfo == null)
+                    {
+                        return (false, "插件加载失败", pluginName);
+                    }
                     _loadedPlugins.Add(pluginInfo);
-
                     if (!await LoadPluginAsync(pluginInfo, manifest))
                     {
                         // 加载失败，清理已复制的文件
@@ -181,74 +230,17 @@ namespace MicroDock.Service
             }
         }
 
-
-        /// <summary>
-        /// 加载所有的插件清单文件
-        /// </summary>
-        /// <returns></returns>
-        public void LoadPluginsManifest()
-        {
-            if (!Directory.Exists(PLUGIN_FOLDER))
-            {
-                LogInformation($"插件目录不存在，创建目录: {PLUGIN_FOLDER}", DEFAULT_LOG_TAG);
-                Directory.CreateDirectory(PLUGIN_FOLDER);
-                return;
-            }
-
-            // 第一阶段：扫描并加载所有 plugin.json
-            string[] pluginFolders = Directory.GetDirectories(PLUGIN_FOLDER);
-            if (pluginFolders.Length == 0)
-                return;
-            LogInformation($"发现 {pluginFolders.Length} 个插件文件夹", DEFAULT_LOG_TAG);
-
-
-            foreach (string pluginFolder in pluginFolders)
-            {
-                string manifestPath = Path.Combine(pluginFolder, "plugin.json");
-
-                if (!File.Exists(manifestPath))
-                {
-                    LogWarning($"插件文件夹 {pluginFolder} 缺少 plugin.json，跳过加载", DEFAULT_LOG_TAG);
-                    continue;
-                }
-
-                try
-                {
-                    var manifest = LoadManifest(manifestPath);
-                    if (manifest != null)
-                    {
-                        PluginInfo pluginInfo = new PluginInfo();
-                        pluginInfo.Manifest = manifest;
-                        pluginInfo.PluginPath = pluginFolder;
-                        _loadedPlugins.Add(pluginInfo);
-                        LogDebug($"成功解析 plugin.json: {manifest.Name} v{manifest.Version}", DEFAULT_LOG_TAG);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    LogError($"解析 plugin.json 失败: {manifestPath}", DEFAULT_LOG_TAG, ex);
-                }
-            }
-
-            if (_loadedPlugins.Count == 0)
-            {
-                LogInformation("未找到有效的插件", DEFAULT_LOG_TAG);
-            }
-        }
-
         /// <summary>
         /// 从指定目录异步加载所有插件
         /// </summary>
         /// <returns>加载的插件信息列表</returns>
-        public async Task<List<PluginInfo>> LoadPluginsAsync()
+        public async Task LoadPluginsAsync()
         {
-            List<PluginInfo> loadedPlugins = new List<PluginInfo>();
-
             if (!Directory.Exists(PLUGIN_FOLDER))
             {
                 LogService.LogInformation($"插件目录不存在，创建目录: {PLUGIN_FOLDER}");
                 Directory.CreateDirectory(PLUGIN_FOLDER);
-                return loadedPlugins;
+                return;
             }
 
 
@@ -259,7 +251,7 @@ namespace MicroDock.Service
             if (!resolveResult.Success)
             {
                 Log.Error("插件依赖解析失败: {Error}", resolveResult.ErrorMessage);
-                return loadedPlugins;
+                return;
             }
 
             Log.Information("依赖解析成功，将按顺序加载 {Count} 个插件", resolveResult.OrderedManifests!.Count);
@@ -280,7 +272,7 @@ namespace MicroDock.Service
             LogInformation($"成功加载 {_loadedPlugins.Count} 个插件", DEFAULT_LOG_TAG);
 
             // 第四阶段：所有插件加载完成，触发 OnAllPluginsLoaded 回调
-            foreach (var plugin in loadedPlugins)
+            foreach (var plugin in _loadedPlugins)
             {
                 try
                 {
@@ -292,13 +284,11 @@ namespace MicroDock.Service
                     Log.Error(ex, "插件 {Name} 的 OnAllPluginsLoaded 回调失败", plugin.UniqueName);
                 }
             }
-
-            return loadedPlugins;
         }
         /// <summary>
         /// 异步加载单个插件
         /// </summary>
-        /// <param name="pluginFolder">插件文件夹路径</param>
+        /// <param name="pluginInfo">插件信息</param>
         /// <param name="manifest">插件清单</param>
         private async Task<bool> LoadPluginAsync(PluginInfo pluginInfo, PluginManifest manifest)
         {
@@ -306,19 +296,8 @@ namespace MicroDock.Service
 
             try
             {
-                string pluginFolder = pluginInfo.PluginPath;
-                Log.Debug("开始加载插件: {Name} (文件夹: {PluginFolder})", manifest.Name, pluginFolder);
 
-                string dllFile = Path.Combine(pluginFolder, manifest.Main);
-                if (!File.Exists(dllFile))
-                {
-                    Log.Error("插件 DLL 文件不存在: {DllFile}", dllFile);
-                    return false;
-                }
-
-                loadContext = new PluginLoadContext(pluginFolder);
-                Assembly assembly = loadContext.LoadFromAssemblyPath(dllFile);
-                Type? pluginType = assembly.GetType(manifest.EntryClass);
+                Type? pluginType = pluginInfo.Assembly.GetType(manifest.EntryClass);
 
                 if (pluginType == null)
                 {
@@ -350,7 +329,7 @@ namespace MicroDock.Service
                 }
 
                 string[] dependencies = manifest.Dependencies?.Keys.ToArray() ?? Array.Empty<string>();
-                PluginContextImpl context = new PluginContextImpl(manifest.Name, pluginFolder);
+                PluginContextImpl context = new PluginContextImpl(manifest.Name, pluginInfo.PluginPath);
                 dockPlugin.Initialize(context);
                 // 异步初始化插件
                 await dockPlugin.OnInitAsync();
@@ -402,11 +381,7 @@ namespace MicroDock.Service
                 }
 
                 pluginInfo.Id = Guid.NewGuid().ToString();
-                pluginInfo.Name = manifest.EffectiveDisplayName;
                 pluginInfo.UniqueName = manifest.Name;
-                pluginInfo.AssemblyPath = dllFile;
-                pluginInfo.LoadContext = loadContext;
-                pluginInfo.Assembly = assembly;
                 pluginInfo.PluginInstance = dockPlugin;
                 pluginInfo.ControlInstance = tabControls.FirstOrDefault();
                 pluginInfo.IsInitialized = true;
@@ -419,6 +394,93 @@ namespace MicroDock.Service
                 loadContext?.Unload();
                 return false;
             }
+        }
+
+        /// <summary>
+        /// 预加载所有插件
+        /// </summary>
+        /// <returns></returns>
+        private async Task PreLoadPlugins()
+        {
+            if (!Directory.Exists(PLUGIN_FOLDER))
+            {
+                LogInformation($"插件目录不存在，创建目录: {PLUGIN_FOLDER}", DEFAULT_LOG_TAG);
+                Directory.CreateDirectory(PLUGIN_FOLDER);
+                return;
+            }
+            // 第一阶段：扫描并加载所有 plugin.json
+            string[] pluginFolders = Directory.GetDirectories(PLUGIN_FOLDER);
+            if (pluginFolders.Length == 0)
+                return;
+            LogInformation($"发现 {pluginFolders.Length} 个插件文件夹", DEFAULT_LOG_TAG);
+
+            foreach (string pluginFolder in pluginFolders)
+            {
+                string manifestPath = Path.Combine(pluginFolder, "plugin.json");
+
+                if (!File.Exists(manifestPath))
+                {
+                    LogWarning($"插件文件夹 {pluginFolder} 缺少 plugin.json，跳过加载", DEFAULT_LOG_TAG);
+                    continue;
+                }
+
+                try
+                {
+                    PluginInfo pluginInfo = await PreLoadPlugin(pluginFolder);
+                    if (pluginInfo != null)
+                    {
+                        _loadedPlugins.Add(pluginInfo);
+                        LogDebug($"预加载插件 {pluginInfo.Name} v{pluginInfo.Manifest.Version} 成功", DEFAULT_LOG_TAG);
+                    }
+                    else
+                    {
+                        LogWarning($"预加载插件 {pluginFolder} 失败", DEFAULT_LOG_TAG);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    LogError($"解析 plugin.json 失败: {manifestPath}", DEFAULT_LOG_TAG, ex);
+                }
+            }
+
+            if (_loadedPlugins.Count == 0)
+            {
+                LogInformation("未找到有效的插件", DEFAULT_LOG_TAG);
+            }
+        }
+
+        /// <summary>
+        /// 预加载单个插件
+        /// </summary>
+        /// <returns></returns>
+        private async Task<PluginInfo> PreLoadPlugin(string pluginFolder)
+        {
+            string manifestPath = Path.Combine(pluginFolder, "plugin.json");
+            if (!File.Exists(manifestPath))
+            {
+                return null;
+            }
+            var manifest = await LoadManifest(manifestPath);
+            if (manifest != null)
+            {
+                PluginInfo pluginInfo = new PluginInfo();
+                pluginInfo.Manifest = manifest;
+                pluginInfo.PluginPath = pluginFolder;
+                pluginInfo.AssemblyFile = Directory.GetFiles(pluginFolder, "*.dll", SearchOption.TopDirectoryOnly).FirstOrDefault() ?? "";
+                pluginInfo.AssemblyDependencyPath = Path.Combine(pluginFolder, "dll");
+                if (!string.IsNullOrWhiteSpace(pluginInfo.AssemblyFile))
+                {
+                    pluginInfo.LoadContext = new PluginLoadContext(pluginInfo);
+                    pluginInfo.Assembly = pluginInfo.LoadContext.LoadFromAssemblyPath(pluginInfo.AssemblyFile);
+                    LogDebug($"解析成功 plugin.json: {manifest.Name} v{manifest.Version}", DEFAULT_LOG_TAG);
+                    return pluginInfo;
+                }
+                else
+                {
+                    LogDebug($"解析失败 plugin.json: {manifest.Name} v{manifest.Version}", DEFAULT_LOG_TAG);
+                }
+            }
+            return null;
         }
 
         /// <summary>
@@ -607,11 +669,11 @@ namespace MicroDock.Service
         /// <summary>
         /// 加载并验证 plugin.json 清单文件
         /// </summary>
-        private PluginManifest? LoadManifest(string manifestPath)
+        private async Task<PluginManifest?> LoadManifest(string manifestPath)
         {
             try
             {
-                string jsonContent = File.ReadAllText(manifestPath);
+                string jsonContent = await File.ReadAllTextAsync(manifestPath);
                 var options = new JsonSerializerOptions
                 {
                     PropertyNameCaseInsensitive = true,
@@ -705,7 +767,7 @@ namespace MicroDock.Service
                         return false;
                     }
 
-                    PluginManifest? manifest = LoadManifest(manifestPath);
+                    PluginManifest? manifest = await LoadManifest(manifestPath);
                     if (manifest == null)
                     {
                         Log.Error("加载插件 manifest 失败: {PluginName}", pluginName);

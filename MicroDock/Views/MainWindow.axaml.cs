@@ -1,22 +1,13 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Notifications;
-using Avalonia.Data;
-using Avalonia.Input;
-using Avalonia.Interactivity;
 using DesktopNotifications;
-using FluentAvalonia.UI.Controls;
 using FluentAvalonia.UI.Windowing;
-using MicroDock;
 using MicroDock.Database;
 using MicroDock.Service;
 using MicroDock.ViewModels;
-using ReactiveUI;
 using Serilog;
 using System;
-using System.Collections.Generic;
-using System.Collections.Specialized;
-using System.Linq;
 
 namespace MicroDock.Views;
 

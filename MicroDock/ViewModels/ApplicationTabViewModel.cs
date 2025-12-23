@@ -1,4 +1,3 @@
-using Avalonia.Controls;
 using Avalonia.Platform.Storage;
 using MicroDock.Database;
 using MicroDock.Service;
@@ -7,7 +6,6 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Reactive;
-using System.Windows.Input;
 
 namespace MicroDock.ViewModels;
 

@@ -1,15 +1,10 @@
 ﻿using Avalonia;
-using Avalonia.Controls.Notifications;
-using Avalonia.WebView.Desktop;
 using DesktopNotifications.Avalonia;
 using MicroDock.Service;
 using ReactiveUI.Avalonia;
 using Serilog;
-using Serilog.Events;
 using System;
-using System.IO;
 using System.Threading.Tasks;
-using System.Windows;
 
 namespace MicroDock
 {
@@ -52,8 +47,14 @@ namespace MicroDock
                 }
 
                 AppConfig.MicroAppBuilder = BuildAvaloniaApp();
-                MicroNotificationManager = _notificationManager;
                 await ServiceLocator.OnAfterAppBuilder();
+                MicroAppBuilder.UseWin32()
+                    .UseSkia()
+                    .WithInterFont()
+                    .SetupDesktopNotifications(out _notificationManager!)
+                    .LogToTrace()
+                    .UseReactiveUI();
+                MicroNotificationManager = _notificationManager;
                 await ServiceLocator.OnBeforeSplashScreen();
                 AppConfig.MicroAppBuilder.StartWithClassicDesktopLifetime(args);
                 return true;
@@ -74,13 +75,7 @@ namespace MicroDock
 
         // Avalonia configuration, don't remove; also used by visual designer.
         public static AppBuilder BuildAvaloniaApp()
-            => AppBuilder.Configure<App>()
-                .UseWin32()
-                .UseSkia()
-                .WithInterFont()
-                .SetupDesktopNotifications(out _notificationManager!)
-                .LogToTrace()
-                .UseDesktopWebView()
-                .UseReactiveUI();
+            => AppBuilder.Configure<App>();
+               
     }
 }

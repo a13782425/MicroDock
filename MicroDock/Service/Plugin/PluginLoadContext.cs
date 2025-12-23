@@ -14,14 +14,15 @@ namespace MicroDock.Service;
 public class PluginLoadContext : AssemblyLoadContext
 {
     private readonly AssemblyDependencyResolver _resolver;
-    private readonly string _pluginPath;
+    private readonly PluginInfo _pluginInfo;
 
-    public PluginLoadContext(string pluginPath) : base(isCollectible: true)
+    public PluginLoadContext(PluginInfo pluginInfo) : base(isCollectible: true)
     {
-        _pluginPath = pluginPath;
-        _resolver = new AssemblyDependencyResolver(pluginPath);
-
-        Log.Debug("创建插件加载上下文: {PluginPath}", pluginPath);
+        _pluginInfo = pluginInfo;
+        if (!Directory.Exists(pluginInfo.AssemblyDependencyPath))
+            Directory.CreateDirectory(pluginInfo.AssemblyDependencyPath);
+        _resolver = new AssemblyDependencyResolver(pluginInfo.PluginPath);
+        LogDebug($"创建插件加载上下文: {pluginInfo.PluginPath}", DEFAULT_LOG_TAG);
     }
 
     protected override Assembly? Load(AssemblyName assemblyName)
@@ -33,8 +34,7 @@ public class PluginLoadContext : AssemblyLoadContext
 
         if (defaultContextAssembly != null)
         {
-            Log.Debug("从主程序上下文加载程序集: {AssemblyName} (版本: {Version})",
-                assemblyName.Name, assemblyName.Version);
+            LogDebug($"从主程序上下文加载程序集: {assemblyName.Name} (版本: {assemblyName.Version})", DEFAULT_LOG_TAG);
             return null; // 返回 null 使用默认上下文，避免重复加载
         }
 
@@ -42,18 +42,10 @@ public class PluginLoadContext : AssemblyLoadContext
         string? assemblyPath = _resolver.ResolveAssemblyToPath(assemblyName);
         if (assemblyPath != null)
         {
-            Log.Debug("从插件目录加载程序集: {AssemblyName} (版本: {Version}) -> {Path}",
-                assemblyName.Name, assemblyName.Version, assemblyPath);
+            LogDebug($"从插件目录加载程序集: {assemblyName.Name} (版本: {assemblyName.Version}) -> {assemblyPath}", DEFAULT_LOG_TAG);
             return LoadFromAssemblyPath(assemblyPath);
         }
-        assemblyPath = Path.Combine(_pluginPath, assemblyName.Name + ".dll");
-        if (File.Exists(assemblyPath))
-        {
-            Log.Debug("从插件目录加载程序集: {AssemblyName} (版本: {Version}) -> {Path}",
-             assemblyName.Name, assemblyName.Version, assemblyPath);
-            return LoadFromAssemblyPath(assemblyPath);
-        }
-        assemblyPath = Path.Combine(_pluginPath, "dll", assemblyName.Name + ".dll");
+        assemblyPath = Path.Combine(_pluginInfo.AssemblyDependencyPath, assemblyName.Name + ".dll");
         if (File.Exists(assemblyPath))
         {
             Log.Debug("从插件目录加载程序集: {AssemblyName} (版本: {Version}) -> {Path}",
@@ -68,7 +60,13 @@ public class PluginLoadContext : AssemblyLoadContext
         string? libraryPath = _resolver.ResolveUnmanagedDllToPath(unmanagedDllName);
         if (libraryPath != null)
         {
-            Log.Debug("加载非托管DLL: {DllName} -> {Path}", unmanagedDllName, libraryPath);
+            LogDebug($"加载非托管DLL: {unmanagedDllName} -> {libraryPath}", DEFAULT_LOG_TAG);
+            return LoadUnmanagedDllFromPath(libraryPath);
+        }
+        libraryPath = Path.Combine(_pluginInfo.AssemblyDependencyPath, unmanagedDllName);
+        if (File.Exists(libraryPath))
+        {
+            LogDebug($"加载非托管DLL: {unmanagedDllName} -> {libraryPath}", DEFAULT_LOG_TAG);
             return LoadUnmanagedDllFromPath(libraryPath);
         }
 
@@ -78,6 +76,6 @@ public class PluginLoadContext : AssemblyLoadContext
     /// <summary>
     /// 获取插件路径
     /// </summary>
-    public string PluginPath => _pluginPath;
+    public PluginInfo PluginInfo => _pluginInfo;
 }
 

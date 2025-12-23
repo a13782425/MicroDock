@@ -19,7 +19,7 @@ public class PluginInfo : IDisposable
     /// <summary>
     /// 插件名称
     /// </summary>
-    public string Name { get; set; } = string.Empty;
+    public string Name => Manifest?.EffectiveDisplayName ?? string.Empty;
 
     /// <summary>
     /// 插件唯一名字
@@ -30,7 +30,12 @@ public class PluginInfo : IDisposable
     /// <summary>
     /// 插件程序集路径
     /// </summary>
-    public string AssemblyPath { get; set; } = string.Empty;
+    public string AssemblyFile { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 插件依赖所在路径
+    /// </summary>
+    public string AssemblyDependencyPath { get; set; } = string.Empty;
 
     /// <summary>
     /// 插件地址

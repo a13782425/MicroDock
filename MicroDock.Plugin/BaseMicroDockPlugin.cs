@@ -201,11 +201,19 @@ public abstract class BaseMicroDockPlugin : IMicroDockPlugin
         EnsureContextInitialized();
         Context!.DeleteImage(key);
     }
-    
+
     #endregion
-    
+
     #region 便捷方法 - 路径
-    
+    /// <summary>
+    /// 获取插件的资源路径
+    /// </summary>
+    /// <returns></returns>
+    protected string GetAssetsPath()
+    {
+        EnsureContextInitialized();
+        return Context!.AssetsPath;
+    }
     /// <summary>
     /// 获取插件配置目录
     /// </summary>
@@ -223,17 +231,14 @@ public abstract class BaseMicroDockPlugin : IMicroDockPlugin
         EnsureContextInitialized();
         return Context!.DataPath;
     }
-
     /// <summary>
-    /// 获取插件的临时目录
+    /// 获取插件依赖程序集路径
     /// </summary>
-    /// <returns></returns>
-    protected string GetPluginTempDataPath()
+    protected string GetDllPath()
     {
         EnsureContextInitialized();
-        return Context!.TempDataPath;
+        return Context!.DllPath;
     }
-
     #endregion
 
     /// <summary>

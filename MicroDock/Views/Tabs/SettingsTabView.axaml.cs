@@ -1,8 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Input;
-using Avalonia.Interactivity;
-using MicroDock.ViewModels;
 using MicroDock.Plugin;
+using MicroDock.ViewModels;
 
 namespace MicroDock.Views
 {

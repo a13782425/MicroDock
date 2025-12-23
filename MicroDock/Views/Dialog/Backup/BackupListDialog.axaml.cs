@@ -2,8 +2,8 @@ using Avalonia.Controls;
 using Avalonia.Interactivity;
 using MicroDock.Model;
 using MicroDock.Utils;
-using System.Collections.ObjectModel;
 using System;
+using System.Collections.ObjectModel;
 
 namespace MicroDock.Views.Dialog;
 

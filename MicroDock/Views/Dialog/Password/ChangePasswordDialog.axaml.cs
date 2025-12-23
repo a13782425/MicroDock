@@ -1,8 +1,5 @@
 using Avalonia.Controls;
-using FluentAvalonia.UI.Controls;
-using Avalonia.Threading;
 using MicroDock.Utils;
-using System.Threading.Tasks;
 
 namespace MicroDock.Views.Dialog;
 
