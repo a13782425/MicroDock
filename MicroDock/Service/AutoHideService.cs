@@ -4,6 +4,7 @@ using Avalonia.Input;
 using Avalonia.Platform;
 using Avalonia.Threading;
 using System;
+using System.Threading.Tasks;
 using System.Timers;
 
 namespace MicroDock.Service;
@@ -11,12 +12,12 @@ namespace MicroDock.Service;
 /// <summary>
 /// 靠边隐藏服务 - QQ 风格实现
 /// </summary>
-public class AutoHideService : IWindowService, IDisposable
+[AutoRegister]
+public class AutoHideService : IMicroService, IWindowService
 {
     private Window? _window;
     private IPlatformService? _platformService;
     private bool _isEnabled;
-    private bool _isInitialized;
     private Timer? _hideTimer;
     private Timer? _showCheckTimer;
     private Timer? _animationTimer;
@@ -42,7 +43,6 @@ public class AutoHideService : IWindowService, IDisposable
     private PixelPoint _animationTargetPos;
     private Action? _animationOnComplete;        // 动画完成回调
 
-    private bool _disposed = false;
 
     public enum AutoHideState
     {
@@ -60,25 +60,9 @@ public class AutoHideService : IWindowService, IDisposable
         Top
     }
 
-    /// <summary>
-    /// 无参构造函数，用于 ServiceLocator 注册
-    /// </summary>
-    public AutoHideService()
+    Task IMicroService.OnAfterSplashScreen()
     {
-    }
-
-    /// <summary>
-    /// 初始化服务（在窗口创建后调用）
-    /// </summary>
-    public void Initialize(Window window)
-    {
-        if (_isInitialized)
-        {
-            Serilog.Log.Warning("AutoHideService 已经初始化过");
-            return;
-        }
-
-        _window = window;
+        _window = AppConfig.MicroMainWindow;
         _platformService = ServiceLocator.Get<IPlatformService>();
 
         _hideTimer = new Timer(HIDE_DELAY);
@@ -93,8 +77,8 @@ public class AutoHideService : IWindowService, IDisposable
         _animationTimer.Elapsed += OnAnimationTimerElapsed;
         _animationTimer.AutoReset = true;
 
-        _isInitialized = true;
-        Serilog.Log.Debug("AutoHideService 已初始化");
+        LogDebug("AutoHideService 已初始化", DEFAULT_LOG_TAG);
+        return Task.CompletedTask;
     }
 
     /// <summary>
@@ -111,7 +95,7 @@ public class AutoHideService : IWindowService, IDisposable
             _window.Deactivated += OnWindowDeactivated;
             _showCheckTimer?.Start();
             _isEnabled = true;
-            System.Diagnostics.Debug.WriteLine("[AutoHide] 服务已启用");
+            LogInformation("[AutoHide] 服务已启用", DEFAULT_LOG_TAG);
 
             // 立即检查当前位置是否在边缘
             CheckAndStartHideTimer();
@@ -139,7 +123,7 @@ public class AutoHideService : IWindowService, IDisposable
         }
 
         _isEnabled = false;
-        Serilog.Log.Information("[AutoHide] 服务已禁用");
+        LogInformation("[AutoHide] 服务已禁用", DEFAULT_LOG_TAG);
     }
 
     /// <summary>
@@ -147,9 +131,9 @@ public class AutoHideService : IWindowService, IDisposable
     /// </summary>
     private bool CheckWindow()
     {
-        if (_window == null || !_isInitialized)
+        if (_window == null)
         {
-            Serilog.Log.Warning("AutoHideService: 服务未初始化或窗口为空");
+            LogWarning("AutoHideService: 服务未初始化或窗口为空", DEFAULT_LOG_TAG);
             return false;
         }
         return true;
@@ -582,15 +566,9 @@ public class AutoHideService : IWindowService, IDisposable
             : 1 - Math.Pow(-2 * t + 2, 3) / 2;
     }
 
-    /// <summary>
-    /// 释放资源
-    /// </summary>
-    public void Dispose()
+    Task IMicroService.OnApplicationStopping()
     {
-        if (_disposed)
-            return;
-
-        Serilog.Log.Information("[AutoHide] 释放资源");
+        LogInformation("[AutoHide] 释放资源", DEFAULT_LOG_TAG);
 
         Disable();
 
@@ -614,7 +592,6 @@ public class AutoHideService : IWindowService, IDisposable
             _animationTimer.Dispose();
             _animationTimer = null;
         }
-
-        _disposed = true;
+        return Task.CompletedTask;
     }
 }

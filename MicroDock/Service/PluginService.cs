@@ -19,13 +19,9 @@ namespace MicroDock.Service
     /// 注意：所有插件必须提供 plugin.json 配置文件
     /// </summary>
     [AutoRegister]
-    public class PluginService : IMicroService, IDisposable
+    public class PluginService : IMicroService
     {
         private readonly List<PluginInfo> _loadedPlugins = new List<PluginInfo>();
-        private bool _disposed = false;
-        // 前缀常量
-        private const string DELETE_PREFIX = "D_";
-        private const string UPDATE_PREFIX = "U_";
         /// <summary>
         /// 公共构造函数，用于 ServiceLocator 注册
         /// </summary>
@@ -919,16 +915,10 @@ namespace MicroDock.Service
             _loadedPlugins.Clear();
         }
 
-        /// <summary>
-        /// 释放所有资源
-        /// </summary>
-        public void Dispose()
+        Task IMicroService.OnApplicationStopping()
         {
-            if (_disposed)
-                return;
-
             UnloadAllPlugins();
-            _disposed = true;
+            return Task.CompletedTask;
         }
     }
 }

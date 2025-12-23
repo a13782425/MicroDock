@@ -20,8 +20,6 @@ namespace MicroDock
         {
             if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             {
-                // 1. 初始化所有服务（应用程序启动时）
-                ServiceLocator.InitializeServices();
                 // 设置 LogService 的 IsInit 标志
                 var logService = ServiceLocator.Get<Service.LogService>();
                 if (logService != null)
@@ -40,12 +38,12 @@ namespace MicroDock
                 };
 
                 // 4. 初始化需要窗口的服务
-                ServiceLocator.Get<Service.AutoHideService>()?.Initialize(AppConfig.MicroMainWindow);
-                ServiceLocator.Get<Service.TopMostService>()?.Initialize(AppConfig.MicroMainWindow);
-                ServiceLocator.Get<Service.TrayService>()?.Initialize();
+                //ServiceLocator.Get<Service.AutoHideService>()?.Initialize(AppConfig.MicroMainWindow);
+                //ServiceLocator.Get<Service.TopMostService>()?.Initialize(AppConfig.MicroMainWindow);
+                //ServiceLocator.Get<Service.TrayService>()?.Initialize();
 
                 // 初始化平台服务 (Windows Hook)
-                ServiceLocator.Get<Service.IPlatformService>()?.Initialize(AppConfig.MicroMainWindow);
+                //ServiceLocator.Get<Service.IPlatformService>()?.Initialize(AppConfig.MicroMainWindow);
 
                 desktop.MainWindow = AppConfig.MicroMainWindow;
 
@@ -84,11 +82,11 @@ namespace MicroDock
                 desktop.ShutdownRequested += async (s, e) =>
                 {
                     await ServiceLocator.OnApplicationStopping();
-                    ServiceLocator.Get<AutoHideService>()?.Dispose();
-                    ServiceLocator.Get<TopMostService>()?.Dispose();
-                    ServiceLocator.Get<DelayStorageService>()?.Dispose();
-                    ServiceLocator.Get<PluginService>()?.Dispose();
-                    ServiceLocator.Get<TabLockService>()?.Dispose();
+                    //ServiceLocator.Get<AutoHideService>()?.Dispose();
+                    //ServiceLocator.Get<TopMostService>()?.Dispose();
+                    //ServiceLocator.Get<DelayStorageService>()?.Dispose();
+                    //ServiceLocator.Get<PluginService>()?.Dispose();
+                    //ServiceLocator.Get<TabLockService>()?.Dispose();
                     DBContext.Close();
                 };
                 // 6. 退出时清理

@@ -9,16 +9,17 @@ namespace MicroDock.Service;
 /// 开机自启动服务
 /// 使用平台抽象层，支持跨平台
 /// </summary>
-public class AutoStartupService : IWindowService
+[AutoRegister]
+public class AutoStartupService : IMicroService, IWindowService
 {
     private const string APP_NAME = "MicroDock";
     private readonly IPlatformStartupService? _platformService;
-    
+
     public AutoStartupService()
     {
         _platformService = PlatformServiceFactory.CreateStartupService();
     }
-    
+
     /// <summary>
     /// 启用开机自启动
     /// </summary>
@@ -98,7 +99,7 @@ public class AutoStartupService : IWindowService
         {
             return processPath;
         }
-        
+
         // 备用方案
         return Assembly.GetEntryAssembly()?.Location ?? string.Empty;
     }

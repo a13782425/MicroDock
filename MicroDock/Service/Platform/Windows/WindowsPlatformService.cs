@@ -8,13 +8,17 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 
 namespace MicroDock.Service;
 
 /// <summary>
 /// Windows 平台服务实现
 /// </summary>
-public class WindowsPlatformService : IPlatformService
+#if WINDOWS
+[AutoRegister(-100)]
+#endif
+public class WindowsPlatformService : IMicroService, IPlatformService
 {
     private const int WM_HOTKEY = 0x0312;
     private IntPtr _handle;
@@ -23,6 +27,43 @@ public class WindowsPlatformService : IPlatformService
     private readonly Dictionary<string, int> _idMapping = new(); // uniqueId -> win32Id
     private readonly Dictionary<int, Action> _callbacks = new(); // win32Id -> callback
     private bool _isInitialized;
+
+    Task IMicroService.OnApplicationStarted()
+    {
+        if (_isInitialized) return Task.CompletedTask;
+        _window = AppConfig.MicroMainWindow;
+
+        var platformHandle = _window.TryGetPlatformHandle();
+        if (platformHandle != null)
+        {
+            _handle = platformHandle.Handle;
+            // 挂载消息钩子
+            // 注意：Avalonia的窗口句柄获取方式可能需要根据具体版本调整，这里假设是标准的Win32句柄
+            // Avalonia目前没有直接暴露WndProc Hook，需要变通方法或者使用特定API
+            // 对于简单的HotKey，我们可以尝试使用 Win32 API SetWindowLongPtr 来替换 WndProc
+            // 或者使用 ApplicationLifetime 中的事件? 不，通常需要原生窗口过程。
+            // Avalonia 11 推荐方式:
+            // 但 MicroDock 似乎没有使用特定的 Win32 库。
+            // 这里使用简单的消息循环监听可能比较困难。
+            // 替代方案：启动一个不可见的 WinForms/WPF 窗口或者使用 HwndSource (WPF)
+            // 但我们不想引入 WPF/WinForms。
+
+            // 实际上，我们可以通过 P/Invoke SetWindowLongPtr 来子类化窗口过程。
+            // 但这比较危险。
+
+            // 另一个方案：轮询 GetMessage? 不行。
+
+            // 幸运的是，我们只需要在注册热键时工作。
+            // 我们先尝试子类化窗口过程。
+
+            _newWndProcDelegate = new WndProcDelegate(CustomWndProc);
+            _oldWndProc = SetWindowLongPtr(_handle, GWL_WNDPROC, Marshal.GetFunctionPointerForDelegate(_newWndProcDelegate));
+
+            _isInitialized = true;
+            Log.Information("WindowsPlatformService initialized with handle: {Handle}", _handle);
+        }
+        return Task.CompletedTask;
+    }
 
     public void Initialize(Window window)
     {
@@ -94,7 +135,7 @@ public class WindowsPlatformService : IPlatformService
         }
 
         return false;
-    } 
+    }
     #endregion
 
     public bool TryStartProcess(string path)
@@ -189,23 +230,6 @@ public class WindowsPlatformService : IPlatformService
             _callbacks.Remove(id);
             Log.Information("Unregistered hotkey: {UniqueId} (ID: {Id})", uniqueId, id);
         }
-    }
-
-    public void Dispose()
-    {
-        // 恢复窗口过程
-        if (_handle != IntPtr.Zero && _oldWndProc != IntPtr.Zero)
-        {
-            SetWindowLongPtr(_handle, GWL_WNDPROC, _oldWndProc);
-        }
-
-        // 注销所有热键
-        foreach (var id in _idMapping.Values)
-        {
-            UnregisterHotKey(_handle, id);
-        }
-        _idMapping.Clear();
-        _callbacks.Clear();
     }
 
     // P/Invoke definitions
@@ -312,6 +336,25 @@ public class WindowsPlatformService : IPlatformService
         }
 
         return vkey != 0;
+    }
+
+
+    Task IMicroService.OnApplicationStopping()
+    {
+        // 恢复窗口过程
+        if (_handle != IntPtr.Zero && _oldWndProc != IntPtr.Zero)
+        {
+            SetWindowLongPtr(_handle, GWL_WNDPROC, _oldWndProc);
+        }
+
+        // 注销所有热键
+        foreach (var id in _idMapping.Values)
+        {
+            UnregisterHotKey(_handle, id);
+        }
+        _idMapping.Clear();
+        _callbacks.Clear();
+        return Task.CompletedTask;
     }
 }
 

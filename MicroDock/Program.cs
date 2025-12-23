@@ -35,7 +35,7 @@ namespace MicroDock
             try
             {
                 //初始化服务
-                ServiceLocator.AutoInitializeServices();
+                ServiceLocator.InitializeServices();
                 await ServiceLocator.OnRegistered();
                 LogInformation("MicroDock 启动中...");
                 LogInformation($"应用版本: {AppConfig.MicroAppVersion}");

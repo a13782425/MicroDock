@@ -25,8 +25,10 @@ public static class ServiceLocator
     /// </summary>
     private static readonly Dictionary<Type, object> _servicesMappingDict = new();
 
-
-    public static void AutoInitializeServices()
+    /// <summary>
+    /// 初始化所有应用级服务（在 App 启动时调用一次）
+    /// </summary>
+    public static void InitializeServices()
     {
         var types = Assembly.GetExecutingAssembly()
             .GetTypes()
@@ -41,37 +43,7 @@ public static class ServiceLocator
             if (instance != null)
                 Register(instance);
         }
-        //可以手动注册
-    }
 
-    /// <summary>
-    /// 初始化所有应用级服务（在 App 启动时调用一次）
-    /// </summary>
-    public static void InitializeServices()
-    {
-        // 1. 注册不依赖窗口的服务
-        //Register(new EventService());
-        Register(new AutoStartupService());
-        Register(new TrayService());
-        Register(new DelayStorageService());
-
-        // 注册平台相关服务
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        {
-            Register<IPlatformService>(new WindowsPlatformService());
-        }
-
-        // 2. 注册需要窗口但延迟初始化的服务
-        Register(new AutoHideService());
-        Register(new TopMostService());
-
-        // 3. 注册原本使用 Instance 单例的服务
-        // 注意：IconService 是静态类，不需要注册
-        // 注意：LogService 在 Program.InitializeLogger() 中已提前注册
-        //Register(new PluginService());
-        Register(new ToolRegistry());
-        Register(new ThemeService());
-        Register(new TabLockService());
     }
 
     /// <summary>
@@ -110,8 +82,7 @@ public static class ServiceLocator
             // 2. 注册所有实现的接口（继承自 IMicroService 的）
             foreach (var interfaceType in concreteType.GetInterfaces())
             {
-                if (typeof(IMicroService).IsAssignableFrom(interfaceType)
-                    && interfaceType != typeof(IMicroService)
+                if (interfaceType != typeof(IMicroService)
                     && interfaceType != typeof(IDisposable))
                 {
                     _servicesMappingDict[interfaceType] = service;
@@ -163,6 +134,7 @@ public static class ServiceLocator
         lock (_lock)
         {
             _services.Clear();
+            _servicesMappingDict.Clear();
         }
     }
 

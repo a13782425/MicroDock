@@ -7,7 +7,7 @@ namespace MicroDock.Service;
 /// <summary>
 /// 平台特定服务接口
 /// </summary>
-public interface IPlatformService : IDisposable
+public interface IPlatformService
 {
 
     /// <summary>

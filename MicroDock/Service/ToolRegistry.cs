@@ -15,7 +15,8 @@ namespace MicroDock.Service;
 /// 工具注册表
 /// 负责工具的注册、查询、调用和统计
 /// </summary>
-public class ToolRegistry
+[AutoRegister]
+public class ToolRegistry : IMicroService
 {
     // 工具存储：插件名 -> 工具名 -> 工具定义
     private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, ToolDefinition>> _toolsByPlugin;
@@ -34,11 +35,11 @@ public class ToolRegistry
         _toolsByPlugin = new ConcurrentDictionary<string, ConcurrentDictionary<string, ToolDefinition>>();
         _globalTools = new ConcurrentDictionary<string, ToolDefinition>();
         _statistics = new ConcurrentDictionary<string, ToolStatistics>();
-        
+
         // 启动时从数据库加载历史统计
         LoadStatisticsFromDatabase();
     }
-    
+
     /// <summary>
     /// 从数据库加载历史统计
     /// </summary>
@@ -52,7 +53,7 @@ public class ToolRegistry
                 var key = $"{stat.PluginName}.{stat.ToolName}";
                 _statistics.TryAdd(key, stat);
             }
-            
+
             if (dbStats.Count > 0)
             {
                 Log.Information("从数据库加载了 {Count} 条工具统计", dbStats.Count);
@@ -80,7 +81,7 @@ public class ToolRegistry
         }
 
         // 获取或创建插件的工具字典
-        var pluginTools = _toolsByPlugin.GetOrAdd(pluginName, 
+        var pluginTools = _toolsByPlugin.GetOrAdd(pluginName,
             _ => new ConcurrentDictionary<string, ToolDefinition>());
 
         // 注册到插件的工具列表
@@ -93,7 +94,7 @@ public class ToolRegistry
         // 注册到全局工具索引（只保留第一个注册的）
         _globalTools.TryAdd(tool.Name, tool);
 
-        Log.Information("注册工具: {Tool} (插件: {Plugin}, 参数: {ParamCount})", 
+        Log.Information("注册工具: {Tool} (插件: {Plugin}, 参数: {ParamCount})",
             tool.Name, pluginName, tool.Parameters.Count);
     }
 
@@ -135,7 +136,7 @@ public class ToolRegistry
                 actualPluginName = tool.ProviderPlugin;
             }
 
-            Log.Information("调用工具: {Tool} (插件: {Plugin}), 参数: {@Parameters}", 
+            Log.Information("调用工具: {Tool} (插件: {Plugin}), 参数: {@Parameters}",
                 toolName, actualPluginName, parameters);
 
             // 2. 执行工具
@@ -146,7 +147,7 @@ public class ToolRegistry
             // 3. 更新统计（成功）
             UpdateStatistics(toolName, actualPluginName, true, stopwatch.Elapsed);
 
-            Log.Information("工具调用成功: {Tool}, 耗时: {Duration}ms", 
+            Log.Information("工具调用成功: {Tool}, 耗时: {Duration}ms",
                 toolName, stopwatch.ElapsedMilliseconds);
 
             return result;
@@ -160,7 +161,7 @@ public class ToolRegistry
             // 更新统计（失败）
             UpdateStatistics(toolName, actualPluginName, false, stopwatch.Elapsed);
 
-            Log.Error(ex, "工具调用失败: {Tool} (插件: {Plugin}), 耗时: {Duration}ms", 
+            Log.Error(ex, "工具调用失败: {Tool} (插件: {Plugin}), 耗时: {Duration}ms",
                 toolName, actualPluginName, stopwatch.ElapsedMilliseconds);
 
             if (ex is ToolExecutionException || ex is ToolParameterException)
@@ -194,7 +195,7 @@ public class ToolRegistry
                 }
                 catch (Exception ex)
                 {
-                    throw new ToolParameterException(tool.Name, paramInfo.Name, 
+                    throw new ToolParameterException(tool.Name, paramInfo.Name,
                         $"类型转换失败: {ex.Message}");
                 }
             }
@@ -214,7 +215,7 @@ public class ToolRegistry
 
         // 确定调用实例
         object? invokeInstance;
-        
+
         if (tool.IsStatic)
         {
             // 静态方法：传 null
@@ -235,9 +236,9 @@ public class ToolRegistry
                     try
                     {
                         tool.TargetInstance = Activator.CreateInstance(
-                            tool.TargetType, 
+                            tool.TargetType,
                             nonPublic: true);
-                        Log.Information("为工具 {Tool} 创建实例: {Type}", 
+                        Log.Information("为工具 {Tool} 创建实例: {Type}",
                             tool.Name, tool.TargetType.Name);
                     }
                     catch (Exception ex)
@@ -323,7 +324,7 @@ public class ToolRegistry
         // 5. 复杂类型通过 JSON 反序列化
         try
         {
-            return JsonSerializer.Deserialize(stringValue, targetType) 
+            return JsonSerializer.Deserialize(stringValue, targetType)
                 ?? throw new InvalidOperationException($"JSON 反序列化结果为 null");
         }
         catch (JsonException ex)
@@ -367,7 +368,7 @@ public class ToolRegistry
 
                 return stats;
             });
-        
+
         // 异步保存到数据库（避免阻塞调用）
         var currentStats = _statistics[key];
         Task.Run(() =>

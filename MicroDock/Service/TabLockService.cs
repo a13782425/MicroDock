@@ -6,13 +6,15 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace MicroDock.Service;
 
 /// <summary>
 /// 页签锁定服务 - 管理页签的密码保护和解锁状态
 /// </summary>
-public class TabLockService : IDisposable
+[AutoRegister]
+public class TabLockService : IMicroService
 {
     private const string LOG_TAG = "TabLockService";
 
@@ -29,14 +31,14 @@ public class TabLockService : IDisposable
     /// <summary>
     /// 超时检查定时器
     /// </summary>
-    private readonly DispatcherTimer _timeoutTimer;
+    private DispatcherTimer _timeoutTimer;
 
     /// <summary>
     /// 是否已释放
     /// </summary>
     private bool _disposed = false;
 
-    public TabLockService()
+    Task IMicroService.OnApplicationStarted()
     {
         // 创建定时器，每分钟检查一次超时
         _timeoutTimer = new DispatcherTimer
@@ -46,7 +48,8 @@ public class TabLockService : IDisposable
         _timeoutTimer.Tick += OnTimeoutTimerTick;
         _timeoutTimer.Start();
 
-        Log.Debug("[{Tag}] 页签锁定服务已初始化", LOG_TAG);
+        LogDebug("页签锁定服务已初始化", LOG_TAG);
+        return Task.CompletedTask;
     }
 
     #region 密码管理
@@ -365,16 +368,13 @@ public class TabLockService : IDisposable
 
     #endregion
 
-    public void Dispose()
+    Task IMicroService.OnApplicationStopping()
     {
-        if (_disposed)
-            return;
-
         _timeoutTimer.Stop();
         _timeoutTimer.Tick -= OnTimeoutTimerTick;
-        _disposed = true;
 
-        Log.Debug("[{Tag}] 页签锁定服务已释放", LOG_TAG);
+        LogDebug("[{Tag}] 页签锁定服务已释放", LOG_TAG);
+        return Task.CompletedTask;
     }
 }
 

@@ -4,13 +4,16 @@ using Serilog;
 using System;
 using System.Collections.Generic;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace MicroDock.Service;
 
 /// <summary>
 /// 延时存储
+/// IDatabaseData 的延迟存储
 /// </summary>
-public class DelayStorageService : IDisposable
+[AutoRegister]
+public class DelayStorageService : IMicroService
 {
     private readonly HashSet<IDatabaseDto> _dirtyQueue = new();
 
@@ -83,12 +86,11 @@ public class DelayStorageService : IDisposable
         }
     }
 
-    public void Dispose()
+    Task IMicroService.OnApplicationStopping()
     {
-        if (_disposed) return;
-        _disposed = true;
         _timer.Dispose();
         // 退出前最后一次保存
         Flush(null);
+        return Task.CompletedTask;
     }
 }
