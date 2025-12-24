@@ -164,21 +164,13 @@ public class LogService : ILogEventSink, IMicroService
     {
         try
         {
-            string logDirectory = Path.Combine(AppConfig.ROOT_PATH, "Log");
-
             // 确保日志目录存在
-            if (!Directory.Exists(logDirectory))
+            if (!Directory.Exists(LOG_FOLDER))
             {
-                Directory.CreateDirectory(logDirectory);
+                Directory.CreateDirectory(LOG_FOLDER);
             }
 
-            // 使用 Windows 资源管理器打开文件夹
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = "explorer.exe",
-                Arguments = logDirectory,
-                UseShellExecute = true
-            });
+            ServiceLocator.Get<IPlatformService>()?.OpenExplorer(LOG_FOLDER);
         }
         catch (Exception ex)
         {

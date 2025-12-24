@@ -352,9 +352,6 @@ public class SettingsTabViewModel : ViewModelBase
     {
         PluginSettings.Clear();
 
-        // 获取插件目录路径
-        string pluginDirectory = Path.Combine(AppConfig.ROOT_PATH, "plugins");
-
         // 加载所有插件
         IReadOnlyList<PluginInfo> plugins = ServiceLocator.Get<PluginService>().LoadedPlugins;
 
@@ -855,12 +852,11 @@ public class SettingsTabViewModel : ViewModelBase
     {
         try
         {
-            string pluginDirectory = Path.Combine(AppConfig.ROOT_PATH, "plugins");
-            if (!Directory.Exists(pluginDirectory))
+            if (!Directory.Exists(PLUGIN_FOLDER))
             {
-                Directory.CreateDirectory(pluginDirectory);
+                Directory.CreateDirectory(PLUGIN_FOLDER);
             }
-            ServiceLocator.Get<IPlatformService>()?.OpenExplorer(pluginDirectory);
+            ServiceLocator.Get<IPlatformService>()?.OpenExplorer(PLUGIN_FOLDER);
         }
         catch (Exception ex)
         {

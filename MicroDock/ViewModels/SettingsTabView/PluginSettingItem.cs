@@ -468,7 +468,7 @@ public class PluginSettingItem : ViewModelBase
     /// </summary>
     private string GetPluginFolderPath()
     {
-        return Path.Combine(AppConfig.ROOT_PATH, "plugins", UniqueName);
+        return Path.Combine(PLUGIN_FOLDER, UniqueName);
     }
 
     /// <summary>
@@ -476,7 +476,7 @@ public class PluginSettingItem : ViewModelBase
     /// </summary>
     private string GetPluginDataPath()
     {
-        return Path.Combine(GetPluginFolderPath(), "data");
+        return Path.Combine(PLUGIN_DATA_FOLDER, UniqueName, "data");
     }
 
     /// <summary>
@@ -509,7 +509,7 @@ public class PluginSettingItem : ViewModelBase
         try
         {
             var settings = Database.DBContext.GetSetting();
-            
+
             if (string.IsNullOrEmpty(settings.ServerAddress))
             {
                 ShowNotification("备份失败", "请先在高级设置中配置服务器地址", AppNotificationType.Warning);
@@ -568,7 +568,7 @@ public class PluginSettingItem : ViewModelBase
         try
         {
             var settings = Database.DBContext.GetSetting();
-            
+
             if (string.IsNullOrEmpty(settings.ServerAddress) && string.IsNullOrEmpty(settings.BackupServerAddress))
             {
                 ShowNotification("恢复失败", "请先在高级设置中配置服务器地址或备份地址", AppNotificationType.Warning);
@@ -765,7 +765,7 @@ public class PluginSettingItem : ViewModelBase
         try
         {
             var settings = Database.DBContext.GetSetting();
-            
+
             if (string.IsNullOrEmpty(settings.ServerAddress))
             {
                 ShowNotification("上传失败", "请先在高级设置中配置服务器地址", AppNotificationType.Warning);

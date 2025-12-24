@@ -56,17 +56,17 @@ namespace MicroDock
                     {
                         try
                         {
-                            if (AppConfig.MainWindow != null)
+                            if (AppConfig.MicroMainWindow != null)
                             {
                                 // 如果窗口最小化，先恢复
-                                if (AppConfig.MainWindow.WindowState == Avalonia.Controls.WindowState.Minimized)
+                                if (AppConfig.MicroMainWindow.WindowState == Avalonia.Controls.WindowState.Minimized)
                                 {
-                                    AppConfig.MainWindow.WindowState = Avalonia.Controls.WindowState.Normal;
+                                    AppConfig.MicroMainWindow.WindowState = Avalonia.Controls.WindowState.Normal;
                                 }
 
                                 // 显示并激活窗口
-                                AppConfig.MainWindow.Show();
-                                AppConfig.MainWindow.Activate();
+                                AppConfig.MicroMainWindow.Show();
+                                AppConfig.MicroMainWindow.Activate();
 
                                 Serilog.Log.Information("已显示并激活主窗口（响应其他实例请求）");
                             }

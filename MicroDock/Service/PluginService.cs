@@ -751,8 +751,7 @@ namespace MicroDock.Service
                     }
 
                     // 尝试从插件目录加载
-                    string pluginDirectory = Path.Combine(AppConfig.ROOT_PATH, "plugins");
-                    string pluginFolder = Path.Combine(pluginDirectory, pluginName);
+                    string pluginFolder = Path.Combine(PLUGIN_FOLDER, pluginName);
 
                     if (!Directory.Exists(pluginFolder))
                     {
