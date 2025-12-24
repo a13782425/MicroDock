@@ -15,6 +15,7 @@ using System.IO;
 using System.Linq;
 using System.Reactive;
 using System.Threading.Tasks;
+using Windows.Media.DialProtocol;
 
 namespace MicroDock.ViewModels;
 
@@ -29,7 +30,7 @@ public class SettingsTabViewModel : ViewModelBase
     private bool _showLogViewer;
     private bool _showResViewer;
     private string _selectedTheme = string.Empty;
-
+    private string _storageFolderPath = string.Empty;
     // Command to save order after reordering
     public ReactiveCommand<Unit, Unit> SaveTabOrderCommand { get; }
 
@@ -42,6 +43,8 @@ public class SettingsTabViewModel : ViewModelBase
         BackupAppDataCommand = ReactiveCommand.CreateFromTask(BackupAppData);
         RestoreAppDataCommand = ReactiveCommand.CreateFromTask(RestoreAppData);
         InstallPluginCommand = ReactiveCommand.CreateFromTask(InstallPluginFromServer);
+        OpenStorageFolderCommand = ReactiveCommand.Create(OnOpenStorageFolder);
+        BrowseStorageFolderCommand = ReactiveCommand.CreateFromTask(OnBrowseStorageFolder);
 
         PluginSettings = new ObservableCollection<PluginSettingItem>();
         AvailableThemes = new ObservableCollection<MicroDock.Model.ThemeModel>();
@@ -50,6 +53,7 @@ public class SettingsTabViewModel : ViewModelBase
 
         NavigationTabs = new ObservableCollection<NavigationTabSettingItem>();
 
+        LoadAppSettings();
         LoadSettings();
         LoadThemes();
         LoadNavigationTabs();
@@ -57,49 +61,19 @@ public class SettingsTabViewModel : ViewModelBase
         // 加载插件设置（使用单例实例）
         LoadPluginSettings();
 
-        // 订阅服务状态变更通知
-        ServiceLocator.Get<EventService>()?.Subscribe<ServiceStateChangedMessage>(OnServiceStateChanged);
-
         // 订阅插件事件
         ServiceLocator.Get<EventService>()?.Subscribe<PluginImportedMessage>(OnPluginImported);
         ServiceLocator.Get<EventService>()?.Subscribe<PluginDeletedMessage>(OnPluginDeleted);
     }
 
-    /// <summary>
-    /// 处理服务状态变更通知
-    /// </summary>
-    private void OnServiceStateChanged(ServiceStateChangedMessage message)
+    public string StorageFolderPath
     {
-        // 当服务状态从外部变更时，同步到ViewModel和数据库
-        switch (message.ServiceName)
+        get => _storageFolderPath;
+        set
         {
-            case "AutoStartup":
-                if (_autoStartup != message.IsEnabled)
-                {
-                    _autoStartup = message.IsEnabled;
-                    this.RaisePropertyChanged(nameof(AutoStartup));
-                    SaveSetting(nameof(AutoStartup), message.IsEnabled);
-                }
-                break;
-            case "AutoHide":
-                if (_autoHide != message.IsEnabled)
-                {
-                    _autoHide = message.IsEnabled;
-                    this.RaisePropertyChanged(nameof(AutoHide));
-                    SaveSetting(nameof(AutoHide), message.IsEnabled);
-                }
-                break;
-            case "AlwaysOnTop":
-                if (_alwaysOnTop != message.IsEnabled)
-                {
-                    _alwaysOnTop = message.IsEnabled;
-                    this.RaisePropertyChanged(nameof(AlwaysOnTop));
-                    SaveSetting(nameof(AlwaysOnTop), message.IsEnabled);
-                }
-                break;
+            this.RaiseAndSetIfChanged(ref _storageFolderPath, value);
         }
     }
-
     /// <summary>
     /// 是否开机自启动
     /// </summary>
@@ -358,43 +332,13 @@ public class SettingsTabViewModel : ViewModelBase
         ServiceLocator.Get<EventService>().Publish(new NavigationTabsConfigurationChangedMessage());
     }
 
-    public void MoveTab(NavigationTabSettingItem source, NavigationTabSettingItem target)
-    {
-        if (source == target) return;
-
-        int oldIndex = NavigationTabs.IndexOf(source);
-        int newIndex = NavigationTabs.IndexOf(target);
-
-        if (oldIndex < 0 || newIndex < 0) return;
-
-        // Move in ObservableCollection
-        NavigationTabs.Move(oldIndex, newIndex);
-
-        // Re-assign OrderIndex for all items to ensure consistency
-        for (int i = 0; i < NavigationTabs.Count; i++)
-        {
-            var item = NavigationTabs[i];
-            if (item.OrderIndex != i)
-            {
-                item.OrderIndex = i;
-
-                // Update DB
-                var itemDB = DBContext.GetNavigationTab(item.UniqueId);
-                if (itemDB != null)
-                {
-                    itemDB.OrderIndex = i;
-                    DBContext.UpdateNavigationTab(itemDB);
-                }
-            }
-        }
-
-        ServiceLocator.Get<EventService>().Publish(new NavigationTabsConfigurationChangedMessage());
-    }
-
     /// <summary>
     /// 导入插件命令
     /// </summary>
     public ReactiveCommand<Unit, Unit> ImportPluginCommand { get; }
+
+    public ReactiveCommand<Unit, Unit> BrowseStorageFolderCommand { get; }   // 浏览选择
+    public ReactiveCommand<Unit, Unit> OpenStorageFolderCommand { get; }     // 打开文件夹
 
     /// <summary>
     /// 插件设置列表
@@ -475,10 +419,10 @@ public class SettingsTabViewModel : ViewModelBase
         {
 
             // 使用新的 StorageProvider API
-            if (Avalonia.Application.Current?.ApplicationLifetime is not Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop || desktop.MainWindow == null)
+            if (MicroMainWindow == null)
                 return;
 
-            IStorageProvider? storageProvider = desktop.MainWindow.StorageProvider;
+            IStorageProvider? storageProvider = MicroMainWindow.StorageProvider;
             if (storageProvider == null)
                 return;
 
@@ -626,7 +570,7 @@ public class SettingsTabViewModel : ViewModelBase
         _autoHide = settings.AutoHide;
         _alwaysOnTop = settings.AlwaysOnTop;
         _showLogViewer = settings.ShowLogViewer;
-        _showLogViewer = settings.ShowResViewer;
+        _showResViewer = settings.ShowResViewer;
         _selectedTheme = settings.SelectedTheme;
 
         // 加载服务器与备份设置
@@ -634,6 +578,7 @@ public class SettingsTabViewModel : ViewModelBase
         _backupServerAddress = settings.BackupServerAddress ?? string.Empty;
         _backupPassword = settings.BackupPassword ?? string.Empty;
         _serverValidationKey = settings.ServerValidationKey ?? string.Empty;
+
 
         // 通知UI更新（仅UI，不触发setter中的事件发布）
         this.RaisePropertyChanged(nameof(AutoStartup));
@@ -649,6 +594,12 @@ public class SettingsTabViewModel : ViewModelBase
 
         // 更新备份时间显示
         UpdateLastBackupTime();
+    }
+
+    private void LoadAppSettings()
+    {
+        _storageFolderPath = AppSettings.Instance.StoragePath;
+        this.RaisePropertyChanged(nameof(StorageFolderPath));
     }
 
     /// <summary>
@@ -707,6 +658,49 @@ public class SettingsTabViewModel : ViewModelBase
         catch (Exception ex)
         {
             Serilog.Log.Error(ex, "加载主题列表失败");
+        }
+    }
+
+    private void OnOpenStorageFolder()
+    {
+        ServiceLocator.Get<IPlatformService>()?.OpenExplorer(AppSettings.Instance.StoragePath);
+    }
+
+    private async Task OnBrowseStorageFolder()
+    {
+        if (MicroMainWindow == null)
+            return;
+        var storageProvider = MicroMainWindow.StorageProvider;
+
+
+        IStorageFolder? startLocation = await storageProvider.TryGetFolderFromPathAsync(AppSettings.Instance.StoragePath);
+        // 打开文件夹选择对话框
+        var result = await storageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        {
+            Title = "选择数据存储文件夹",
+            AllowMultiple = false,
+            SuggestedStartLocation = startLocation
+        });
+        // 返回选中的路径
+        if (result != null && result.Count > 0)
+        {
+            if (Path.GetFullPath(result[0].Path.LocalPath) == Path.GetFullPath(AppSettings.Instance.StoragePath))
+            {
+                UniversalUtils.ShowNotification("存储文件夹", "文件夹路径没有变化");
+                return;
+            }
+            AppSettings.Instance.OldStoragePath = AppSettings.Instance.StoragePath;
+            AppSettings.Instance.StoragePath = result[0].Path.LocalPath;
+            AppSettings.Save();
+            StorageFolderPath = result[0].Path.LocalPath;
+            bool restart = await ShowConfirmDialogAsync(
+                               "存储路径设置成功",
+                               "是否立即重启应用以完成更新？"
+                           );
+            if (restart)
+            {
+                Utils.UniversalUtils.RestartApplication(RESTART_REASON_STORAGE_CHANGED);
+            }
         }
     }
 

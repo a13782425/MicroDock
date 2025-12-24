@@ -53,7 +53,7 @@ public class PluginPendingService : IMicroService
             {
                 string pluginName = pendingUpdate.Key;
                 PluginUpdateInfo pluginUpdateInfo = pendingUpdate.Value;
-                string tempPluginDir = Path.Combine(TEMP_PLUGIN_FOLDER, pluginName);
+                string tempPluginDir = Path.Combine(TEMP_INSTALL_FOLDER, pluginName);
                 string targetPluginDir = Path.Combine(PLUGIN_FOLDER, pluginName);
 
                 LogInformation($"处理待更新插件: {pluginName} v{pluginUpdateInfo.OldVersion} -> v{pluginUpdateInfo.Version}", DEFAULT_LOG_TAG);
@@ -78,7 +78,7 @@ public class PluginPendingService : IMicroService
                         {
                             if (Directory.Exists(dataDir))
                             {
-                                tempDataBackup = Path.Combine(TEMP_PLUGIN_FOLDER, $"{pluginName}_Data_Backup");
+                                tempDataBackup = Path.Combine(TEMP_INSTALL_FOLDER, $"{pluginName}_Data_Backup");
 
                                 // 如果备份目录已存在，先删除
                                 if (Directory.Exists(tempDataBackup))
@@ -272,7 +272,7 @@ public class PluginPendingService : IMicroService
         var pluginUpdateInfo = new PluginUpdateInfo
         {
             Version = version,
-            Path = Path.Combine(TEMP_PLUGIN_FOLDER, pluginName)
+            Path = Path.Combine(TEMP_INSTALL_FOLDER, pluginName)
         };
         pluginUpdateInfo.OldVersion = DBContext.GetPluginInfo(pluginName)?.Version ?? "";
 
@@ -290,7 +290,7 @@ public class PluginPendingService : IMicroService
             Save();
 
             // 同时删除临时文件
-            var sourcePath = Path.Combine(TEMP_PLUGIN_FOLDER, pluginName);
+            var sourcePath = Path.Combine(TEMP_INSTALL_FOLDER, pluginName);
             if (Directory.Exists(sourcePath))
             {
                 try { Directory.Delete(sourcePath, true); } catch { }

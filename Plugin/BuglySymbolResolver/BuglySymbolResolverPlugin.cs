@@ -237,7 +237,7 @@ public class BuglySymbolResolverPlugin : BaseMicroDockPlugin
     {
         try
         {
-            var dataPath = GetPluginDataPath();
+            var dataPath = GetDataPath();
             var settingsPath = Path.Combine(dataPath, SettingsFileName);
 
             if (File.Exists(settingsPath))
@@ -267,7 +267,7 @@ public class BuglySymbolResolverPlugin : BaseMicroDockPlugin
     {
         try
         {
-            var dataPath = GetPluginDataPath();
+            var dataPath = GetDataPath();
             
             // 确保目录存在
             if (!Directory.Exists(dataPath))
@@ -342,7 +342,7 @@ public class BuglySymbolResolverPlugin : BaseMicroDockPlugin
         try
         {
             // 确保数据目录存在
-            var dataPath = GetPluginDataPath();
+            var dataPath = GetDataPath();
             if (!Directory.Exists(dataPath))
             {
                 Directory.CreateDirectory(dataPath);

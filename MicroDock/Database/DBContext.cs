@@ -14,7 +14,7 @@ internal static class DBContext
     private static SQLiteConnection _database;
     static DBContext()
     {   // 获取应用数据目录
-        string dbPath = Path.Combine(AppConfig.CONFIG_FOLDER, "microdock");
+        string dbPath = Path.Combine(MAIN_DATA_FOLDER, "microdock");
         _database = new SQLiteConnection(dbPath);
         // 自动创建表，如果表结构有变化会自动更新
         // 使用 MigrateTable 来支持添加新列

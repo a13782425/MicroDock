@@ -7,10 +7,10 @@
              mc:Ignorable="d"
              x:Class="MicroDock.Views.Controls.PluginSettingCard"
              x:DataType="vm:PluginSettingItem">
-	<Border Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
-            BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
-            BorderThickness="1"
-            CornerRadius="6"
+	<Border Background="{DynamicResource ExpanderHeaderBackground}"
+            BorderBrush="{DynamicResource ExpanderHeaderBorderBrush}"
+			BorderThickness="{DynamicResource ExpanderHeaderBorderThickness}"
+            CornerRadius="{DynamicResource ControlCornerRadius}"
             Margin="0,4">
 		<Expander Padding="12,8">
 			<Expander.Header>
@@ -100,7 +100,6 @@
 								</MenuFlyout>
 							</Button.Flyout>
 						</Button>
-
 					</StackPanel>
 				</Grid>
 			</Expander.Header>
@@ -125,8 +124,8 @@
 					<ItemsControl ItemsSource="{Binding Tools}">
 						<ItemsControl.ItemTemplate>
 							<DataTemplate DataType="plugin:ToolInfo">
-								<Border Background="{DynamicResource SubtleFillColorSecondaryBrush}"
-                                        BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+								<Border Background="{DynamicResource Transparent}"
+                                        BorderBrush="{DynamicResource ExpanderContentBorderBrush}"
                                         BorderThickness="1"
                                         Padding="10,6"
                                         CornerRadius="6"

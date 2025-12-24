@@ -31,6 +31,39 @@ internal static class AppConfig
     /// 插件文件夹
     /// </summary>
     public static string PLUGIN_FOLDER { get; } = Path.Combine(ROOT_PATH, "plugins");
+    /// <summary>
+    /// 存储路径
+    /// </summary>
+    public static string STORGE_PATH => AppSettings.Instance.StoragePath;
+    /// <summary>
+    /// 所有数据路径
+    /// </summary>
+    public static string DATA_FOLDER { get; } = Path.Combine(STORGE_PATH, "data");
+    /// <summary>
+    /// 主程序数据路径
+    /// </summary>
+    public static string MAIN_DATA_FOLDER { get; } = Path.Combine(DATA_FOLDER, "engine");
+    /// <summary>
+    /// 插件的数据路径
+    /// </summary>
+    public static string PLUGIN_DATA_FOLDER { get; } = Path.Combine(DATA_FOLDER, "plugins");
+    /// <summary>
+    /// 应用日志路径
+    /// </summary>
+    public static string LOG_FOLDER { get; } = Path.Combine(STORGE_PATH, "logs");
+    /// <summary>
+    /// 临时目录
+    /// </summary>
+    public static string TEMP_FOLDER { get; } = Path.Combine(STORGE_PATH, "temp");
+    /// <summary>
+    /// 主程序临时目录
+    /// </summary>
+    public static string MAIN_TEMP_DATA_FOLDER { get; } = Path.Combine(TEMP_FOLDER, "engine");
+
+    /// <summary>
+    /// 插件临时目录
+    /// </summary>
+    public static string PLUGIN_TEMP_DATA_FOLDER { get; } = Path.Combine(TEMP_FOLDER, "plugins");
 
 
 
@@ -59,14 +92,9 @@ internal static class AppConfig
     #region 临时目录配置
 
     /// <summary>
-    /// 临时文件根目录
-    /// </summary>
-    public static string TEMP_FOLDER => Path.Combine(ROOT_PATH, "temp");
-
-    /// <summary>
     /// 插件更新临时目录（存放待安装的插件）
     /// </summary>
-    public static string TEMP_PLUGIN_FOLDER => Path.Combine(TEMP_FOLDER, "plugin");
+    public static string TEMP_INSTALL_FOLDER => Path.Combine(TEMP_FOLDER, "install");
 
     /// <summary>
     /// 备份/恢复临时目录
@@ -96,9 +124,9 @@ internal static class AppConfig
         {
             Directory.CreateDirectory(TEMP_FOLDER);
         }
-        if (!Directory.Exists(TEMP_PLUGIN_FOLDER))
+        if (!Directory.Exists(TEMP_INSTALL_FOLDER))
         {
-            Directory.CreateDirectory(TEMP_PLUGIN_FOLDER);
+            Directory.CreateDirectory(TEMP_INSTALL_FOLDER);
         }
         if (!Directory.Exists(TEMP_BACKUP_FOLDER))
         {

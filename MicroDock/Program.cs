@@ -22,16 +22,11 @@ namespace MicroDock
         [STAThread]
         public static void Main(string[] args)
         {
-            Startup(args).Wait();
-        }
-
-        private static async Task<bool> Startup(string[] args)
-        {
             try
             {
                 //初始化服务
                 ServiceLocator.InitializeServices();
-                await ServiceLocator.OnRegistered();
+                ServiceLocator.OnRegistered().GetAwaiter().GetResult();
                 LogInformation("MicroDock 启动中...");
                 LogInformation($"应用版本: {AppConfig.MicroAppVersion}");
 
@@ -43,11 +38,11 @@ namespace MicroDock
                     LogInformation("检测到已有 MicroDock 实例正在运行，通知显示窗口后退出");
                     ServiceLocator.Get<SingleInstanceService>().NotifyExistingInstance();
                     LogInformation("程序退出");
-                    return false; // 退出程序
+                    return; // 退出程序
                 }
 
                 AppConfig.MicroAppBuilder = BuildAvaloniaApp();
-                await ServiceLocator.OnAfterAppBuilder();
+                ServiceLocator.OnAfterAppBuilder().GetAwaiter().GetResult();
                 MicroAppBuilder.UseWin32()
                     .UseSkia()
                     .WithInterFont()
@@ -55,14 +50,13 @@ namespace MicroDock
                     .LogToTrace()
                     .UseReactiveUI();
                 MicroNotificationManager = _notificationManager;
-                await ServiceLocator.OnBeforeSplashScreen();
+                ServiceLocator.OnBeforeSplashScreen().GetAwaiter().GetResult();
                 AppConfig.MicroAppBuilder.StartWithClassicDesktopLifetime(args);
-                return true;
             }
             catch (Exception ex)
             {
                 Log.Fatal(ex, "应用程序启动失败");
-                return false;
+                return;
             }
             finally
             {
@@ -72,10 +66,9 @@ namespace MicroDock
                 Log.CloseAndFlush();
             }
         }
-
         // Avalonia configuration, don't remove; also used by visual designer.
         public static AppBuilder BuildAvaloniaApp()
             => AppBuilder.Configure<App>();
-               
+
     }
 }

@@ -57,21 +57,6 @@ public class AutoStartupChangeRequestMessage : IEventMessage
 }
 
 /// <summary>
-/// 服务状态变更通知消息
-/// </summary>
-public class ServiceStateChangedMessage : IEventMessage
-{
-    public string ServiceName { get; }
-    public bool IsEnabled { get; }
-
-    public ServiceStateChangedMessage(string serviceName, bool isEnabled)
-    {
-        ServiceName = serviceName;
-        IsEnabled = isEnabled;
-    }
-}
-
-/// <summary>
 /// 导航到标签页消息
 /// </summary>
 public class NavigateToTabMessage : IEventMessage

@@ -19,4 +19,10 @@ internal static class GlobalConst
     /// </summary>
     public const string NAVIGATION_SETTING_ID = "microdock:settingstabview";
 
+    /// <summary>
+    /// 重启原因
+    /// 存储路径变化
+    /// </summary>
+    public const string RESTART_REASON_STORAGE_CHANGED = "storage_changed";
+
 }

@@ -152,7 +152,6 @@ public partial class MainWindow : AppWindow
             autoHideService.Disable();
         }
 
-        ServiceLocator.Get<EventService>().Publish(new ServiceStateChangedMessage("AutoHide", message.Enable));
     }
 
     /// <summary>
@@ -170,7 +169,6 @@ public partial class MainWindow : AppWindow
             autoStartupService.Disable();
         }
 
-        ServiceLocator.Get<EventService>().Publish(new ServiceStateChangedMessage("AutoStartup", message.Enable));
     }
 
     /// <summary>
@@ -189,8 +187,6 @@ public partial class MainWindow : AppWindow
         {
             topMostService.Disable();
         }
-
-        ServiceLocator.Get<EventService>().Publish(new ServiceStateChangedMessage("AlwaysOnTop", this.Topmost));
     }
 
     /// <summary>

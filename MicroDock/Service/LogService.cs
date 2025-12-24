@@ -41,15 +41,14 @@ public class LogService : ILogEventSink, IMicroService
     Task IMicroService.OnRegistered()
     {
         // 日志保存在软件目录下的Log文件夹
-        string logDirectory = Path.Combine(AppConfig.ROOT_PATH, "log");
-
+    
         // 确保日志目录存在
-        if (!Directory.Exists(logDirectory))
+        if (!Directory.Exists(LOG_FOLDER))
         {
-            Directory.CreateDirectory(logDirectory);
+            Directory.CreateDirectory(LOG_FOLDER);
         }
 
-        string logFilePath = Path.Combine(logDirectory, "log-.txt");
+        string logFilePath = Path.Combine(LOG_FOLDER, "log-.txt");
 
         Log.Logger = new LoggerConfiguration()
 #if DEBUG
@@ -71,7 +70,7 @@ public class LogService : ILogEventSink, IMicroService
             .WriteTo.Sink(this)
             .CreateLogger();
 
-        LogInformation($"日志系统初始化完成，日志目录: {logDirectory}");
+        LogInformation($"日志系统初始化完成，日志目录: {LOG_FOLDER}");
         return Task.CompletedTask;
     }
 

@@ -20,7 +20,7 @@ public abstract class BaseMicroDockPlugin : IMicroDockPlugin
         {
             throw new InvalidOperationException("插件的上下文已经被初始化");
         }
-        
+
         Context = context ?? throw new ArgumentNullException(nameof(context));
     }
 
@@ -38,8 +38,8 @@ public abstract class BaseMicroDockPlugin : IMicroDockPlugin
     /// <summary>
     /// 插件初始化
     /// </summary>
-    public virtual void OnInit() 
-    { 
+    public virtual void OnInit()
+    {
         // 子类可以重写此方法
     }
     /// <summary>
@@ -58,24 +58,24 @@ public abstract class BaseMicroDockPlugin : IMicroDockPlugin
     /// <summary>
     /// 插件启用
     /// </summary>
-    public virtual void OnEnable() 
-    { 
+    public virtual void OnEnable()
+    {
         // 子类可以重写此方法
     }
-    
+
     /// <summary>
     /// 插件禁用
     /// </summary>
-    public virtual void OnDisable() 
-    { 
+    public virtual void OnDisable()
+    {
         // 子类可以重写此方法
     }
-    
+
     /// <summary>
     /// 插件销毁
     /// </summary>
-    public virtual void OnDestroy() 
-    { 
+    public virtual void OnDestroy()
+    {
         // 子类可以重写此方法
     }
 
@@ -86,9 +86,9 @@ public abstract class BaseMicroDockPlugin : IMicroDockPlugin
     {
         // 子类可以重写此方法
     }
-    
+
     #region 便捷方法 - 工具调用
-    
+
     /// <summary>
     /// 调用工具（异步）
     /// </summary>
@@ -103,7 +103,7 @@ public abstract class BaseMicroDockPlugin : IMicroDockPlugin
         EnsureContextInitialized();
         return await Context!.CallToolAsync(toolName, parameters, pluginName);
     }
-    
+
     /// <summary>
     /// 获取所有可用工具
     /// </summary>
@@ -112,7 +112,7 @@ public abstract class BaseMicroDockPlugin : IMicroDockPlugin
         EnsureContextInitialized();
         return Context!.GetAvailableTools();
     }
-    
+
     /// <summary>
     /// 获取指定插件的工具列表
     /// </summary>
@@ -121,7 +121,7 @@ public abstract class BaseMicroDockPlugin : IMicroDockPlugin
         EnsureContextInitialized();
         return Context!.GetPluginTools(pluginName);
     }
-    
+
     /// <summary>
     /// 获取工具详细信息
     /// </summary>
@@ -130,11 +130,11 @@ public abstract class BaseMicroDockPlugin : IMicroDockPlugin
         EnsureContextInitialized();
         return Context!.GetToolInfo(toolName, pluginName);
     }
-    
+
     #endregion
-    
+
     #region 便捷方法 - 日志
-    
+
     /// <summary>
     /// 输出调试日志
     /// </summary>
@@ -143,7 +143,7 @@ public abstract class BaseMicroDockPlugin : IMicroDockPlugin
         EnsureContextInitialized();
         Context!.LogDebug(message);
     }
-    
+
     /// <summary>
     /// 输出信息日志
     /// </summary>
@@ -152,7 +152,7 @@ public abstract class BaseMicroDockPlugin : IMicroDockPlugin
         EnsureContextInitialized();
         Context!.LogInfo(message);
     }
-    
+
     /// <summary>
     /// 输出警告日志
     /// </summary>
@@ -161,7 +161,7 @@ public abstract class BaseMicroDockPlugin : IMicroDockPlugin
         EnsureContextInitialized();
         Context!.LogWarning(message);
     }
-    
+
     /// <summary>
     /// 输出错误日志
     /// </summary>
@@ -170,11 +170,11 @@ public abstract class BaseMicroDockPlugin : IMicroDockPlugin
         EnsureContextInitialized();
         Context!.LogError(message, exception);
     }
-    
+
     #endregion
-    
+
     #region 便捷方法 - 图片管理
-    
+
     /// <summary>
     /// 保存图片
     /// </summary>
@@ -183,7 +183,7 @@ public abstract class BaseMicroDockPlugin : IMicroDockPlugin
         EnsureContextInitialized();
         Context!.SaveImage(key, imageData);
     }
-    
+
     /// <summary>
     /// 加载图片
     /// </summary>
@@ -192,7 +192,7 @@ public abstract class BaseMicroDockPlugin : IMicroDockPlugin
         EnsureContextInitialized();
         return Context!.LoadImage(key);
     }
-    
+
     /// <summary>
     /// 删除图片
     /// </summary>
@@ -222,15 +222,24 @@ public abstract class BaseMicroDockPlugin : IMicroDockPlugin
         EnsureContextInitialized();
         return Context!.ConfigPath;
     }
-    
+
     /// <summary>
     /// 获取插件数据目录
     /// </summary>
-    protected string GetPluginDataPath()
+    protected string GetDataPath()
     {
         EnsureContextInitialized();
         return Context!.DataPath;
     }
+    /// <summary>
+    /// 获取插件临时数据目录
+    /// </summary>
+    protected string GetTempDataPath()
+    {
+        EnsureContextInitialized();
+        return Context!.TempDataPath;
+    }
+
     /// <summary>
     /// 获取插件依赖程序集路径
     /// </summary>

@@ -142,7 +142,7 @@ namespace MicroDock.Service
                         // 版本不同，标记为待更新
                         LogInformation($"插件 {pluginName} 版本不同: {currentVersion} -> {newVersion}，标记为待更新", DEFAULT_LOG_TAG);
                         // 解压到 temp/plugin/[PluginName] 目录
-                        string tempPluginDir = Path.Combine(TEMP_PLUGIN_FOLDER, pluginName);
+                        string tempPluginDir = Path.Combine(TEMP_INSTALL_FOLDER, pluginName);
 
                         // 如果临时目录已存在，先删除
                         if (Directory.Exists(tempPluginDir))
@@ -925,7 +925,7 @@ namespace MicroDock.Service
                 ServiceLocator.Get<PluginPendingService>()?.CancelUpdate(pluginName);
 
                 // 2. 删除临时插件目录中的临时文件
-                string pluginTempDirectory = AppConfig.TEMP_PLUGIN_FOLDER;
+                string pluginTempDirectory = AppConfig.TEMP_INSTALL_FOLDER;
                 string tempPluginDir = Path.Combine(pluginTempDirectory, pluginName);
 
                 if (Directory.Exists(tempPluginDir))
