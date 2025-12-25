@@ -1,16 +1,9 @@
-using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Markup.Xaml;
 using Avalonia.Media;
 using MicroDock.Plugin;
-using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.IO;
-using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
 
 namespace BuglySymbolResolver;
 
@@ -67,7 +60,7 @@ public partial class BuglySymbolResolverTab : UserControl, IMicroTab
 {
     public string TabName => "符号解析";
 
-    public IconSymbolEnum IconSymbol => IconSymbolEnum.Code;
+    public object IconSymbol => "Code";
 
     private BuglySymbolResolverPlugin? _plugin;
 

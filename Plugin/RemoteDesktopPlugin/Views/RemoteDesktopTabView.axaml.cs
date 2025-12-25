@@ -1,11 +1,9 @@
-using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using FluentAvalonia.UI.Controls;
 using MicroDock.Plugin;
 using RemoteDesktopPlugin.ViewModels;
-using System;
 
 namespace RemoteDesktopPlugin.Views
 {
@@ -38,7 +36,7 @@ namespace RemoteDesktopPlugin.Views
 
         public string TabName => "远程桌面";
 
-        public IconSymbolEnum IconSymbol => IconSymbolEnum.Remote;
+        public object IconSymbol => Symbol.Remote;
 
         private void InitializeComponent()
         {

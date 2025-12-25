@@ -87,6 +87,12 @@ public abstract class BaseMicroDockPlugin : IMicroDockPlugin
         // 子类可以重写此方法
     }
 
+    /// <summary>
+    /// 当有插件导入时候调用
+    /// </summary>
+    /// <param name="pluginName">导入的插件名</param>
+    public virtual void OnImportPlugin(string pluginName) { }
+
     #region 便捷方法 - 工具调用
 
     /// <summary>
@@ -95,9 +101,9 @@ public abstract class BaseMicroDockPlugin : IMicroDockPlugin
     /// <param name="toolName">工具名称</param>
     /// <param name="parameters">参数字典（字符串键值对）</param>
     /// <param name="pluginName">可选的插件名称</param>
-    protected async System.Threading.Tasks.Task<string> CallToolAsync(
+    protected async Task<string> CallToolAsync(
         string toolName,
-        System.Collections.Generic.Dictionary<string, string> parameters,
+        Dictionary<string, string> parameters,
         string? pluginName = null)
     {
         EnsureContextInitialized();
@@ -107,7 +113,7 @@ public abstract class BaseMicroDockPlugin : IMicroDockPlugin
     /// <summary>
     /// 获取所有可用工具
     /// </summary>
-    protected System.Collections.Generic.List<ToolInfo> GetAvailableTools()
+    protected List<string> GetAvailableTools()
     {
         EnsureContextInitialized();
         return Context!.GetAvailableTools();
@@ -116,19 +122,10 @@ public abstract class BaseMicroDockPlugin : IMicroDockPlugin
     /// <summary>
     /// 获取指定插件的工具列表
     /// </summary>
-    protected System.Collections.Generic.List<ToolInfo> GetPluginTools(string pluginName)
+    protected List<string> GetPluginTools(string pluginName)
     {
         EnsureContextInitialized();
         return Context!.GetPluginTools(pluginName);
-    }
-
-    /// <summary>
-    /// 获取工具详细信息
-    /// </summary>
-    protected ToolInfo? GetToolInfo(string toolName, string? pluginName = null)
-    {
-        EnsureContextInitialized();
-        return Context!.GetToolInfo(toolName, pluginName);
     }
 
     #endregion

@@ -4,6 +4,7 @@ using MicroDock.Model;
 using MicroDock.Plugin;
 using Serilog;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
@@ -22,14 +23,30 @@ namespace MicroDock.Service
     public class PluginService : IMicroService
     {
         private readonly List<PluginInfo> _loadedPlugins = new List<PluginInfo>();
+        private readonly Dictionary<string, PluginInfo> _loadedPluginDict = new Dictionary<string, PluginInfo>();
+
+        // 全局工具索引：工具名 -> 第一个注册的工具定义
+        private readonly Dictionary<string, PluginToolDefinition> _globalToolDict = new Dictionary<string, PluginToolDefinition>();
+        /// <summary>
+        /// 全局工具索引，如果工具名相同，仅保留第一个
+        /// </summary>
+        public Dictionary<string, PluginToolDefinition> GlobalToolDict => _globalToolDict;
+
         /// <summary>
         /// 获取所有已加载的插件信息
         /// </summary>
-        public IReadOnlyList<PluginInfo> LoadedPlugins => _loadedPlugins.AsReadOnly();
+        public List<PluginInfo> LoadedPlugins => _loadedPlugins;
+
+        /// <summary>
+        /// 获取所有加载的插件字典
+        /// key：UniqueName
+        /// </summary>
+        public Dictionary<string, PluginInfo> LoadedPluginDict => _loadedPluginDict;
 
         async Task IMicroService.OnRegistered()
         {
             _loadedPlugins.Clear();
+            _loadedPluginDict.Clear();
             await PreLoadPlugins();
         }
 
@@ -86,6 +103,19 @@ namespace MicroDock.Service
                 }
             }
             return Task.CompletedTask;
+        }
+        /// <summary>
+        /// 获取一个插件信息
+        /// </summary>
+        /// <param name="pluginName"></param>
+        /// <returns></returns>
+        public PluginInfo? GetPluginInfo(string? pluginName)
+        {
+            if (string.IsNullOrWhiteSpace(pluginName))
+                return null;
+            if (_loadedPluginDict.TryGetValue(pluginName, out PluginInfo? pluginInfo))
+                return pluginInfo;
+            return null;
         }
 
         /// <summary>
@@ -191,11 +221,13 @@ namespace MicroDock.Service
                         return (false, "插件加载失败", pluginName);
                     }
                     _loadedPlugins.Add(pluginInfo);
+                    _loadedPluginDict.Add(pluginInfo.UniqueName, pluginInfo);
                     if (!await LoadPluginAsync(pluginInfo, manifest))
                     {
                         // 加载失败，清理已复制的文件
                         try
                         {
+                            _loadedPluginDict.Remove(pluginInfo.UniqueName);
                             _loadedPlugins.Remove(pluginInfo);
                             Directory.Delete(targetPluginDir, true);
                         }
@@ -264,6 +296,7 @@ namespace MicroDock.Service
 
                 if (!await LoadPluginAsync(pluginInfo, manifest))
                 {
+                    _loadedPluginDict.Remove(pluginInfo.UniqueName);
                     _loadedPlugins.Remove(pluginInfo);
                 }
                 await Task.Delay(100); // 小延迟，避免阻塞
@@ -335,7 +368,7 @@ namespace MicroDock.Service
                 await dockPlugin.OnInitAsync();
                 Log.Debug("插件 {Name} 异步初始化完成", manifest.Name);
 
-                DiscoverAndRegisterTools(dockPlugin, manifest.Name);
+                DiscoverAndRegisterTools(pluginInfo, manifest.Name);
 
                 IMicroTab[]? tabs = dockPlugin.Tabs ?? Array.Empty<IMicroTab>();
                 List<Control> tabControls = new List<Control>();
@@ -350,28 +383,18 @@ namespace MicroDock.Service
                 Log.Information("成功加载插件: {DisplayName} ({Name}) v{Version}, 依赖: [{Dependencies}], 标签页数: {TabCount}",
                     manifest.EffectiveDisplayName, manifest.Name, manifest.Version, string.Join(", ", dependencies), tabControls.Count);
 
-                PluginInfoDB? dbInfo = DBContext.GetPluginInfo(manifest.Name);
-                if (dbInfo?.PendingDelete == true)
-                {
-                    Log.Information("跳过待删除插件: {PluginName}", manifest.Name);
-                    return false;
-                }
-
-                bool isEnabled = dbInfo?.IsEnabled ?? true;
+                PluginInfoDB? dbInfo = pluginInfo.InfoDB;
                 if (dbInfo == null)
                 {
-                    dbInfo = new PluginInfoDB
-                    {
-                        PluginName = manifest.Name,
-                        DisplayName = manifest.EffectiveDisplayName,
-                        Version = manifest.Version,
-                        Description = manifest.Description ?? string.Empty,
-                        Author = manifest.Author ?? string.Empty,
-                        IsEnabled = true,
-                    };
-                    DBContext.AddPluginInfo(dbInfo);
+                    LogInformation($"没有查询到当前插件:{pluginInfo.UniqueName}, 跳过加载", DEFAULT_LOG_TAG);
+                    return false;
                 }
-                else if (dbInfo.Version != manifest.Version)
+                if (dbInfo.PendingDelete == true)
+                {
+                    LogInformation($"跳过待删除插件: {manifest.Name}", DEFAULT_LOG_TAG);
+                    return false;
+                }
+                if (dbInfo.Version != manifest.Version)
                 {
                     dbInfo.Version = manifest.Version;
                     dbInfo.DisplayName = manifest.EffectiveDisplayName;
@@ -379,13 +402,8 @@ namespace MicroDock.Service
                     dbInfo.Author = manifest.Author ?? string.Empty;
                     DBContext.UpdatePluginInfo(dbInfo);
                 }
-
-                pluginInfo.Id = Guid.NewGuid().ToString();
-                pluginInfo.UniqueName = manifest.Name;
                 pluginInfo.PluginInstance = dockPlugin;
-                pluginInfo.ControlInstance = tabControls.FirstOrDefault();
                 pluginInfo.IsInitialized = true;
-                pluginInfo.IsEnabled = isEnabled;
                 return true;
             }
             catch (Exception ex)
@@ -426,11 +444,12 @@ namespace MicroDock.Service
 
                 try
                 {
-                    PluginInfo pluginInfo = await PreLoadPlugin(pluginFolder);
+                    PluginInfo? pluginInfo = await PreLoadPlugin(pluginFolder);
                     if (pluginInfo != null)
                     {
                         _loadedPlugins.Add(pluginInfo);
-                        LogDebug($"预加载插件 {pluginInfo.Name} v{pluginInfo.Manifest.Version} 成功", DEFAULT_LOG_TAG);
+                        _loadedPluginDict.Add(pluginInfo.UniqueName, pluginInfo);
+                        LogDebug($"预加载插件 {pluginInfo.DisplayName} v{pluginInfo.Manifest?.Version} 成功", DEFAULT_LOG_TAG);
                     }
                     else
                     {
@@ -453,7 +472,7 @@ namespace MicroDock.Service
         /// 预加载单个插件
         /// </summary>
         /// <returns></returns>
-        private async Task<PluginInfo> PreLoadPlugin(string pluginFolder)
+        private async Task<PluginInfo?> PreLoadPlugin(string pluginFolder)
         {
             string manifestPath = Path.Combine(pluginFolder, "plugin.json");
             if (!File.Exists(manifestPath))
@@ -461,8 +480,13 @@ namespace MicroDock.Service
                 return null;
             }
             var manifest = await LoadManifest(manifestPath);
-            if (manifest != null)
+            if (manifest != null && !_loadedPluginDict.ContainsKey(manifest.Name))
             {
+                if (_loadedPluginDict.ContainsKey(manifest.Name))
+                {
+                    LogDebug($"解析失败 存在相同的插件 {manifest.Name} v{manifest.Version}", DEFAULT_LOG_TAG);
+                    return null;
+                }
                 PluginInfo pluginInfo = new PluginInfo();
                 pluginInfo.Manifest = manifest;
                 pluginInfo.PluginPath = pluginFolder;
@@ -540,15 +564,15 @@ namespace MicroDock.Service
         /// <summary>
         /// 自动发现并注册插件工具
         /// </summary>
-        private void DiscoverAndRegisterTools(IMicroDockPlugin plugin, string pluginName)
+        private void DiscoverAndRegisterTools(PluginInfo pluginInfo, string pluginName)
         {
             try
             {
                 int toolCount = 0;
 
                 // 获取插件程序集
-                var assembly = plugin.GetType().Assembly;
-                var pluginType = plugin.GetType();
+                var assembly = pluginInfo.Assembly;
+                var pluginType = pluginInfo.PluginInstance?.GetType();
 
                 // 扫描程序集中的所有类型（公共和非公共）
                 var types = assembly.GetTypes();
@@ -567,11 +591,15 @@ namespace MicroDock.Service
 
                     foreach (var method in methods)
                     {
-                        var toolAttr = method.GetCustomAttribute<Plugin.MicroToolAttribute>();
+                        var toolAttr = method.GetCustomAttribute<PluginToolAttribute>();
                         if (toolAttr == null) continue;
-
+                        if (pluginInfo.ToolDict.ContainsKey(toolAttr.Name))
+                        {
+                            LogInformation($"插件 {pluginInfo.UniqueName} 的工具 {toolAttr.Name} 存在多个, 仅保留第一个");
+                            continue;
+                        }
                         // 验证返回类型
-                        if (method.ReturnType != typeof(System.Threading.Tasks.Task<string>))
+                        if (method.ReturnType != typeof(Task<string>))
                         {
                             Log.Warning("插件 {Plugin} 的工具方法 {Type}.{Method} 必须返回 Task<string>，已跳过",
                                 pluginName, type.Name, method.Name);
@@ -580,7 +608,6 @@ namespace MicroDock.Service
 
                         // 确定实例策略
                         object? targetInstance = null;
-                        bool needsLazyInstance = false;
 
                         if (method.IsStatic)
                         {
@@ -590,21 +617,15 @@ namespace MicroDock.Service
                         else if (type == pluginType)
                         {
                             // 插件类实例方法：使用插件实例
-                            targetInstance = plugin;
+                            targetInstance = pluginInfo.PluginInstance;
                             Log.Debug("发现插件实例工具方法: {Type}.{Method}", type.Name, method.Name);
-                        }
-                        else
-                        {
-                            // 其他类实例方法：延迟创建
-                            needsLazyInstance = true;
-                            Log.Debug("发现其他类实例工具方法: {Type}.{Method} (将延迟创建实例)", type.Name, method.Name);
                         }
 
                         // 提取参数信息
                         var parameters = ExtractParameterInfo(method);
 
                         // 创建工具定义
-                        var tool = new Plugin.ToolDefinition
+                        var tool = new PluginToolDefinition
                         {
                             Name = toolAttr.Name,
                             Description = toolAttr.Description,
@@ -614,17 +635,18 @@ namespace MicroDock.Service
                             TargetType = type,
                             TargetInstance = targetInstance,
                             IsStatic = method.IsStatic,
-                            NeedsLazyInstance = needsLazyInstance,
+                            NeedsLazyInstance = targetInstance == null,
                             Parameters = parameters
                         };
 
-                        // 注册到工具注册表
-                        ServiceLocator.Get<ToolRegistry>().RegisterTool(pluginName, tool);
+                        if (!GlobalToolDict.ContainsKey(tool.Name))
+                            GlobalToolDict.Add(tool.Name, tool);
+
+                        pluginInfo.ToolDict.Add(tool.Name, tool);
                         toolCount++;
 
                         // 记录详细日志
-                        string methodTypeDesc = method.IsStatic ? "静态" :
-                                               needsLazyInstance ? "实例(延迟创建)" : "实例";
+                        string methodTypeDesc = method.IsStatic ? "静态" : "实例";
                         Log.Debug("注册工具: {Tool} ({Type}.{Method}, {MethodType})",
                             toolAttr.Name, type.Name, method.Name, methodTypeDesc);
                     }
@@ -644,15 +666,15 @@ namespace MicroDock.Service
         /// <summary>
         /// 提取方法参数信息
         /// </summary>
-        private List<Plugin.ToolParameterInfo> ExtractParameterInfo(MethodInfo method)
+        private List<PluginToolParameterInfo> ExtractParameterInfo(MethodInfo method)
         {
-            var parameters = new List<Plugin.ToolParameterInfo>();
+            var parameters = new List<PluginToolParameterInfo>();
 
             foreach (var param in method.GetParameters())
             {
-                var paramAttr = param.GetCustomAttribute<Plugin.ToolParameterAttribute>();
+                var paramAttr = param.GetCustomAttribute<PluginToolParameterAttribute>();
 
-                parameters.Add(new Plugin.ToolParameterInfo
+                parameters.Add(new PluginToolParameterInfo
                 {
                     Name = paramAttr?.Name ?? param.Name!,
                     Description = paramAttr?.Description ?? string.Empty,
@@ -739,57 +761,7 @@ namespace MicroDock.Service
                 }
                 else
                 {
-                    // 插件未加载，需要重新加载
-                    Log.Information("插件 {PluginName} 未加载，尝试重新加载", pluginName);
-
-                    // 从数据库获取插件信息
-                    PluginInfoDB? dbInfo = DBContext.GetPluginInfo(pluginName);
-                    if (dbInfo == null)
-                    {
-                        Log.Warning("插件 {PluginName} 在数据库中不存在", pluginName);
-                        return false;
-                    }
-
-                    // 尝试从插件目录加载
-                    string pluginFolder = Path.Combine(PLUGIN_FOLDER, pluginName);
-
-                    if (!Directory.Exists(pluginFolder))
-                    {
-                        Log.Error("插件目录不存在: {PluginFolder}", pluginFolder);
-                        return false;
-                    }
-
-                    string manifestPath = Path.Combine(pluginFolder, "plugin.json");
-                    if (!File.Exists(manifestPath))
-                    {
-                        Log.Error("插件 manifest 文件不存在: {ManifestPath}", manifestPath);
-                        return false;
-                    }
-
-                    PluginManifest? manifest = await LoadManifest(manifestPath);
-                    if (manifest == null)
-                    {
-                        Log.Error("加载插件 manifest 失败: {PluginName}", pluginName);
-                        return false;
-                    }
-                    PluginInfo pluginInfo = new PluginInfo();
-                    pluginInfo.Manifest = manifest;
-                    pluginInfo.PluginPath = pluginFolder;
-                    _loadedPlugins.Add(pluginInfo);
-
-                    if (!await LoadPluginAsync(pluginInfo, manifest))
-                    {
-                        // 加载失败，清理已复制的文件
-                        try
-                        {
-                            _loadedPlugins.Remove(pluginInfo);
-                            Log.Error("加载插件失败: {PluginName}", pluginName);
-                        }
-                        catch { }
-                        return false;
-                    }
-                    pluginInfo.IsEnabled = true;
-                    Log.Information("插件 {PluginName} 重新加载并启用成功", pluginName);
+                    LogError($"插件{pluginName} 没有找到");
                 }
 
                 // 4. 更新数据库状态
@@ -961,7 +933,7 @@ namespace MicroDock.Service
         {
             Log.Information("卸载所有插件，共 {Count} 个", _loadedPlugins.Count);
 
-            foreach (PluginInfo plugin in _loadedPlugins.ToList())
+            foreach (PluginInfo plugin in _loadedPlugins)
             {
                 try
                 {
@@ -969,11 +941,12 @@ namespace MicroDock.Service
                 }
                 catch (Exception ex)
                 {
-                    Log.Error(ex, "卸载插件时发生错误: {PluginName}", plugin.Name);
+                    Log.Error(ex, "卸载插件时发生错误: {PluginName}", plugin.DisplayName);
                 }
             }
 
             _loadedPlugins.Clear();
+            _loadedPluginDict.Clear();
         }
 
         Task IMicroService.OnApplicationStopping()

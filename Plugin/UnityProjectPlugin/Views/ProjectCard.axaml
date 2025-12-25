@@ -94,7 +94,6 @@
 								 MinWidth="150"
 								 Watermark="输入项目名称"/>
 					</Grid>
-
 					<!-- 分组选择器 -->
 					<Grid>
 						<!-- 分组显示/编辑按钮 -->
@@ -104,60 +103,7 @@
 								ToolTip.Tip="点击管理分组">
 							<Button.Flyout>
 								<Flyout Placement="Bottom">
-									<StackPanel Width="250" Spacing="12">
-										<!-- 标题 -->
-										<TextBlock Text="管理分组" FontSize="14" FontWeight="SemiBold"/>
-
-										<!-- 当前分组选择 -->
-										<StackPanel Spacing="4">
-											<TextBlock Text="项目分组" FontSize="12" Opacity="0.7"/>
-											<ComboBox Name="GroupComboBox"
-													  IsEditable="True"
-													  PlaceholderText="选择或输入分组..."
-													  HorizontalAlignment="Stretch"/>
-										</StackPanel>
-
-										<!-- 分组列表 -->
-										<StackPanel Spacing="4">
-											<TextBlock Text="所有分组" FontSize="12" Opacity="0.7"/>
-											<ScrollViewer MaxHeight="200" HorizontalScrollBarVisibility="Disabled">
-												<ItemsControl Name="GroupsListControl">
-													<ItemsControl.ItemTemplate>
-														<DataTemplate>
-															<Grid ColumnDefinitions="*,Auto" Margin="0,4">
-																<TextBlock Grid.Column="0"
-																		   Text="{Binding Name}"
-																		   VerticalAlignment="Center"/>
-																<Button Grid.Column="1"
-																		Content="&#xE74D;"
-																		FontFamily="{StaticResource SymbolThemeFontFamily}"
-																		Padding="4"
-																		FontSize="12"
-																		ToolTip.Tip="删除分组"
-																		Tag="{Binding}"
-																		Click="DeleteGroupButton_Click"/>
-															</Grid>
-														</DataTemplate>
-													</ItemsControl.ItemTemplate>
-												</ItemsControl>
-											</ScrollViewer>
-										</StackPanel>
-
-										<!-- 新建分组 -->
-										<StackPanel Spacing="4">
-											<TextBlock Text="新建分组" FontSize="12" Opacity="0.7"/>
-											<Grid ColumnDefinitions="*,Auto">
-												<TextBox Grid.Column="0"
-														 Name="NewGroupNameTextBox"
-														 Watermark="输入新分组名称..."
-														 Margin="0,0,8,0"/>
-												<Button Grid.Column="1"
-														Content="添加"
-														Name="AddGroupButton"
-														Padding="12,6"/>
-											</Grid>
-										</StackPanel>
-									</StackPanel>
+									<views:GroupSelector Name="GroupSelectorControl" Width="250"/>
 								</Flyout>
 							</Button.Flyout>
 							<StackPanel Orientation="Horizontal" Spacing="4">
@@ -170,7 +116,6 @@
 						</Button>
 					</Grid>
 				</StackPanel>
-
 				<!-- 项目路径 -->
 				<TextBlock Text="{Binding Path}"
 						   Name="ProjectPathText"
@@ -181,7 +126,6 @@
 						   Cursor="Hand"
 						   ToolTip.Tip="点击打开目录"/>
 			</StackPanel>
-
 			<!-- 操作按钮 -->
 			<SplitButton Grid.Row="0" Grid.Column="2"
 						 Content="打开"
@@ -198,6 +142,12 @@
 								<ui:SymbolIcon Symbol="Folder"/>
 							</MenuItem.Icon>
 						</MenuItem>
+						<MenuItem Header="更多设置" Name="MoreSettingsMenuItem">
+							<MenuItem.Icon>
+								<ui:SymbolIcon Symbol="Settings"/>
+							</MenuItem.Icon>
+						</MenuItem>
+						<Separator/>
 						<MenuItem Header="删除" Name="DeleteMenuItem">
 							<MenuItem.Icon>
 								<ui:SymbolIcon Symbol="Delete"/>
@@ -232,6 +182,7 @@
 					<Run Text="{Binding LastOpened, StringFormat='{}{0:yyyy-MM-dd HH:mm}'}"/>
 				</TextBlock>
 			</StackPanel>
+
 		</Grid>
 	</Border>
 </UserControl>

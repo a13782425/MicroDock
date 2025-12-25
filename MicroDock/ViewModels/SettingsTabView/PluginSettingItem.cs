@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using DynamicData;
 using MicroDock.Model;
 using MicroDock.Plugin;
 using MicroDock.Service;
@@ -19,28 +20,22 @@ namespace MicroDock.ViewModels;
 /// </summary>
 public class PluginSettingItem : ViewModelBase
 {
-    // 内部字段，供外部直接设置以避免触发 setter
-    internal bool _isEnabled;
+    private PluginInfo _pluginInfo;
 
     /// <summary>
     /// 插件唯一名字
     /// </summary>
-    public string UniqueName { get; set; } = string.Empty;
+    public string PluginUniqueName => _pluginInfo.UniqueName;
 
     /// <summary>
     /// 插件名称
     /// </summary>
-    public string PluginName { get; set; } = string.Empty;
-
-    /// <summary>
-    /// 插件实例
-    /// </summary>
-    public IMicroDockPlugin? PluginInstance { get; set; }
+    public string PluginDisplayName => _pluginInfo.DisplayName;
 
     /// <summary>
     /// 设置UI控件
     /// </summary>
-    public Control? SettingsControl { get; set; }
+    public Control? SettingsControl { get; init; }
 
     /// <summary>
     /// 是否有设置
@@ -52,20 +47,18 @@ public class PluginSettingItem : ViewModelBase
     /// </summary>
     public bool IsEnabled
     {
-        get => _isEnabled;
+        get => _pluginInfo.IsEnabled;
         set
         {
-            if (_isEnabled != value)
+            if (_pluginInfo.IsEnabled != value)
             {
                 // 只有在 UniqueName 已设置的情况下才触发状态切换
-                if (this.RaiseAndSetIfChanged(ref _isEnabled, value) == value && !string.IsNullOrEmpty(UniqueName))
+                _pluginInfo.IsEnabled = value;
+                this.RaisePropertyChanged(nameof(IsEnabled));
+                if (!string.IsNullOrEmpty(PluginUniqueName))
                 {
                     // 状态变更时调用启用/禁用方法
                     TogglePluginEnabled(value);
-                }
-                else
-                {
-                    _isEnabled = value;
                 }
             }
         }
@@ -74,12 +67,12 @@ public class PluginSettingItem : ViewModelBase
     /// <summary>
     /// 插件版本（确保不为 null）
     /// </summary>
-    public string Version { get; set; } = string.Empty;
+    public string Version => _pluginInfo.Manifest?.Version ?? "未知";
 
     /// <summary>
     /// 安装时间
     /// </summary>
-    public DateTime? InstalledAt { get; set; }
+    public DateTime? InstalledAt => _pluginInfo.InfoDB?.InstalledAtDateTime;
 
     /// <summary>
     /// 安装时间显示文本（确保不为 null）
@@ -102,7 +95,7 @@ public class PluginSettingItem : ViewModelBase
     /// <summary>
     /// 插件注册的工具列表（确保不为 null）
     /// </summary>
-    public ObservableCollection<ToolInfo> Tools { get; set; } = new ObservableCollection<ToolInfo>();
+    public ObservableCollection<PluginToolDefinition> Tools { get; set; } = new ObservableCollection<PluginToolDefinition>();
 
     /// <summary>
     /// 是否有工具
@@ -210,13 +203,12 @@ public class PluginSettingItem : ViewModelBase
     /// </summary>
     public ReactiveCommand<Unit, Unit> UploadPluginCommand { get; private set; } = null!;
 
-    public PluginSettingItem()
+    public PluginSettingItem(PluginInfo pluginInfo)
     {
+        _pluginInfo = pluginInfo;
         // 确保所有属性都有默认值，避免 null 引用
-        UniqueName = string.Empty;
-        PluginName = string.Empty;
-        Version = string.Empty;
-        Tools = new ObservableCollection<ToolInfo>();
+        SettingsControl = pluginInfo.PluginInstance?.GetSettingsControl() as Control;
+        Tools = new ObservableCollection<PluginToolDefinition>();
 
         DeleteCommand = ReactiveCommand.CreateFromTask(DeletePlugin);
         CancelDeleteCommand = ReactiveCommand.Create(CancelDelete);
@@ -232,7 +224,7 @@ public class PluginSettingItem : ViewModelBase
     /// </summary>
     public void LoadTools()
     {
-        if (string.IsNullOrEmpty(UniqueName))
+        if (_pluginInfo == null)
             return;
 
         try
@@ -240,26 +232,11 @@ public class PluginSettingItem : ViewModelBase
             // 确保 Tools 集合存在
             if (Tools == null)
             {
-                Tools = new ObservableCollection<ToolInfo>();
+                Tools = new ObservableCollection<PluginToolDefinition>();
             }
 
             Tools.Clear();
-
-            var toolRegistry = ServiceLocator.Get<ToolRegistry>();
-            if (toolRegistry != null)
-            {
-                var tools = toolRegistry.GetPluginTools(UniqueName);
-                if (tools != null)
-                {
-                    foreach (var tool in tools)
-                    {
-                        if (tool != null)
-                        {
-                            Tools.Add(tool);
-                        }
-                    }
-                }
-            }
+            Tools.AddRange(_pluginInfo.ToolDict.Values);
 
             this.RaisePropertyChanged(nameof(Tools));
             this.RaisePropertyChanged(nameof(HasTools));
@@ -268,7 +245,7 @@ public class PluginSettingItem : ViewModelBase
         }
         catch (Exception ex)
         {
-            Serilog.Log.Error(ex, "加载插件 {PluginName} 的工具失败", UniqueName);
+            Serilog.Log.Error(ex, "加载插件 {PluginName} 的工具失败", PluginUniqueName);
         }
     }
 
@@ -278,7 +255,7 @@ public class PluginSettingItem : ViewModelBase
     private async void TogglePluginEnabled(bool enabled)
     {
         // 确保基本属性已设置
-        if (string.IsNullOrEmpty(UniqueName) || string.IsNullOrEmpty(PluginName))
+        if (string.IsNullOrEmpty(PluginUniqueName) || string.IsNullOrEmpty(PluginDisplayName))
         {
             Serilog.Log.Warning("尝试切换未完全初始化的插件状态");
             return;
@@ -290,41 +267,35 @@ public class PluginSettingItem : ViewModelBase
             if (pluginLoader == null)
             {
                 Serilog.Log.Error("无法获取 PluginLoader 服务");
-                // 恢复原状态
-                _isEnabled = !enabled;
-                this.RaisePropertyChanged(nameof(IsEnabled));
                 return;
             }
 
             if (enabled)
             {
-                bool success = await pluginLoader.EnablePluginAsync(UniqueName);
+                bool success = await pluginLoader.EnablePluginAsync(PluginUniqueName);
                 if (!success)
                 {
                     // 启用失败，恢复状态
-                    _isEnabled = false;
-                    this.RaisePropertyChanged(nameof(IsEnabled));
-                    ShowNotification("启用失败", $"插件 {PluginName} 启用失败", AppNotificationType.Error);
+                    IsEnabled = false;
+                    ShowNotification("启用失败", $"插件 {PluginDisplayName} 启用失败", AppNotificationType.Error);
                 }
             }
             else
             {
-                bool success = pluginLoader.DisablePlugin(UniqueName);
+                bool success = pluginLoader.DisablePlugin(PluginUniqueName);
                 if (!success)
                 {
                     // 禁用失败，恢复状态
-                    _isEnabled = true;
-                    this.RaisePropertyChanged(nameof(IsEnabled));
-                    ShowNotification("禁用失败", $"插件 {PluginName} 禁用失败", AppNotificationType.Error);
+                    IsEnabled = true;
+                    ShowNotification("禁用失败", $"插件 {PluginDisplayName} 禁用失败", AppNotificationType.Error);
                 }
             }
         }
         catch (Exception ex)
         {
-            Serilog.Log.Error(ex, "切换插件 {PluginName} 启用状态失败", PluginName);
+            Serilog.Log.Error(ex, "切换插件 {PluginName} 启用状态失败", PluginDisplayName);
             // 恢复原状态
-            _isEnabled = !enabled;
-            this.RaisePropertyChanged(nameof(IsEnabled));
+            IsEnabled = !enabled;
             ShowNotification("操作失败", ex.Message, AppNotificationType.Error);
         }
     }
@@ -347,7 +318,7 @@ public class PluginSettingItem : ViewModelBase
                     {
                         new TextBlock
                         {
-                            Text = $"确定要删除插件 \"{PluginName}\" 吗？",
+                            Text = $"确定要删除插件 \"{PluginDisplayName}\" 吗？",
                             TextWrapping = Avalonia.Media.TextWrapping.Wrap
                         },
                         new TextBlock
@@ -376,7 +347,7 @@ public class PluginSettingItem : ViewModelBase
 
             // 调用 PluginLoader 标记插件为待删除
             PluginService pluginLoader = ServiceLocator.Get<PluginService>();
-            var (success, message) = pluginLoader.MarkPluginForDeletion(UniqueName);
+            var (success, message) = pluginLoader.MarkPluginForDeletion(PluginUniqueName);
 
             // 隐藏加载提示
             ServiceLocator.Get<EventService>().Publish(new HideLoadingMessage());
@@ -395,7 +366,7 @@ public class PluginSettingItem : ViewModelBase
         }
         catch (Exception ex)
         {
-            Serilog.Log.Error(ex, "删除插件 {PluginName} 失败", PluginName);
+            Serilog.Log.Error(ex, "删除插件 {PluginName} 失败", PluginDisplayName);
             ServiceLocator.Get<EventService>().Publish(new HideLoadingMessage());
             ShowNotification("删除失败", ex.Message, AppNotificationType.Error);
         }
@@ -409,7 +380,7 @@ public class PluginSettingItem : ViewModelBase
         try
         {
             PluginService pluginLoader = ServiceLocator.Get<PluginService>();
-            bool success = pluginLoader.CancelPluginDeletion(UniqueName);
+            bool success = pluginLoader.CancelPluginDeletion(PluginUniqueName);
 
             if (success)
             {
@@ -426,7 +397,7 @@ public class PluginSettingItem : ViewModelBase
         }
         catch (Exception ex)
         {
-            Serilog.Log.Error(ex, "取消删除插件 {PluginName} 失败", PluginName);
+            Serilog.Log.Error(ex, "取消删除插件 {PluginName} 失败", PluginDisplayName);
             ShowNotification("取消失败", ex.Message, AppNotificationType.Error);
         }
     }
@@ -439,7 +410,7 @@ public class PluginSettingItem : ViewModelBase
         try
         {
             PluginService pluginLoader = ServiceLocator.Get<PluginService>();
-            var (success, message) = await pluginLoader.CancelPluginUpdateAsync(UniqueName);
+            var (success, message) = await pluginLoader.CancelPluginUpdateAsync(PluginUniqueName);
 
             if (success)
             {
@@ -456,7 +427,7 @@ public class PluginSettingItem : ViewModelBase
         }
         catch (Exception ex)
         {
-            Serilog.Log.Error(ex, "取消更新插件 {PluginName} 失败", PluginName);
+            Serilog.Log.Error(ex, "取消更新插件 {PluginName} 失败", PluginDisplayName);
             ShowNotification("取消失败", ex.Message, AppNotificationType.Error);
         }
     }
@@ -468,7 +439,7 @@ public class PluginSettingItem : ViewModelBase
     /// </summary>
     private string GetPluginFolderPath()
     {
-        return Path.Combine(PLUGIN_FOLDER, UniqueName);
+        return Path.Combine(PLUGIN_FOLDER, PluginUniqueName);
     }
 
     /// <summary>
@@ -476,7 +447,7 @@ public class PluginSettingItem : ViewModelBase
     /// </summary>
     private string GetPluginDataPath()
     {
-        return Path.Combine(PLUGIN_DATA_FOLDER, UniqueName, "data");
+        return Path.Combine(PLUGIN_DATA_FOLDER, PluginUniqueName, "data");
     }
 
     /// <summary>
@@ -496,7 +467,7 @@ public class PluginSettingItem : ViewModelBase
         }
         catch (Exception ex)
         {
-            Serilog.Log.Error(ex, "打开插件文件夹失败: {PluginName}", PluginName);
+            Serilog.Log.Error(ex, "打开插件文件夹失败: {PluginName}", PluginDisplayName);
             ShowNotification("打开失败", ex.Message, AppNotificationType.Error);
         }
     }
@@ -531,15 +502,15 @@ public class PluginSettingItem : ViewModelBase
 
             bool confirm = await ShowConfirmDialogAsync(
                 $"备份插件数据",
-                $"确定要备份插件 \"{PluginName}\" 的数据到服务器吗？",
+                $"确定要备份插件 \"{PluginDisplayName}\" 的数据到服务器吗？",
                 "这将覆盖服务器上已有的备份。"
             );
 
             if (!confirm) return;
 
-            ServiceLocator.Get<EventService>().Publish(new ShowLoadingMessage($"正在备份 {PluginName} 数据..."));
+            ServiceLocator.Get<EventService>().Publish(new ShowLoadingMessage($"正在备份 {PluginDisplayName} 数据..."));
 
-            var (success, message) = await PluginServerApiClient.BackupPluginDataAsync(UniqueName, dataPath);
+            var (success, message) = await PluginServerApiClient.BackupPluginDataAsync(PluginUniqueName, dataPath);
 
             ServiceLocator.Get<EventService>().Publish(new HideLoadingMessage());
 
@@ -555,7 +526,7 @@ public class PluginSettingItem : ViewModelBase
         catch (Exception ex)
         {
             ServiceLocator.Get<EventService>().Publish(new HideLoadingMessage());
-            Serilog.Log.Error(ex, "备份插件数据失败: {PluginName}", PluginName);
+            Serilog.Log.Error(ex, "备份插件数据失败: {PluginName}", PluginDisplayName);
             ShowNotification("备份失败", ex.Message, AppNotificationType.Error);
         }
     }
@@ -596,13 +567,13 @@ public class PluginSettingItem : ViewModelBase
 
             // 筛选该插件的备份
             var pluginBackups = response.Data.Backups
-                .Where(b => b.BackupType == "plugin" && (b.Description?.Contains(UniqueName) ?? false))
+                .Where(b => b.BackupType == "plugin" && (b.Description?.Contains(PluginUniqueName) ?? false))
                 .OrderByDescending(b => b.CreatedAt)
                 .ToList();
 
             if (pluginBackups.Count == 0)
             {
-                ShowNotification("提示", $"服务器上暂无插件 \"{PluginName}\" 的备份", AppNotificationType.Information);
+                ShowNotification("提示", $"服务器上暂无插件 \"{PluginDisplayName}\" 的备份", AppNotificationType.Information);
                 return;
             }
 
@@ -615,12 +586,12 @@ public class PluginSettingItem : ViewModelBase
                     Description = b.Description ?? "",
                     CreatedAt = b.CreatedAt ?? "",
                     FileSize = b.FileSize,
-                    PluginName = UniqueName
+                    PluginName = PluginUniqueName
                 })
             );
 
             // 显示备份列表对话框
-            var selectedBackup = await ShowPluginBackupListDialogAsync($"恢复插件数据: {PluginName}", backupItems);
+            var selectedBackup = await ShowPluginBackupListDialogAsync($"恢复插件数据: {PluginDisplayName}", backupItems);
 
             if (selectedBackup == null)
             {
@@ -638,9 +609,9 @@ public class PluginSettingItem : ViewModelBase
 
             string dataPath = GetPluginDataPath();
 
-            ServiceLocator.Get<EventService>().Publish(new ShowLoadingMessage($"正在恢复 {PluginName} 数据..."));
+            ServiceLocator.Get<EventService>().Publish(new ShowLoadingMessage($"正在恢复 {PluginDisplayName} 数据..."));
 
-            var (success, message) = await PluginServerApiClient.RestorePluginDataAsync(UniqueName, dataPath, selectedBackup.Id);
+            var (success, message) = await PluginServerApiClient.RestorePluginDataAsync(PluginUniqueName, dataPath, selectedBackup.Id);
 
             ServiceLocator.Get<EventService>().Publish(new HideLoadingMessage());
 
@@ -656,7 +627,7 @@ public class PluginSettingItem : ViewModelBase
         catch (Exception ex)
         {
             ServiceLocator.Get<EventService>().Publish(new HideLoadingMessage());
-            Serilog.Log.Error(ex, "恢复插件数据失败: {PluginName}", PluginName);
+            Serilog.Log.Error(ex, "恢复插件数据失败: {PluginName}", PluginDisplayName);
             ShowNotification("恢复失败", ex.Message, AppNotificationType.Error);
         }
     }
@@ -681,7 +652,7 @@ public class PluginSettingItem : ViewModelBase
                 {
                     backupItems.Clear();
                     var filteredBackups = response.Data.Backups
-                        .Where(b => b.BackupType == "plugin" && (b.Description?.Contains(UniqueName) ?? false))
+                        .Where(b => b.BackupType == "plugin" && (b.Description?.Contains(PluginUniqueName) ?? false))
                         .OrderByDescending(b => b.CreatedAt)
                         .ToList();
 
@@ -694,7 +665,7 @@ public class PluginSettingItem : ViewModelBase
                             Description = b.Description ?? "",
                             CreatedAt = b.CreatedAt ?? "",
                             FileSize = b.FileSize,
-                            PluginName = UniqueName
+                            PluginName = PluginUniqueName
                         });
                     }
                 }
@@ -779,7 +750,7 @@ public class PluginSettingItem : ViewModelBase
             }
             // 弹窗输入上传验证Key
             var uploadKey = await ShowInputDialogAsync(
-                $"上传插件: {PluginName}",
+                $"上传插件: {PluginDisplayName}",
                 "请输入上传验证Key",
                 null,
                 true // 密码模式
@@ -797,7 +768,7 @@ public class PluginSettingItem : ViewModelBase
                 return;
             }
 
-            ServiceLocator.Get<EventService>().Publish(new ShowLoadingMessage($"正在上传 {PluginName}..."));
+            ServiceLocator.Get<EventService>().Publish(new ShowLoadingMessage($"正在上传 {PluginDisplayName}..."));
 
             var (success, message) = await PluginServerApiClient.UploadPluginAsync(pluginFolder, uploadKey);
 
@@ -815,7 +786,7 @@ public class PluginSettingItem : ViewModelBase
         catch (Exception ex)
         {
             ServiceLocator.Get<EventService>().Publish(new HideLoadingMessage());
-            Serilog.Log.Error(ex, "上传插件失败: {PluginName}", PluginName);
+            Serilog.Log.Error(ex, "上传插件失败: {PluginName}", PluginDisplayName);
             ShowNotification("上传失败", ex.Message, AppNotificationType.Error);
         }
     }

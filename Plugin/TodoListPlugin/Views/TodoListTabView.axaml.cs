@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using FluentAvalonia.UI.Controls;
 using MicroDock.Plugin;
 using TodoListPlugin.ViewModels;
 
@@ -16,16 +17,16 @@ namespace TodoListPlugin.Views
         {
             _dataPath = dataPath;
             InitializeComponent();
-            
+
             // 初始化 ViewModel
             _viewModel = new TodoListMainViewModel(dataPath);
             MainView.DataContext = _viewModel;
             SettingsView.DataContext = _viewModel;
-            
+
             // 订阅设置请求事件
             MainView.SettingsRequested += OnSettingsRequested;
             SettingsView.BackRequested += OnSettingsBackRequested;
-            
+
             // 自动加载数据
             _ = _viewModel.LoadAsync();
         }
@@ -34,7 +35,7 @@ namespace TodoListPlugin.Views
 
         public string TabName => "待办清单";
 
-        public IconSymbolEnum IconSymbol => IconSymbolEnum.List;
+        public object IconSymbol => Symbol.List;
 
         #endregion
 

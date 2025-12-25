@@ -14,7 +14,7 @@ namespace MicroDock.ViewModels;
 public class NavigationItemModel : ReactiveObject, IDisposable
 {
     private string _title = string.Empty;
-    private string _icon = string.Empty;
+    private object _icon = string.Empty;
     private object? _content;
     private NavigationType _navType;
     private string _pluginUniqueName = string.Empty;
@@ -133,7 +133,7 @@ public class NavigationItemModel : ReactiveObject, IDisposable
     /// <summary>
     /// 图标名称（对应Symbol枚举）
     /// </summary>
-    public string Icon
+    public object Icon
     {
         get => _icon;
         set => this.RaiseAndSetIfChanged(ref _icon, value);

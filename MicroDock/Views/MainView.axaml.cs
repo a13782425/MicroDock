@@ -2,9 +2,11 @@
 using Avalonia.Controls;
 using Avalonia.Data;
 using Avalonia.Interactivity;
+using Avalonia.Media;
 using FluentAvalonia.UI.Controls;
 using MicroDock.Extension;
 using MicroDock.ViewModels;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Specialized;
 using System.Linq;
@@ -123,20 +125,8 @@ public partial class MainView : UserControl
         };
 
         // 设置图标
-        if (!string.IsNullOrEmpty(navItem.Icon))
-        {
-            try
-            {
-                if (Enum.TryParse<Symbol>(navItem.Icon, out var symbol))
-                {
-                    menuItem.IconSource = new SymbolIconSource { Symbol = symbol };
-                }
-            }
-            catch
-            {
-                // 图标设置失败，忽略
-            }
-        }
+        menuItem.IconSource = ConvertIconSource(navItem.Icon);
+
 
         // 添加锁定徽章
         SetupLockBadge(menuItem, navItem);
@@ -151,6 +141,47 @@ public partial class MainView : UserControl
         {
             MainNav.MenuItems.Add(menuItem);
         }
+    }
+
+    private IconSource ConvertIconSource(object value)
+    {
+        if (value == null)
+        {
+            return new SymbolIconSource { Symbol = Symbol.Library };
+        }
+        if (value is IconSource @is)
+        {
+            return @is;
+        }
+        else if (value is Symbol symbol)
+        {
+            return new SymbolIconSource { Symbol = symbol };
+        }
+        else if (value is IImage img)
+        {
+            return new ImageIconSource { Source = img };
+        }
+        else if (value is string val)
+        {
+            if (Enum.TryParse<Symbol>(val, out Symbol sym))
+            {
+                return new SymbolIconSource() { Symbol = sym };
+            }
+            if (FAPathIcon.IsDataValid(val, out Geometry g))
+            {
+                return new PathIconSource() { Data = g };
+            }
+            try
+            {
+                if (Uri.TryCreate(val, UriKind.RelativeOrAbsolute, out Uri result))
+                {
+                    return new BitmapIconSource() { UriSource = result };
+                }
+            }
+            catch { }
+            return new FontIconSource() { Glyph = val };
+        }
+        return new SymbolIconSource { Symbol = Symbol.Library };
     }
 
     /// <summary>

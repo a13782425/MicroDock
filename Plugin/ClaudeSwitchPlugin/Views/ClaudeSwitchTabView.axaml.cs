@@ -6,7 +6,6 @@ using FluentAvalonia.UI.Controls;
 using MicroDock.Plugin;
 using System;
 using System.Collections.ObjectModel;
-using System.Linq;
 
 namespace ClaudeSwitchPlugin.Views
 {
@@ -39,7 +38,7 @@ namespace ClaudeSwitchPlugin.Views
         }
 
         public string TabName => "Claude 配置";
-        public IconSymbolEnum IconSymbol => IconSymbolEnum.Settings;
+        public object IconSymbol => Symbol.Settings;
 
         private void InitializeComponent()
         {

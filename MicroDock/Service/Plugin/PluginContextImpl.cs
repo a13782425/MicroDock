@@ -1,9 +1,11 @@
 using MicroDock.Database;
+using MicroDock.Model;
 using MicroDock.Plugin;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace MicroDock.Service;
 
@@ -139,9 +141,81 @@ internal class PluginContextImpl : IPluginContext
 
     #endregion
 
+    #region 插件查询 API
+
+    /// <summary>
+    /// 判断指定名称的插件是否已加载
+    /// </summary>
+    /// <param name="pluginName">插件名称</param>
+    /// <returns>如果插件已加载则返回 true，否则返回 false</returns>
+    public bool IsPluginLoaded(string pluginName)
+    {
+        if (string.IsNullOrWhiteSpace(pluginName))
+            return false;
+        return ServiceLocator.Get<PluginService>()?.GetPluginInfo(pluginName) != null;
+    }
+
+    /// <summary>
+    /// 判断指定的多个插件是否全部已加载
+    /// </summary>
+    /// <param name="pluginNames">插件名称列表</param>
+    /// <returns>如果所有插件都已加载则返回 true，否则返回 false</returns>
+    public bool IsAllPluginsLoaded(params string[] pluginNames)
+    {
+        bool isResult = true;
+        foreach (var item in pluginNames)
+        {
+            if (!IsPluginLoaded(item))
+            {
+                isResult = false;
+                break;
+            }
+        }
+        return isResult;
+    }
+    /// <summary>
+    /// 判断指定的多个插件是否有任意一个已加载
+    /// </summary>
+    /// <param name="pluginNames">插件名称列表</param>
+    /// <returns>如果任意一个插件已加载则返回 true，否则返回 false</returns>
+    public bool IsAnyPluginLoaded(params string[] pluginNames)
+    {
+        foreach (var item in pluginNames)
+        {
+            if (IsPluginLoaded(item))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// 获取所有已加载的插件名称列表(含自身)
+    /// </summary>
+    /// <returns>已加载插件的名称列表</returns>
+    public List<string> GetLoadedPluginNames()
+    {
+        try
+        {
+            PluginService? pluginService = ServiceLocator.Get<PluginService>();
+            if (pluginService == null)
+                return new List<string>();
+
+            return pluginService.LoadedPluginDict.Keys.ToList();
+        }
+        catch (Exception ex)
+        {
+            LogError("获取已加载插件名称列表失败", DEFAULT_LOG_TAG, ex);
+            return new List<string>();
+        }
+    }
+
+    #endregion
+
     #region 工具调用 API
 
-    public async System.Threading.Tasks.Task<string> CallToolAsync(
+    public async Task<string> CallToolAsync(
         string toolName,
         Dictionary<string, string> parameters,
         string? pluginName = null)
@@ -149,7 +223,7 @@ internal class PluginContextImpl : IPluginContext
         try
         {
             LogDebug($"调用工具: {toolName}" + (pluginName != null ? $" (插件: {pluginName})" : ""));
-            return await ServiceLocator.Get<ToolRegistry>().CallToolAsync(toolName, parameters, pluginName);
+            return await ServiceLocator.Get<PluginToolService>().CallToolAsync(toolName, parameters, pluginName);
         }
         catch (Exception ex)
         {
@@ -158,43 +232,95 @@ internal class PluginContextImpl : IPluginContext
         }
     }
 
-    public List<Plugin.ToolInfo> GetAvailableTools()
+    public List<string> GetAvailableTools()
     {
+        List<string> result = new List<string>();
         try
         {
-            return ServiceLocator.Get<ToolRegistry>().GetAllTools();
+            PluginService? pluginService = ServiceLocator.Get<PluginService>();
+            if (pluginService == null)
+                return result;
+            foreach (var pluginInfo in pluginService.LoadedPlugins)
+            {
+                result.AddRange(pluginInfo.ToolDict.Keys);
+            }
+            return result;
         }
         catch (Exception ex)
         {
             LogError("获取可用工具列表失败", ex);
-            return new List<Plugin.ToolInfo>();
+            result.Clear();
+            return result;
         }
     }
 
-    public List<Plugin.ToolInfo> GetPluginTools(string pluginName)
+    public List<string> GetPluginTools(string pluginName)
     {
+        List<string> result = new List<string>();
         try
         {
-            return ServiceLocator.Get<ToolRegistry>().GetPluginTools(pluginName);
+            PluginInfo? pluginInfo = ServiceLocator.Get<PluginService>()?.GetPluginInfo(pluginName);
+            if (pluginInfo == null)
+                return result;
+
+            return pluginInfo.ToolDict.Keys.ToList();
         }
         catch (Exception ex)
         {
             LogError($"获取插件工具列表失败: {pluginName}", ex);
-            return new List<Plugin.ToolInfo>();
+            result.Clear();
+            return result;
         }
     }
 
-    public Plugin.ToolInfo? GetToolInfo(string toolName, string? pluginName = null)
+    /// <summary>
+    /// 判断指定名称的工具是否存在
+    /// </summary>
+    /// <param name="toolName">工具名称</param>
+    /// <param name="pluginName">可选的插件名称，如果指定则只在该插件中查找</param>
+    /// <returns>如果工具存在则返回 true，否则返回 false</returns>
+    public bool IsToolAvailable(string toolName, string? pluginName = null)
     {
-        try
+        if (string.IsNullOrWhiteSpace(toolName))
+            return false;
+        PluginInfo? pluginInfo = ServiceLocator.Get<PluginService>()?.GetPluginInfo(pluginName);
+        if (pluginInfo != null)
+            return pluginInfo.ToolDict.ContainsKey(toolName);
+        return ServiceLocator.Get<PluginService>()?.GlobalToolDict.ContainsKey(toolName) ?? false;
+    }
+    /// <summary>
+    /// 判断多个工具是否全部存在
+    /// </summary>
+    /// <param name="toolNames">工具名称列表</param>
+    /// <returns>如果所有工具都存在则返回 true，否则返回 false</returns>
+    public bool IsAllToolsAvailable(params string[] toolNames)
+    {
+        bool isResult = true;
+        foreach (var item in toolNames)
         {
-            return ServiceLocator.Get<ToolRegistry>().GetToolInfo(toolName, pluginName);
+            if (!IsToolAvailable(item))
+            {
+                isResult = false;
+                break;
+            }
         }
-        catch (Exception ex)
+        return isResult;
+    }
+    /// <summary>
+    /// 判断多个工具是否有任意一个存在
+    /// </summary>
+    /// <param name="toolNames">工具名称列表</param>
+    /// <returns>如果任意一个工具存在则返回 true，否则返回 false</returns>
+    public bool IsAnyToolAvailable(params string[] toolNames)
+    {
+        foreach (var item in toolNames)
         {
-            LogError($"获取工具信息失败: {toolName}", ex);
-            return null;
+            if (IsToolAvailable(item))
+            {
+                return true;
+            }
         }
+        return false;
     }
 
     #endregion

@@ -148,7 +148,7 @@ public class MainViewModel : ViewModelBase, IDisposable
     /// </summary>
     private void LoadPluginNavigationItems()
     {
-        var plugins = ServiceLocator.Get<PluginService>().LoadedPlugins.ToList();
+        var plugins = ServiceLocator.Get<PluginService>().LoadedPlugins;
 
         foreach (PluginInfo pluginInfo in plugins)
         {
@@ -175,7 +175,7 @@ public class MainViewModel : ViewModelBase, IDisposable
                     var pluginNavItem = new NavigationItemModel(config.GetDto() as NavigationTabDto)
                     {
                         Title = tab.TabName,
-                        Icon = tab.IconSymbol.ToString(),
+                        Icon = tab.IconSymbol,
                         Content = tabControl,
                         NavType = NavigationType.Plugin,
                         Order = config.OrderIndex,
@@ -221,7 +221,7 @@ public class MainViewModel : ViewModelBase, IDisposable
                 var pluginNavItem = new NavigationItemModel(config.GetDto() as NavigationTabDto)
                 {
                     Title = tab.TabName,
-                    Icon = tab.IconSymbol.ToString(),
+                    Icon = tab.IconSymbol,
                     Content = tabControl,
                     NavType = NavigationType.Plugin,
                     IsEnabled = pluginInfo.IsEnabled,

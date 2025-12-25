@@ -3,7 +3,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:MicroDock.ViewModels"
-             xmlns:plugin="using:MicroDock.Plugin"
+             xmlns:model="using:MicroDock.Model"
              mc:Ignorable="d"
              x:Class="MicroDock.Views.Controls.PluginSettingCard"
              x:DataType="vm:PluginSettingItem">
@@ -19,10 +19,10 @@
 					<StackPanel VerticalAlignment="Center">
 						<!-- 第一行：插件名 + 唯一名称 + 状态标记 -->
 						<StackPanel Orientation="Horizontal" Spacing="8">
-							<TextBlock Text="{Binding PluginName}"
+							<TextBlock Text="{Binding PluginDisplayName}"
 									   FontWeight="SemiBold"
 									   VerticalAlignment="Center"/>
-							<TextBlock Text="{Binding UniqueName}"
+							<TextBlock Text="{Binding PluginUniqueName}"
 									   FontSize="11"
 									   Foreground="Gray"
 									   Cursor="Hand"
@@ -123,7 +123,7 @@
                                Margin="0,4,0,4"/>
 					<ItemsControl ItemsSource="{Binding Tools}">
 						<ItemsControl.ItemTemplate>
-							<DataTemplate DataType="plugin:ToolInfo">
+							<DataTemplate DataType="model:PluginToolDefinition">
 								<Border Background="{DynamicResource Transparent}"
                                         BorderBrush="{DynamicResource ExpanderContentBorderBrush}"
                                         BorderThickness="1"

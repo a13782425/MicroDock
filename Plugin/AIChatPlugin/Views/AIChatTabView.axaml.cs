@@ -1,6 +1,7 @@
 using AIChatPlugin.ViewModels;
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
+using FluentAvalonia.UI.Controls;
 using MicroDock.Plugin;
 
 namespace AIChatPlugin.Views
@@ -58,7 +59,7 @@ namespace AIChatPlugin.Views
 
         public string TabName => "AI 对话";
 
-        public IconSymbolEnum IconSymbol => IconSymbolEnum.Message;
+        public object IconSymbol => Symbol.Message;
 
         private void InitializeComponent()
         {

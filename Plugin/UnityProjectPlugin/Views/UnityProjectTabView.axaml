@@ -8,102 +8,136 @@
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
              x:Class="UnityProjectPlugin.Views.UnityProjectTabView">
 
-    <Grid RowDefinitions="Auto,*" Margin="0,12,12,12">
-        <!-- 工具栏 -->
-        <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto" Margin="0,0,0,12">
-            <!-- 搜索框 -->
-            <TextBox Grid.Column="0" 
-                     Watermark="搜索项目（项目名或分组名）..."
-                     Name="SearchTextBox"
-                     Text="{Binding SearchText}"
-                     Margin="0,0,12,0"/>
-            
-            <!-- 分组视图切换按钮 -->
-            <ToggleButton Grid.Column="1"
-                          Name="GroupViewToggle"
-                          ToolTip.Tip="切换分组视图"
-                          IsChecked="{Binding IsGroupViewEnabled}"
-                          Padding="12,8"
-                          Margin="0,0,12,0">
-                <StackPanel Orientation="Horizontal" Spacing="4">
-                    <fa:SymbolIcon Symbol="Navigation" FontSize="16"/>
-                    <TextBlock Text="分组" VerticalAlignment="Center"/>
-                </StackPanel>
-            </ToggleButton>
-            
-            <!-- 添加项目按钮 -->
-            <Button Grid.Column="2" 
-                    Content="添加项目"
-                    Name="AddProjectButton"
-                    Command="{Binding AddProjectCommand}"
-                    Padding="16,8"/>
+    <Panel>
+        <!-- 主内容区域 -->
+        <Grid RowDefinitions="Auto,*" Margin="0,12,12,12">
+            <!-- 工具栏 -->
+            <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto" Margin="0,0,0,12">
+                <!-- 搜索框 -->
+                <TextBox Grid.Column="0" 
+                         Watermark="搜索项目（项目名或分组名）..."
+                         Name="SearchTextBox"
+                         Text="{Binding SearchText}"
+                         Margin="0,0,12,0"/>
+                
+                <!-- 分组视图切换按钮 -->
+                <ToggleButton Grid.Column="1"
+                              Name="GroupViewToggle"
+                              ToolTip.Tip="切换分组视图"
+                              IsChecked="{Binding IsGroupViewEnabled}"
+                              Padding="12,8"
+                              Margin="0,0,12,0">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <fa:SymbolIcon Symbol="Navigation" FontSize="16"/>
+                        <TextBlock Text="分组" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </ToggleButton>
+                
+                <!-- 添加项目按钮 -->
+                <Button Grid.Column="2" 
+                        Content="添加项目"
+                        Name="AddProjectButton"
+                        Command="{Binding AddProjectCommand}"
+                        Padding="16,8"/>
+            </Grid>
+
+            <!-- 主内容区域 -->
+            <ScrollViewer Grid.Row="1" 
+                          VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled">
+                <Grid>
+                    <!-- 平铺视图 -->
+                    <ItemsControl Name="TileView"
+                                  ItemsSource="{Binding FilteredProjects}"
+                                  IsVisible="{Binding !IsGroupViewEnabled}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="models:UnityProject">
+                                <views:ProjectCard DataContext="{Binding}"/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <!-- 分组视图 -->
+                    <ItemsControl Name="GroupView"
+                                  ItemsSource="{Binding GroupedProjects}"
+                                  IsVisible="{Binding IsGroupViewEnabled}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="models:ProjectGroupView">
+                                <fa:SettingsExpander Header="{Binding GroupName}"
+                                                     IconSource="Folder"
+                                                     IsExpanded="True"
+                                                     Description="{Binding ProjectCountDescription}"
+                                                     Margin="0,0,0,8">
+                                    
+                                    <!-- 项目列表 -->
+                                    <ItemsControl ItemsSource="{Binding Projects}"
+                                                  Margin="0,8,0,0">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="models:UnityProject">
+                                                <views:ProjectCard DataContext="{Binding}"/>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </fa:SettingsExpander>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <!-- 空状态提示 -->
+                    <StackPanel Name="EmptyState"
+                                IsVisible="{Binding !HasProjects}"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Spacing="16">
+                        <Viewbox Width="96" Height="96" Opacity="0.3">
+                            <Canvas Width="24" Height="24">
+                                <Path Fill="{DynamicResource TextFillColorSecondaryBrush}"
+                                      Data="M 12,2 L 22,8 L 22,16 L 12,22 L 2,16 L 2,8 Z M 12,4.5 L 4.5,9 L 4.5,15 L 12,19.5 L 19.5,15 L 19.5,9 Z"/>
+                            </Canvas>
+                        </Viewbox>
+                        <TextBlock Text="还没有添加 Unity 项目"
+                                   FontSize="16"
+                                   Opacity="0.6"
+                                   HorizontalAlignment="Center"/>
+                        <Button Content="添加第一个项目"
+                                Name="EmptyAddButton"
+                                Command="{Binding AddProjectCommand}"
+                                HorizontalAlignment="Center"
+                                Padding="16,8"/>
+                    </StackPanel>
+                </Grid>
+            </ScrollViewer>
         </Grid>
 
-        <!-- 主内容区域 -->
-        <ScrollViewer Grid.Row="1" 
-                      VerticalScrollBarVisibility="Auto"
-                      HorizontalScrollBarVisibility="Disabled">
-            <Grid>
-                <!-- 平铺视图 -->
-                <ItemsControl Name="TileView"
-                              ItemsSource="{Binding FilteredProjects}"
-                              IsVisible="{Binding !IsGroupViewEnabled}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate DataType="models:UnityProject">
-                            <views:ProjectCard DataContext="{Binding}"/>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
+        <!-- 遮罩层（点击关闭面板） -->
+        <Border Name="OverlayMask"
+                Background="#80000000"
+                IsVisible="False"
+                Opacity="0">
+            <Border.Transitions>
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.2"/>
+                </Transitions>
+            </Border.Transitions>
+        </Border>
 
-                <!-- 分组视图 -->
-                <ItemsControl Name="GroupView"
-                              ItemsSource="{Binding GroupedProjects}"
-                              IsVisible="{Binding IsGroupViewEnabled}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate DataType="models:ProjectGroupView">
-                            <fa:SettingsExpander Header="{Binding GroupName}"
-                                                 IconSource="Folder"
-                                                 IsExpanded="True"
-                                                 Description="{Binding ProjectCountDescription}"
-                                                 Margin="0,0,0,8">
-                                
-                                <!-- 项目列表 -->
-                                <ItemsControl ItemsSource="{Binding Projects}"
-                                              Margin="0,8,0,0">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate DataType="models:UnityProject">
-                                            <views:ProjectCard DataContext="{Binding}"/>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </fa:SettingsExpander>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-
-                <!-- 空状态提示 -->
-                <StackPanel Name="EmptyState"
-                            IsVisible="{Binding !HasProjects}"
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center"
-                            Spacing="16">
-                    <Viewbox Width="96" Height="96" Opacity="0.3">
-                        <Canvas Width="24" Height="24">
-                            <Path Fill="{DynamicResource TextFillColorSecondaryBrush}"
-                                  Data="M 12,2 L 22,8 L 22,16 L 12,22 L 2,16 L 2,8 Z M 12,4.5 L 4.5,9 L 4.5,15 L 12,19.5 L 19.5,15 L 19.5,9 Z"/>
-                        </Canvas>
-                    </Viewbox>
-                    <TextBlock Text="还没有添加 Unity 项目"
-                               FontSize="16"
-                               Opacity="0.6"
-                               HorizontalAlignment="Center"/>
-                    <Button Content="添加第一个项目"
-                            Name="EmptyAddButton"
-                            Command="{Binding AddProjectCommand}"
-                            HorizontalAlignment="Center"
-                            Padding="16,8"/>
-                </StackPanel>
-            </Grid>
-        </ScrollViewer>
-    </Grid>
+        <!-- 侧边编辑面板 -->
+        <Border Name="EditPanelContainer"
+                HorizontalAlignment="Right"
+                IsVisible="False">
+            <Border.RenderTransform>
+                <TranslateTransform X="400"/>
+            </Border.RenderTransform>
+            <Border.Transitions>
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.25">
+                        <TransformOperationsTransition.Easing>
+                            <CubicEaseOut/>
+                        </TransformOperationsTransition.Easing>
+                    </TransformOperationsTransition>
+                </Transitions>
+            </Border.Transitions>
+            <views:ProjectEditPanel Name="EditPanel"/>
+        </Border>
+    </Panel>
 </UserControl>

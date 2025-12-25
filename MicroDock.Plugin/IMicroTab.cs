@@ -10,6 +10,7 @@ public interface IMicroTab
     string TabName { get; }
     /// <summary>
     /// 页签图标
+    /// 支持FluentAvalonia.UI.Controls.Symbol, Avalonia.Media.IImage
     /// </summary>
-    IconSymbolEnum IconSymbol { get; }
+    object IconSymbol { get; }
 }

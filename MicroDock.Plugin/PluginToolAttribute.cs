@@ -7,7 +7,7 @@ namespace MicroDock.Plugin;
 /// 工具方法必须返回 Task&lt;string&gt; 类型
 /// </summary>
 [AttributeUsage(AttributeTargets.Method, AllowMultiple = false, Inherited = true)]
-public class MicroToolAttribute : Attribute
+public class PluginToolAttribute : Attribute
 {
     /// <summary>
     /// 工具名称（唯一标识符）
@@ -28,7 +28,7 @@ public class MicroToolAttribute : Attribute
     /// 创建工具特性
     /// </summary>
     /// <param name="name">工具名称，建议使用 "category.action" 格式，如 "http.get"</param>
-    public MicroToolAttribute(string name)
+    public PluginToolAttribute(string name)
     {
         if (string.IsNullOrWhiteSpace(name))
         {
@@ -43,7 +43,7 @@ public class MicroToolAttribute : Attribute
 /// 标记工具方法的参数，提供参数文档
 /// </summary>
 [AttributeUsage(AttributeTargets.Parameter, AllowMultiple = false, Inherited = true)]
-public class ToolParameterAttribute : Attribute
+public class PluginToolParameterAttribute : Attribute
 {
     /// <summary>
     /// 参数名称
@@ -64,7 +64,7 @@ public class ToolParameterAttribute : Attribute
     /// 创建参数特性
     /// </summary>
     /// <param name="name">参数名称</param>
-    public ToolParameterAttribute(string name)
+    public PluginToolParameterAttribute(string name)
     {
         if (string.IsNullOrWhiteSpace(name))
         {

@@ -77,27 +77,15 @@ namespace UnityProjectPlugin.Views
                 GroupButton.Click += OnGroupButtonClick;
             }
 
-            // 分组选择器事件
-            if (GroupComboBox != null)
-            {
-                GroupComboBox.SelectionChanged += OnGroupSelectionChanged;
-            }
-
-            // 添加分组按钮事件
-            if (AddGroupButton != null)
-            {
-                AddGroupButton.Click += OnAddGroupButtonClick;
-            }
-
-            // 新分组输入框回车事件
-            if (NewGroupNameTextBox != null)
-            {
-                NewGroupNameTextBox.KeyDown += OnNewGroupNameKeyDown;
-            }
             // 删除菜单项点击
             if (DeleteMenuItem != null)
             {
                 DeleteMenuItem.Click += OnDeleteMenuItemClick;
+            }
+            // 更多设置菜单项点击
+            if (MoreSettingsMenuItem != null)
+            {
+                MoreSettingsMenuItem.Click += OnMoreSettingsMenuItemClick;
             }
             // 监听 DataContext 变化
             this.DataContextChanged += OnDataContextChanged;
@@ -190,42 +178,102 @@ namespace UnityProjectPlugin.Views
             }
         }
         /// <summary>
+        /// 更多设置菜单项点击事件 - 打开侧边编辑面板
+        /// </summary>
+        private void OnMoreSettingsMenuItemClick(object? sender, RoutedEventArgs e)
+        {
+            if (DataContext is not UnityProject project)
+                return;
+
+            // 获取父级 UnityProjectTabView 的 ViewModel
+            var tabView = this.FindAncestorOfType<UnityProjectTabView>();
+            var viewModel = tabView?.ViewModel;
+
+            if (viewModel?.OpenEditPanelCommand?.CanExecute(project) == true)
+            {
+                viewModel.OpenEditPanelCommand.Execute(project);
+            }
+        }
+        /// <summary>
         /// 分组按钮点击 - 打开分组管理 Flyout
         /// </summary>
         private void OnGroupButtonClick(object? sender, RoutedEventArgs e)
         {
-            LoadGroupsData();
+            // 获取 GroupSelector 组件并绑定事件
+            BindGroupSelectorEvents();
         }
 
         /// <summary>
-        /// 加载分组数据
+        /// 绑定 GroupSelector 的事件
+        /// </summary>
+        private void BindGroupSelectorEvents()
+        {
+            // 从 Flyout 中获取 GroupSelector
+            if (GroupButton?.Flyout is Flyout flyout)
+            {
+                // 延迟执行，等待 Flyout 打开后
+                Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(async () =>
+                {
+                    // 等待 Flyout 打开
+                    await Task.Delay(100);
+
+                    // 查找 GroupSelector
+                    var groupSelector = this.FindControl<GroupSelector>("GroupSelectorControl");
+                    if (groupSelector == null)
+                    {
+                        // 从 Flyout 的视觉树中查找
+                        var topLevel = TopLevel.GetTopLevel(this);
+                        if (topLevel != null)
+                        {
+                            groupSelector = topLevel.GetVisualDescendants()
+                                .OfType<GroupSelector>()
+                                .FirstOrDefault();
+                        }
+                    }
+
+                    if (groupSelector != null)
+                    {
+                        // 设置当前项目的分组
+                        if (DataContext is UnityProject project)
+                        {
+                            groupSelector.SetSelectedGroupSilently(project.GroupName);
+                        }
+
+                        // 解绑旧事件（避免重复绑定）
+                        groupSelector.GroupChanged -= OnGroupSelectorGroupChanged;
+                        groupSelector.GroupChanged += OnGroupSelectorGroupChanged;
+                    }
+                });
+            }
+        }
+
+        /// <summary>
+        /// GroupSelector 分组变化事件处理
+        /// </summary>
+        private async void OnGroupSelectorGroupChanged(object? sender, string? newGroupName)
+        {
+            if (_plugin == null) return;
+            if (DataContext is not UnityProject project) return;
+
+            // 如果分组变化了，保存
+            if (newGroupName != project.GroupName)
+            {
+                await _plugin.UpdateProjectAsync(project.Path, project.Name, newGroupName);
+                project.GroupName = newGroupName;
+                UpdateGroupDisplay(project);
+
+                // 刷新列表
+                RefreshParentList();
+            }
+        }
+
+        /// <summary>
+        /// 加载分组数据（现在由 GroupSelector 组件处理）
         /// </summary>
         private void LoadGroupsData()
         {
-            if (_plugin == null || GroupComboBox == null || GroupsListControl == null) return;
-
-            List<ProjectGroup> groups = _plugin.GetGroups();
-
-            // 设置 ComboBox 数据源
-            List<string> groupNames = groups.Select(g => g.Name).ToList();
-            groupNames.Insert(0, string.Empty); // 添加"无分组"选项
-            GroupComboBox.ItemsSource = groupNames;
-
-            // 设置当前选择
-            if (DataContext is UnityProject project)
-            {
-                if (!string.IsNullOrEmpty(project.GroupName))
-                {
-                    GroupComboBox.SelectedItem = project.GroupName;
-                }
-                else
-                {
-                    GroupComboBox.SelectedIndex = 0;
-                }
-            }
-
-            // 设置分组列表
-            GroupsListControl.ItemsSource = groups;
+            // 分组数据现在由 GroupSelector 组件内部管理
+            // 这里保留一个空实现用于其他地方的调用兼容
         }
 
         /// <summary>
@@ -302,15 +350,12 @@ namespace UnityProjectPlugin.Views
         }
 
         /// <summary>
-        /// 分组选择变化事件
+        /// 分组选择变化事件 - 现由 GroupSelector 组件处理
         /// </summary>
-        private async void OnGroupSelectionChanged(object? sender, SelectionChangedEventArgs e)
+        public async void OnGroupChanged(string? newGroupName)
         {
-            if (GroupComboBox == null || _plugin == null) return;
+            if (_plugin == null) return;
             if (DataContext is not UnityProject project) return;
-
-            string? selectedGroup = GroupComboBox.SelectedItem as string;
-            string? newGroupName = string.IsNullOrEmpty(selectedGroup) ? null : selectedGroup;
 
             // 如果分组变化了，保存
             if (newGroupName != project.GroupName)
@@ -325,46 +370,7 @@ namespace UnityProjectPlugin.Views
         }
 
         /// <summary>
-        /// 添加新分组
-        /// </summary>
-        private async void OnAddGroupButtonClick(object? sender, RoutedEventArgs e)
-        {
-            await AddNewGroupAsync();
-        }
-  
-        private async void OnNewGroupNameKeyDown(object? sender, KeyEventArgs e)
-        {
-            if (e.Key == Key.Enter)
-            {
-                await AddNewGroupAsync();
-                e.Handled = true;
-            }
-        }
-
-        private async Task AddNewGroupAsync()
-        {
-            if (NewGroupNameTextBox == null || _plugin == null) return;
-
-            string? newGroupName = NewGroupNameTextBox.Text?.Trim();
-            if (string.IsNullOrEmpty(newGroupName)) return;
-
-            // 检查是否已存在
-            if (_plugin.GetGroups().Any(g => g.Name == newGroupName))
-            {
-                // TODO: 显示提示
-                return;
-            }
-
-            // 添加新分组
-            await _plugin.AddGroupAsync(newGroupName);
-            NewGroupNameTextBox.Text = string.Empty;
-
-            // 重新加载分组列表
-            LoadGroupsData();
-        }
-
-        /// <summary>
-        /// 删除分组按钮点击
+        /// 删除分组按钮点击 - 现由 GroupSelector 组件处理
         /// </summary>
         public async void DeleteGroupButton_Click(object? sender, RoutedEventArgs e)
         {
@@ -375,9 +381,6 @@ namespace UnityProjectPlugin.Views
                 if (tabView != null)
                 {
                     await tabView.ViewModel.DeleteGroupAsync(group);
-                    
-                    // 重新加载分组列表（用于分组下拉框）
-                    LoadGroupsData();
                 }
             }
         }

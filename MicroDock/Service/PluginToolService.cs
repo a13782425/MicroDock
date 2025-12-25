@@ -6,6 +6,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text.Json;
 using System.Threading.Tasks;
+using MicroDock.Model;
 using MicroDock.Plugin;
 using Serilog;
 
@@ -16,25 +17,17 @@ namespace MicroDock.Service;
 /// 负责工具的注册、查询、调用和统计
 /// </summary>
 [AutoRegister]
-public class ToolRegistry : IMicroService
+public class PluginToolService : IMicroService
 {
-    // 工具存储：插件名 -> 工具名 -> 工具定义
-    private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, ToolDefinition>> _toolsByPlugin;
-
-    // 全局工具索引：工具名 -> 第一个注册的工具定义
-    private readonly ConcurrentDictionary<string, ToolDefinition> _globalTools;
 
     // 统计数据：完整键（插件名.工具名）-> 统计信息
-    private readonly ConcurrentDictionary<string, ToolStatistics> _statistics;
+    private readonly ConcurrentDictionary<string, PluginToolStatistics> _statistics;
 
     /// <summary>
     /// 公共构造函数，用于 ServiceLocator 注册
     /// </summary>
-    public ToolRegistry()
+    public PluginToolService()
     {
-        _toolsByPlugin = new ConcurrentDictionary<string, ConcurrentDictionary<string, ToolDefinition>>();
-        _globalTools = new ConcurrentDictionary<string, ToolDefinition>();
-        _statistics = new ConcurrentDictionary<string, ToolStatistics>();
 
         // 启动时从数据库加载历史统计
         LoadStatisticsFromDatabase();
@@ -66,39 +59,6 @@ public class ToolRegistry : IMicroService
     }
 
     /// <summary>
-    /// 注册工具
-    /// </summary>
-    public void RegisterTool(string pluginName, ToolDefinition tool)
-    {
-        if (string.IsNullOrWhiteSpace(pluginName))
-        {
-            throw new ArgumentException("插件名称不能为空", nameof(pluginName));
-        }
-
-        if (tool == null)
-        {
-            throw new ArgumentNullException(nameof(tool));
-        }
-
-        // 获取或创建插件的工具字典
-        var pluginTools = _toolsByPlugin.GetOrAdd(pluginName,
-            _ => new ConcurrentDictionary<string, ToolDefinition>());
-
-        // 注册到插件的工具列表
-        if (!pluginTools.TryAdd(tool.Name, tool))
-        {
-            Log.Warning("插件 {Plugin} 已存在工具 {Tool}，将被覆盖", pluginName, tool.Name);
-            pluginTools[tool.Name] = tool;
-        }
-
-        // 注册到全局工具索引（只保留第一个注册的）
-        _globalTools.TryAdd(tool.Name, tool);
-
-        Log.Information("注册工具: {Tool} (插件: {Plugin}, 参数: {ParamCount})",
-            tool.Name, pluginName, tool.Parameters.Count);
-    }
-
-    /// <summary>
     /// 调用工具
     /// </summary>
     /// <param name="toolName">工具名称</param>
@@ -110,17 +70,19 @@ public class ToolRegistry : IMicroService
         string? pluginName = null)
     {
         var stopwatch = Stopwatch.StartNew();
-        ToolDefinition? tool = null;
+        PluginToolDefinition? tool = null;
         string actualPluginName;
 
         try
         {
             // 1. 查找工具
-            if (!string.IsNullOrEmpty(pluginName))
+            PluginService? service = ServiceLocator.Get<PluginService>();
+
+            var pluginInfo = service?.GetPluginInfo(pluginName);
+            if (pluginInfo != null)
             {
                 // 在指定插件中查找
-                if (!_toolsByPlugin.TryGetValue(pluginName, out var pluginTools) ||
-                    !pluginTools.TryGetValue(toolName, out tool))
+                if (!pluginInfo.ToolDict.TryGetValue(toolName, out tool))
                 {
                     throw new ToolNotFoundException(toolName, pluginName);
                 }
@@ -129,7 +91,7 @@ public class ToolRegistry : IMicroService
             else
             {
                 // 在全局工具中查找第一个匹配的
-                if (!_globalTools.TryGetValue(toolName, out tool))
+                if (!service.GlobalToolDict.TryGetValue(toolName, out tool))
                 {
                     throw new ToolNotFoundException(toolName);
                 }
@@ -176,7 +138,7 @@ public class ToolRegistry : IMicroService
     /// <summary>
     /// 执行工具方法
     /// </summary>
-    private async Task<string> InvokeToolAsync(ToolDefinition tool, Dictionary<string, string> parameters)
+    private async Task<string> InvokeToolAsync(PluginToolDefinition tool, Dictionary<string, string> parameters)
     {
         var methodParams = tool.Method.GetParameters();
         var args = new object?[methodParams.Length];
@@ -226,7 +188,7 @@ public class ToolRegistry : IMicroService
             // 已有实例（插件实例或已创建的缓存实例）
             invokeInstance = tool.TargetInstance;
         }
-        else if (tool.NeedsLazyInstance && tool.TargetType != null)
+        else if (tool.TargetType != null)
         {
             // 需要延迟创建实例：线程安全地创建并缓存
             lock (tool.InstanceLock)
@@ -342,7 +304,7 @@ public class ToolRegistry : IMicroService
         var key = $"{pluginName}.{toolName}";
 
         _statistics.AddOrUpdate(key,
-            _ => new ToolStatistics
+            _ => new PluginToolStatistics
             {
                 ToolName = toolName,
                 PluginName = pluginName,
@@ -385,65 +347,9 @@ public class ToolRegistry : IMicroService
     }
 
     /// <summary>
-    /// 获取所有工具
-    /// </summary>
-    public List<ToolInfo> GetAllTools()
-    {
-        var tools = new List<ToolInfo>();
-
-        foreach (var pluginEntry in _toolsByPlugin)
-        {
-            foreach (var toolEntry in pluginEntry.Value)
-            {
-                tools.Add(ConvertToToolInfo(toolEntry.Value));
-            }
-        }
-
-        return tools.OrderBy(t => t.ProviderPlugin).ThenBy(t => t.Name).ToList();
-    }
-
-    /// <summary>
-    /// 获取指定插件的工具
-    /// </summary>
-    public List<ToolInfo> GetPluginTools(string pluginName)
-    {
-        if (!_toolsByPlugin.TryGetValue(pluginName, out var pluginTools))
-        {
-            return new List<ToolInfo>();
-        }
-
-        return pluginTools.Values
-            .Select(ConvertToToolInfo)
-            .OrderBy(t => t.Name)
-            .ToList();
-    }
-
-    /// <summary>
-    /// 获取工具详细信息
-    /// </summary>
-    public ToolInfo? GetToolInfo(string toolName, string? pluginName = null)
-    {
-        ToolDefinition? tool = null;
-
-        if (!string.IsNullOrEmpty(pluginName))
-        {
-            if (_toolsByPlugin.TryGetValue(pluginName, out var pluginTools))
-            {
-                pluginTools.TryGetValue(toolName, out tool);
-            }
-        }
-        else
-        {
-            _globalTools.TryGetValue(toolName, out tool);
-        }
-
-        return tool != null ? ConvertToToolInfo(tool) : null;
-    }
-
-    /// <summary>
     /// 获取工具统计
     /// </summary>
-    public ToolStatistics? GetStatistics(string toolName, string? pluginName = null)
+    public PluginToolStatistics? GetStatistics(string toolName, string? pluginName = null)
     {
         if (!string.IsNullOrEmpty(pluginName))
         {
@@ -458,27 +364,9 @@ public class ToolRegistry : IMicroService
     /// <summary>
     /// 获取所有统计信息
     /// </summary>
-    public List<ToolStatistics> GetAllStatistics()
+    public List<PluginToolStatistics> GetAllStatistics()
     {
         return _statistics.Values.OrderByDescending(s => s.CallCount).ToList();
-    }
-
-    /// <summary>
-    /// 转换为 ToolInfo
-    /// </summary>
-    private ToolInfo ConvertToToolInfo(ToolDefinition tool)
-    {
-        return new ToolInfo
-        {
-            Name = tool.Name,
-            Description = tool.Description,
-            ReturnDescription = tool.ReturnDescription,
-            ProviderPlugin = tool.ProviderPlugin,
-            Parameters = new List<ToolParameterInfo>(tool.Parameters),
-            IsStatic = tool.IsStatic,
-            NeedsLazyInstance = tool.NeedsLazyInstance,
-            ClassName = tool.TargetType?.Name ?? "Unknown"
-        };
     }
 
     /// <summary>
@@ -486,8 +374,6 @@ public class ToolRegistry : IMicroService
     /// </summary>
     public void Clear()
     {
-        _toolsByPlugin.Clear();
-        _globalTools.Clear();
         _statistics.Clear();
     }
 }

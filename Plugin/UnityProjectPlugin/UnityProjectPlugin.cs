@@ -18,6 +18,9 @@ namespace UnityProjectPlugin
     /// </summary>
     public class UnityProjectPlugin : BaseMicroDockPlugin
     {
+        private static UnityProjectPlugin _instance;
+        public static UnityProjectPlugin Instance => _instance;
+
         private string _dataFolder = string.Empty;
         private List<UnityProject> _projects = new();
         private List<UnityVersion> _versions = new();
@@ -61,10 +64,12 @@ namespace UnityProjectPlugin
 
         public override void OnInit()
         {
+            _instance = this;
             base.OnInit();
         }
         public override async Task OnInitAsync()
         {
+            await base.OnInitAsync();
             LogInfo("Unity 项目管理插件初始化中...");
 
             // 初始化数据文件夹路径
@@ -163,6 +168,14 @@ namespace UnityProjectPlugin
             {
                 LogError("保存项目列表到文件失败", ex);
             }
+        }
+
+        /// <summary>
+        /// 保存项目修改（公开方法，供 ViewModel 调用）
+        /// </summary>
+        public async Task SaveProjectChangesAsync()
+        {
+            await SaveProjectsToFileAsync();
         }
 
         /// <summary>
@@ -564,11 +577,11 @@ namespace UnityProjectPlugin
         /// <summary>
         /// 判断指定文件夹是否是 Unity 项目
         /// </summary>
-        [MicroTool("unity.is_project",
+        [PluginTool("unity.is_project",
             Description = "判断指定文件夹是否是 Unity 项目",
             ReturnDescription = "true 表示是 Unity 项目，false 表示不是")]
         public async Task<string> IsUnityProject(
-            [ToolParameter("path", Description = "项目文件夹路径")] string path)
+            [PluginToolParameter("path", Description = "项目文件夹路径")] string path)
         {
             await Task.CompletedTask;
 
@@ -599,12 +612,12 @@ namespace UnityProjectPlugin
         /// <summary>
         /// 使用指定版本的 Unity 打开项目
         /// </summary>
-        [MicroTool("unity.open_project",
+        [PluginTool("unity.open_project",
             Description = "使用指定版本的 Unity 打开项目",
             ReturnDescription = "操作结果消息")]
         public async Task<string> OpenUnityProject(
-            [ToolParameter("projectPath", Description = "项目路径")] string projectPath,
-            [ToolParameter("editorPath", Description = "Unity Editor 路径", Required = false)] string? editorPath = null)
+            [PluginToolParameter("projectPath", Description = "项目路径")] string projectPath,
+            [PluginToolParameter("editorPath", Description = "Unity Editor 路径", Required = false)] string? editorPath = null)
         {
             await Task.CompletedTask;
 

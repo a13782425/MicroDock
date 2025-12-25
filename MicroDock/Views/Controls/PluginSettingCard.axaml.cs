@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Input;
+using MicroDock.Model;
 using MicroDock.Plugin;
 using MicroDock.Utils;
 
@@ -20,7 +21,7 @@ public partial class PluginSettingCard : UserControl
     }
     private async void ToolName_DoubleTapped(object? sender, TappedEventArgs e)
     {
-        if (sender is TextBlock { DataContext: ToolInfo tool })
+        if (sender is TextBlock { DataContext: PluginToolDefinition tool })
         {
             await UniversalUtils.CopyToClipboardAsync(tool.Name);
         }

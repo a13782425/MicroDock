@@ -25,6 +25,8 @@ namespace UnityProjectPlugin.ViewModels
         private ObservableCollection<ProjectGroupView> _groupedProjects = new();
         private string _searchText = string.Empty;
         private bool _isGroupViewEnabled = false;
+        private ProjectEditPanelViewModel? _editPanelViewModel;
+        private bool _isEditPanelOpen;
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -32,6 +34,7 @@ namespace UnityProjectPlugin.ViewModels
         public ICommand OpenProjectCommand { get; }
         public ICommand DeleteProjectCommand { get; }
         public ICommand ToggleGroupViewCommand { get; }
+        public ICommand OpenEditPanelCommand { get; }
 
         public UnityProjectTabViewModel(UnityProjectPlugin plugin, IFilePickerService filePickerService)
         {
@@ -43,6 +46,14 @@ namespace UnityProjectPlugin.ViewModels
             OpenProjectCommand = new AsyncRelayCommand(OpenProjectAsync);
             DeleteProjectCommand = new AsyncRelayCommand(DeleteProjectAsync);
             ToggleGroupViewCommand = new RelayCommand(_ => ToggleGroupView());
+            OpenEditPanelCommand = new RelayCommand(OpenEditPanel);
+
+            // 初始化编辑面板 ViewModel
+            _editPanelViewModel = new ProjectEditPanelViewModel(
+                plugin,
+                () => LoadProjects(), // 保存回调：刷新列表
+                () => IsEditPanelOpen = false // 关闭回调
+            );
 
             LoadProjects();
         }
@@ -147,6 +158,58 @@ namespace UnityProjectPlugin.ViewModels
                     OnPropertyChanged();
                 }
             }
+        }
+
+        /// <summary>
+        /// 编辑面板 ViewModel
+        /// </summary>
+        public ProjectEditPanelViewModel? EditPanelViewModel
+        {
+            get => _editPanelViewModel;
+            set
+            {
+                if (_editPanelViewModel != value)
+                {
+                    _editPanelViewModel = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        /// <summary>
+        /// 编辑面板是否打开
+        /// </summary>
+        public bool IsEditPanelOpen
+        {
+            get => _isEditPanelOpen;
+            set
+            {
+                if (_isEditPanelOpen != value)
+                {
+                    _isEditPanelOpen = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        /// <summary>
+        /// 打开编辑面板
+        /// </summary>
+        public void OpenEditPanel(object? parameter)
+        {
+            if (parameter is UnityProject project && _editPanelViewModel != null)
+            {
+                _editPanelViewModel.OpenPanel(project);
+                IsEditPanelOpen = true;
+            }
+        }
+
+        /// <summary>
+        /// 关闭编辑面板
+        /// </summary>
+        public void CloseEditPanel()
+        {
+            IsEditPanelOpen = false;
         }
 
         /// <summary>

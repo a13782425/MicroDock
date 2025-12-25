@@ -156,7 +156,7 @@ namespace AIChatPlugin.ViewModels
                     .ToList();
 
                 // 获取可用工具
-                List<object> tools = GetAvailableTools();
+                List<object> tools = new List<object>();
 
                 // 流式发送
                 Progress<string> progress = new Progress<string>(content =>
@@ -268,71 +268,6 @@ namespace AIChatPlugin.ViewModels
                 _currentCancellationTokenSource?.Dispose();
                 _currentCancellationTokenSource = null;
             }
-        }
-
-        /// <summary>
-        /// 获取可用工具定义
-        /// </summary>
-        private List<object> GetAvailableTools()
-        {
-            List<object> tools = new List<object>();
-
-            try
-            {
-                List<MicroDock.Plugin.ToolInfo> availableTools = _plugin.Context!.GetAvailableTools();
-
-                foreach (MicroDock.Plugin.ToolInfo toolInfo in availableTools)
-                {
-                    // 构建工具定义（OpenAI 格式）
-                    Dictionary<string, object> toolDef = new Dictionary<string, object>
-                    {
-                        ["type"] = "function",
-                        ["function"] = new Dictionary<string, object>
-                        {
-                            ["name"] = toolInfo.Name,
-                            ["description"] = toolInfo.Description ?? string.Empty,
-                            ["parameters"] = new Dictionary<string, object>
-                            {
-                                ["type"] = "object",
-                                ["properties"] = BuildToolParameters(toolInfo),
-                                ["required"] = toolInfo.Parameters
-                                    .Where(p => p.Required)
-                                    .Select(p => p.Name)
-                                    .ToList()
-                            }
-                        }
-                    };
-
-                    tools.Add(toolDef);
-                }
-            }
-            catch (Exception ex)
-            {
-                _plugin.Context!.LogError("获取可用工具失败", ex);
-            }
-
-            return tools;
-        }
-
-        /// <summary>
-        /// 构建工具参数定义
-        /// </summary>
-        private Dictionary<string, object> BuildToolParameters(MicroDock.Plugin.ToolInfo toolInfo)
-        {
-            Dictionary<string, object> properties = new Dictionary<string, object>();
-
-            foreach (MicroDock.Plugin.ToolParameterInfo param in toolInfo.Parameters)
-            {
-                Dictionary<string, object> paramDef = new Dictionary<string, object>
-                {
-                    ["type"] = MapTypeToJsonType(param.TypeName),
-                    ["description"] = param.Description ?? string.Empty
-                };
-
-                properties[param.Name] = paramDef;
-            }
-
-            return properties;
         }
 
         /// <summary>

@@ -42,6 +42,11 @@ namespace UnityProjectPlugin.Models
         public string? UnityVersion { get; set; }
 
         /// <summary>
+        /// 目标平台 ID（如 "Android", "iOS"）
+        /// </summary>
+        public string? TargetPlatform { get; set; }
+
+        /// <summary>
         /// 最后打开时间
         /// </summary>
         public DateTime LastOpened { get; set; }

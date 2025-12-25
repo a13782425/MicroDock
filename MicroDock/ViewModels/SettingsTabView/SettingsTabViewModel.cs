@@ -371,27 +371,18 @@ public class SettingsTabViewModel : ViewModelBase
             }
             catch (Exception ex)
             {
-                Serilog.Log.Error(ex, "获取插件 {PluginName} 的设置UI失败", pluginInfo.Name);
+                Serilog.Log.Error(ex, "获取插件 {PluginName} 的设置UI失败", pluginInfo.DisplayName);
             }
 
             // 从数据库获取插件信息
             PluginInfoDB? dbInfo = DBContext.GetPluginInfo(pluginInfo.UniqueName);
 
-            PluginSettingItem settingItem = new PluginSettingItem();
+            PluginSettingItem settingItem = new PluginSettingItem(pluginInfo);
 
             // 先设置基础属性，避免在 IsEnabled setter 中出错
-            settingItem.UniqueName = pluginInfo.UniqueName;
-            settingItem.PluginName = pluginInfo.Name;
-            settingItem.PluginInstance = pluginInfo.PluginInstance;
-            settingItem.SettingsControl = settingsControl;
-            settingItem.Version = pluginInfo.Manifest?.Version ?? "未知";
-            settingItem.InstalledAt = dbInfo != null ? (DateTime?)dbInfo.InstalledAtDateTime : null;
             settingItem.IsPendingDelete = dbInfo?.PendingDelete ?? false;
             settingItem.IsPendingUpdate = dbInfo?.PendingUpdate ?? false;
             settingItem.PendingVersion = dbInfo?.PendingVersion;
-
-            // 最后设置 IsEnabled，此时其他属性都已就绪
-            settingItem._isEnabled = dbInfo?.IsEnabled ?? true;
 
             // 加载插件的工具
             try
@@ -400,7 +391,7 @@ public class SettingsTabViewModel : ViewModelBase
             }
             catch (Exception ex)
             {
-                Serilog.Log.Error(ex, "加载插件 {PluginName} 的工具列表失败", pluginInfo.Name);
+                Serilog.Log.Error(ex, "加载插件 {PluginName} 的工具列表失败", pluginInfo.DisplayName);
             }
 
             PluginSettings.Add(settingItem);
@@ -531,7 +522,7 @@ public class SettingsTabViewModel : ViewModelBase
         // 如果是真正删除（启动时删除），才从列表中移除
         Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
         {
-            PluginSettingItem? item = PluginSettings.FirstOrDefault(p => p.UniqueName == message.PluginName);
+            PluginSettingItem? item = PluginSettings.FirstOrDefault(p => p.PluginUniqueName == message.PluginName);
             if (item != null)
             {
                 // 检查数据库中的状态
@@ -1192,14 +1183,14 @@ public class SettingsTabViewModel : ViewModelBase
             }
 
             // 获取已安装的插件名称列表
-            var installedPlugins = PluginSettings.Select(p => p.UniqueName).ToHashSet();
+            var installedPlugins = PluginSettings.Select(p => p.PluginUniqueName).ToHashSet();
 
             // 构建插件列表数据
             var pluginItems = new ObservableCollection<RemotePluginListItem>();
             foreach (var plugin in plugins.Where(p => p.IsEnabled && !p.IsDeprecated))
             {
                 var isInstalled = installedPlugins.Contains(plugin.Name);
-                var installedPlugin = PluginSettings.FirstOrDefault(p => p.UniqueName == plugin.Name);
+                var installedPlugin = PluginSettings.FirstOrDefault(p => p.PluginUniqueName == plugin.Name);
                 var needsUpdate = isInstalled && installedPlugin != null &&
                                   !string.IsNullOrEmpty(plugin.CurrentVersion) &&
                                   plugin.CurrentVersion != installedPlugin.Version;

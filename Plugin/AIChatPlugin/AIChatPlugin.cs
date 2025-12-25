@@ -312,12 +312,12 @@ namespace AIChatPlugin
         /// <summary>
         /// 发送消息到 AI 对话
         /// </summary>
-        [MicroTool("aichat.send_message",
+        [PluginTool("aichat.send_message",
             Description = "发送消息到 AI 对话并获取回复",
             ReturnDescription = "AI 回复的 JSON 字符串")]
         public async Task<string> SendMessageTool(
-            [ToolParameter("conversation_id", Description = "对话 ID")] string conversationId,
-            [ToolParameter("message", Description = "消息内容")] string message)
+            [PluginToolParameter("conversation_id", Description = "对话 ID")] string conversationId,
+            [PluginToolParameter("message", Description = "消息内容")] string message)
         {
             try
             {
@@ -370,7 +370,7 @@ namespace AIChatPlugin
         /// <summary>
         /// 获取对话列表
         /// </summary>
-        [MicroTool("aichat.get_conversations",
+        [PluginTool("aichat.get_conversations",
             Description = "获取所有对话列表",
             ReturnDescription = "对话列表的 JSON 字符串")]
         public async Task<string> GetConversationsTool()
@@ -390,11 +390,11 @@ namespace AIChatPlugin
         /// <summary>
         /// 创建新对话
         /// </summary>
-        [MicroTool("aichat.create_conversation",
+        [PluginTool("aichat.create_conversation",
             Description = "创建新的对话",
             ReturnDescription = "新对话的 JSON 字符串")]
         public async Task<string> CreateConversationTool(
-            [ToolParameter("title", Description = "对话标题", Required = false)] string? title = null)
+            [PluginToolParameter("title", Description = "对话标题", Required = false)] string? title = null)
         {
             try
             {
@@ -428,11 +428,11 @@ namespace AIChatPlugin
         /// <summary>
         /// 删除对话
         /// </summary>
-        [MicroTool("aichat.delete_conversation",
+        [PluginTool("aichat.delete_conversation",
             Description = "删除指定的对话",
             ReturnDescription = "操作结果的 JSON 字符串")]
         public async Task<string> DeleteConversationTool(
-            [ToolParameter("conversation_id", Description = "对话 ID")] string conversationId)
+            [PluginToolParameter("conversation_id", Description = "对话 ID")] string conversationId)
         {
             try
             {
@@ -449,7 +449,7 @@ namespace AIChatPlugin
         /// <summary>
         /// 获取配置信息
         /// </summary>
-        [MicroTool("aichat.get_config",
+        [PluginTool("aichat.get_config",
             Description = "获取 AI 配置信息（不包含敏感信息）",
             ReturnDescription = "配置信息的 JSON 字符串")]
         public async Task<string> GetConfigTool()

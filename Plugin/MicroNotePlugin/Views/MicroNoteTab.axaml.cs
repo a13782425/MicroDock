@@ -1,11 +1,12 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
-using Microsoft.Extensions.DependencyInjection;
+using FluentAvalonia.UI.Controls;
 using MicroDock.Plugin;
 using MicroNotePlugin.Services;
 using MicroNotePlugin.ViewModels;
 using MicroNotePlugin.Views.Controls;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace MicroNotePlugin.Views;
 
@@ -19,14 +20,14 @@ public partial class MicroNoteTab : UserControl, IMicroTab
     public MicroNoteTab(MicroNotePlugin plugin)
     {
         _plugin = plugin;
-        
+
         // 在 XAML 加载前初始化 ViewModel，确保 DataContext 绑定能正常工作
         if (_plugin.Context != null && _plugin.Services != null)
         {
             _viewModel = new MicroNoteTabViewModel(_plugin.Services);
             DataContext = _viewModel;
         }
-        
+
         AvaloniaXamlLoader.Load(this);
         this.Loaded += OnLoaded;
     }
@@ -39,7 +40,7 @@ public partial class MicroNoteTab : UserControl, IMicroTab
     /// <summary>
     /// 页签图标
     /// </summary>
-    public IconSymbolEnum IconSymbol => IconSymbolEnum.Edit;
+    public object IconSymbol => Symbol.Edit;
 
     private void OnLoaded(object? sender, RoutedEventArgs e)
     {
@@ -72,7 +73,7 @@ public partial class MicroNoteTab : UserControl, IMicroTab
         {
             // SetViewModel 会设置内部的 _viewModel 字段，编辑器功能依赖它
             _markdownEditor.SetViewModel(_viewModel.Editor);
-            
+
             // 从 DI 获取图片服务
             var imageService = _plugin.Services.GetRequiredService<IImageService>();
             _markdownEditor.SetImageService(imageService);

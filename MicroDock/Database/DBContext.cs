@@ -1,11 +1,10 @@
+using MicroDock.Model;
+using MicroDock.Service;
 using SQLite;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using MicroDock.Service;
 
 namespace MicroDock.Database;
 
@@ -304,7 +303,7 @@ internal static class DBContext
     /// <summary>
     /// 保存或更新工具统计
     /// </summary>
-    public static void SavePluginToolStatistics(string pluginName, string toolName, Plugin.ToolStatistics stats)
+    public static void SavePluginToolStatistics(string pluginName, string toolName, PluginToolStatistics stats)
     {
         if (string.IsNullOrEmpty(pluginName) || string.IsNullOrEmpty(toolName) || stats == null)
         {
@@ -344,7 +343,7 @@ internal static class DBContext
     /// <summary>
     /// 加载单个工具统计
     /// </summary>
-    public static Plugin.ToolStatistics? LoadPluginToolStatistics(string pluginName, string toolName)
+    public static PluginToolStatistics? LoadPluginToolStatistics(string pluginName, string toolName)
     {
         if (string.IsNullOrEmpty(pluginName) || string.IsNullOrEmpty(toolName))
         {
@@ -357,7 +356,7 @@ internal static class DBContext
 
         if (db == null) return null;
 
-        return new Plugin.ToolStatistics
+        return new PluginToolStatistics
         {
             ToolName = db.ToolName,
             PluginName = db.PluginName,
@@ -372,11 +371,11 @@ internal static class DBContext
     /// <summary>
     /// 加载所有工具统计
     /// </summary>
-    public static List<Plugin.ToolStatistics> LoadAllPluginToolStatistics()
+    public static List<PluginToolStatistics> LoadAllPluginToolStatistics()
     {
         List<PluginToolStatisticsDB> dbStats = _database.Table<PluginToolStatisticsDB>().ToList();
 
-        return dbStats.Select(db => new Plugin.ToolStatistics
+        return dbStats.Select(db => new PluginToolStatistics
         {
             ToolName = db.ToolName,
             PluginName = db.PluginName,
@@ -391,18 +390,18 @@ internal static class DBContext
     /// <summary>
     /// 加载指定插件的所有工具统计
     /// </summary>
-    public static List<Plugin.ToolStatistics> LoadPluginToolStatisticsByPlugin(string pluginName)
+    public static List<PluginToolStatistics> LoadPluginToolStatisticsByPlugin(string pluginName)
     {
         if (string.IsNullOrEmpty(pluginName))
         {
-            return new List<Plugin.ToolStatistics>();
+            return new List<PluginToolStatistics>();
         }
 
         List<PluginToolStatisticsDB> dbStats = _database.Table<PluginToolStatisticsDB>()
             .Where(s => s.PluginName == pluginName)
             .ToList();
 
-        return dbStats.Select(db => new Plugin.ToolStatistics
+        return dbStats.Select(db => new PluginToolStatistics
         {
             ToolName = db.ToolName,
             PluginName = db.PluginName,

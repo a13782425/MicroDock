@@ -9,6 +9,7 @@ namespace MicroDock.Plugin
     /// <summary>
     /// 图标符号
     /// </summary>
+    [Obsolete("请使用FluentAvalonia.UI.Controls.Symbol")]
     public enum IconSymbolEnum
     {
         Accept,

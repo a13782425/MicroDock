@@ -1,0 +1,60 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             mc:Ignorable="d" d:DesignWidth="300" d:DesignHeight="350"
+             x:Class="UnityProjectPlugin.Views.GroupSelector">
+
+    <StackPanel Spacing="12">
+        <!-- 当前分组选择 -->
+        <StackPanel Spacing="4">
+            <TextBlock Text="项目分组" FontSize="12" Opacity="0.7"/>
+            <ComboBox Name="GroupComboBox"
+                      IsEditable="True"
+                      PlaceholderText="选择或输入分组..."
+                      HorizontalAlignment="Stretch"/>
+        </StackPanel>
+
+        <!-- 分组列表 -->
+        <StackPanel Spacing="4">
+            <TextBlock Text="所有分组" FontSize="12" Opacity="0.7"/>
+            <ScrollViewer MaxHeight="200" HorizontalScrollBarVisibility="Disabled">
+                <ItemsControl Name="GroupsListControl">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid ColumnDefinitions="*,Auto" Margin="0,4">
+                                <TextBlock Grid.Column="0"
+                                           Text="{Binding Name}"
+                                           VerticalAlignment="Center"/>
+                                <Button Grid.Column="1"
+                                        Name="DeleteGroupButton"
+                                        Padding="4"
+                                        FontSize="12"
+                                        ToolTip.Tip="删除分组"
+                                        Tag="{Binding}">
+                                    <ui:SymbolIcon Symbol="Delete" FontSize="12"/>
+                                </Button>
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </StackPanel>
+
+        <!-- 新建分组 -->
+        <StackPanel Spacing="4">
+            <TextBlock Text="新建分组" FontSize="12" Opacity="0.7"/>
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBox Grid.Column="0"
+                         Name="NewGroupNameTextBox"
+                         Watermark="输入新分组名称..."
+                         Margin="0,0,8,0"/>
+                <Button Grid.Column="1"
+                        Content="添加"
+                        Name="AddGroupButton"
+                        Padding="12,6"/>
+            </Grid>
+        </StackPanel>
+    </StackPanel>
+</UserControl>

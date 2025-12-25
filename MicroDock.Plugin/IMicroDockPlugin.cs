@@ -55,4 +55,10 @@ public interface IMicroDockPlugin
     /// 所有插件初始化完成后调用(此时可以安全地调用其他插件的工具)
     /// </summary>
     void OnAllPluginsLoaded();
+
+    /// <summary>
+    /// 当有插件导入时候调用
+    /// </summary>
+    /// <param name="pluginName">导入的插件名</param>
+    void OnImportPlugin(string pluginName);
 }

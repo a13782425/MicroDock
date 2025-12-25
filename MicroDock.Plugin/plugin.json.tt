@@ -6,11 +6,10 @@
   "author": "[可选]作者信息",
   "license": "[可选]许可证",
   "homepage": "[可选]主页",
-  "main": "主 DLL 文件名(例如: PluginName.dll)",
   "entryClass": "入口类的完全限定名(例如: Namespace.PluginClassName)",
   "appBuilderMethod": "[可选]配置appBuilder,方法签名：static void Method(Avalonia.AppBuilder)(例如:Namespace.ClassName.ConfigureAppBuilder)",
   "engine": "[可选]运行最低环境(例如:1.0.0.0)",
-  "Dependencies": {
+  "dependencies": {
     "[可选]其他插件的唯一标识符": "版本号约束(例如: ^1.0.0)"
   }
 }
