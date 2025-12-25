@@ -39,7 +39,7 @@ public class NavigationItemModel : ReactiveObject, IDisposable
         UniqueId = _tabDto.Id;
         Order = _tabDto.OrderIndex;
         IsVisible = _tabDto.IsVisible;
-        
+
         // 初始化锁定状态
         _isLocked = _tabDto.IsLocked;
         UpdateUnlockedState();
@@ -51,7 +51,7 @@ public class NavigationItemModel : ReactiveObject, IDisposable
             .Subscribe(_ => Order = _tabDto.OrderIndex)
             .DisposeWith(_cleanUp);
         _tabDto.WhenValueChanged(a => a.IsLocked)
-            .Subscribe(_ => 
+            .Subscribe(_ =>
             {
                 IsLocked = _tabDto.IsLocked;
                 UpdateUnlockedState();
@@ -179,7 +179,11 @@ public class NavigationItemModel : ReactiveObject, IDisposable
     public bool IsEnabled
     {
         get => _isEnabled;
-        set => this.RaiseAndSetIfChanged(ref _isEnabled, value);
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _isEnabled, value);
+            this.RaisePropertyChanged(nameof(IsVisible));
+        }
     }
     /// <summary>
     /// 次序,越小越靠前

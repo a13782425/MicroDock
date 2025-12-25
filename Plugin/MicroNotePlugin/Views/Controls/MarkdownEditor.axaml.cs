@@ -46,6 +46,7 @@ public partial class MarkdownEditor : UserControl
         // 绑定内容变化
         if (_viewModel != null)
         {
+            _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
             _viewModel.PropertyChanged += OnViewModelPropertyChanged;
 
             // 如果编辑器已初始化且有内容，同步到编辑器

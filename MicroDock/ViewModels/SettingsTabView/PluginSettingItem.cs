@@ -53,7 +53,6 @@ public class PluginSettingItem : ViewModelBase
             if (_pluginInfo.IsEnabled != value)
             {
                 // 只有在 UniqueName 已设置的情况下才触发状态切换
-                _pluginInfo.IsEnabled = value;
                 this.RaisePropertyChanged(nameof(IsEnabled));
                 if (!string.IsNullOrEmpty(PluginUniqueName))
                 {
@@ -206,6 +205,9 @@ public class PluginSettingItem : ViewModelBase
     public PluginSettingItem(PluginInfo pluginInfo)
     {
         _pluginInfo = pluginInfo;
+        PendingVersion = pluginInfo.PendingVersion;
+        IsPendingDelete = pluginInfo.PendingDelete;
+        IsPendingUpdate = pluginInfo.PendingUpdate;
         // 确保所有属性都有默认值，避免 null 引用
         SettingsControl = pluginInfo.PluginInstance?.GetSettingsControl() as Control;
         Tools = new ObservableCollection<PluginToolDefinition>();

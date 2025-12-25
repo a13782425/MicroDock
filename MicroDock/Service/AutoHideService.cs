@@ -92,7 +92,7 @@ public class AutoHideService : IMicroService, IWindowService
         {
             _window!.PositionChanged += OnWindowPositionChanged;
             _window.PointerExited += OnWindowPointerExited;
-            _window.Deactivated += OnWindowDeactivated;
+            //_window.Deactivated += OnWindowDeactivated;
             _showCheckTimer?.Start();
             _isEnabled = true;
             LogInformation("[AutoHide] 服务已启用", DEFAULT_LOG_TAG);
@@ -111,7 +111,7 @@ public class AutoHideService : IMicroService, IWindowService
 
         _window!.PositionChanged -= OnWindowPositionChanged;
         _window.PointerExited -= OnWindowPointerExited;
-        _window.Deactivated -= OnWindowDeactivated;
+        //_window.Deactivated -= OnWindowDeactivated;
         _hideTimer?.Stop();
         _showCheckTimer?.Stop();
         _animationTimer?.Stop();

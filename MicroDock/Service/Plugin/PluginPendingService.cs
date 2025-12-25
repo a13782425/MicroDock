@@ -1,4 +1,5 @@
-﻿using MicroDock.Database;
+﻿using Avalonia.OpenGL;
+using MicroDock.Database;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -21,7 +22,7 @@ public class PluginPendingService : IMicroService
     private PendingOperations _pendingOperations;
     public PluginPendingService()
     {
-        _pendingFilePath = Path.Combine(AppConfig.TEMP_FOLDER, "pending_operations.json");
+        _pendingFilePath = Path.Combine(AppConfig.TEMP_INSTALL_FOLDER, "pending_operations.json");
         _pendingOperations = Load();
     }
 
@@ -229,6 +230,11 @@ public class PluginPendingService : IMicroService
         if (!_pendingOperations.Deletes.Contains(pluginName))
         {
             _pendingOperations.Deletes.Add(pluginName);
+            var pluginInfo = ServiceLocator.Get<PluginService>()?.GetPluginInfo(pluginName);
+            if (pluginInfo != null)
+            {
+                pluginInfo.PendingDelete = true;
+            }
             Save();
         }
     }
@@ -240,24 +246,13 @@ public class PluginPendingService : IMicroService
     {
         if (_pendingOperations.Deletes.Remove(pluginName))
         {
+            var pluginInfo = ServiceLocator.Get<PluginService>()?.GetPluginInfo(pluginName);
+            if (pluginInfo != null)
+            {
+                pluginInfo.PendingDelete = false;
+            }
             Save();
         }
-    }
-
-    /// <summary>
-    /// 检查是否待删除
-    /// </summary>
-    public bool IsPendingDelete(string pluginName)
-    {
-        return _pendingOperations.Deletes.Contains(pluginName);
-    }
-
-    /// <summary>
-    /// 获取所有待删除插件
-    /// </summary>
-    public List<string> GetPendingDeletePlugins()
-    {
-        return _pendingOperations.Deletes.ToList();
     }
 
     #endregion
@@ -277,6 +272,12 @@ public class PluginPendingService : IMicroService
         pluginUpdateInfo.OldVersion = DBContext.GetPluginInfo(pluginName)?.Version ?? "";
 
         _pendingOperations.Updates[pluginName] = pluginUpdateInfo;
+        var pluginInfo = ServiceLocator.Get<PluginService>()?.GetPluginInfo(pluginName);
+        if (pluginInfo != null)
+        {
+            pluginInfo.PendingUpdate = true;
+            pluginInfo.PendingVersion = version;
+        }
         Save();
     }
 
@@ -287,6 +288,12 @@ public class PluginPendingService : IMicroService
     {
         if (_pendingOperations.Updates.Remove(pluginName))
         {
+            var pluginInfo = ServiceLocator.Get<PluginService>()?.GetPluginInfo(pluginName);
+            if (pluginInfo != null)
+            {
+                pluginInfo.PendingUpdate = false;
+                pluginInfo.PendingVersion = "";
+            }
             Save();
 
             // 同时删除临时文件
@@ -296,22 +303,6 @@ public class PluginPendingService : IMicroService
                 try { Directory.Delete(sourcePath, true); } catch { }
             }
         }
-    }
-
-    /// <summary>
-    /// 检查是否待更新
-    /// </summary>
-    public bool IsPendingUpdate(string pluginName)
-    {
-        return _pendingOperations.Updates.ContainsKey(pluginName);
-    }
-
-    /// <summary>
-    /// 获取待更新版本号
-    /// </summary>
-    public string? GetPendingVersion(string pluginName)
-    {
-        return _pendingOperations.Updates.TryGetValue(pluginName, out var info) ? info.Version : null;
     }
 
     #endregion

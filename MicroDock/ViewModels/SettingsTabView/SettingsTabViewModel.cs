@@ -379,11 +379,6 @@ public class SettingsTabViewModel : ViewModelBase
 
             PluginSettingItem settingItem = new PluginSettingItem(pluginInfo);
 
-            // 先设置基础属性，避免在 IsEnabled setter 中出错
-            settingItem.IsPendingDelete = dbInfo?.PendingDelete ?? false;
-            settingItem.IsPendingUpdate = dbInfo?.PendingUpdate ?? false;
-            settingItem.PendingVersion = dbInfo?.PendingVersion;
-
             // 加载插件的工具
             try
             {
@@ -405,7 +400,6 @@ public class SettingsTabViewModel : ViewModelBase
     {
         try
         {
-
             // 使用新的 StorageProvider API
             if (MicroMainWindow == null)
                 return;

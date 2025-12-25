@@ -28,7 +28,7 @@ public class PluginToolService : IMicroService
     /// </summary>
     public PluginToolService()
     {
-
+        _statistics = new();
         // 启动时从数据库加载历史统计
         LoadStatisticsFromDatabase();
     }

@@ -6,7 +6,6 @@ using Avalonia.Media;
 using FluentAvalonia.UI.Controls;
 using MicroDock.Extension;
 using MicroDock.ViewModels;
-using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Specialized;
 using System.Linq;

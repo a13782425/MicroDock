@@ -90,6 +90,21 @@ public class PluginInfo : IDisposable
     public PluginManifest? Manifest { get; set; }
 
     /// <summary>
+    /// 是否标记为待删除（默认 false）
+    /// </summary>
+    public bool PendingDelete { get; set; } = false;
+
+    /// <summary>
+    /// 是否有待安装的更新（默认 false）
+    /// </summary>
+    public bool PendingUpdate { get; set; } = false;
+
+    /// <summary>
+    /// 待安装的新版本号（当 PendingUpdate = true 时）
+    /// </summary>
+    public string? PendingVersion { get; set; }
+
+    /// <summary>
     /// 插件是否已初始化
     /// </summary>
     public bool IsInitialized { get; set; }

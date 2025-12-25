@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using MicroDock.Database;
 using MicroDock.Extension;
 using MicroDock.Model;
 using MicroDock.Plugin;
@@ -27,16 +28,16 @@ public class MainViewModel : ViewModelBase, IDisposable
         NavigationItems = new ObservableCollection<NavigationItemModel>();
 
         // 订阅事件消息
-        ServiceLocator.Get<EventService>().Subscribe<NavigateToTabMessage>(OnNavigateToTab);
-        ServiceLocator.Get<EventService>().Subscribe<NavigationTabVisibilityChangedMessage>(OnLogViewerVisibilityChanged);
-        ServiceLocator.Get<EventService>().Subscribe<PluginStateChangedMessage>(OnPluginStateChanged);
-        ServiceLocator.Get<EventService>().Subscribe<PluginDeletedMessage>(OnPluginDeleted);
-        ServiceLocator.Get<EventService>().Subscribe<PluginImportedMessage>(OnPluginImported);
-        ServiceLocator.Get<EventService>().Subscribe<NavigationTabsConfigurationChangedMessage>(OnNavigationTabsConfigurationChanged);
-        
+        ServiceLocator.Get<EventService>()?.Subscribe<NavigateToTabMessage>(OnNavigateToTab);
+        ServiceLocator.Get<EventService>()?.Subscribe<NavigationTabVisibilityChangedMessage>(OnLogViewerVisibilityChanged);
+        ServiceLocator.Get<EventService>()?.Subscribe<PluginStateChangedMessage>(OnPluginStateChanged);
+        ServiceLocator.Get<EventService>()?.Subscribe<PluginDeletedMessage>(OnPluginDeleted);
+        ServiceLocator.Get<EventService>()?.Subscribe<PluginImportedMessage>(OnPluginImported);
+        ServiceLocator.Get<EventService>()?.Subscribe<NavigationTabsConfigurationChangedMessage>(OnNavigationTabsConfigurationChanged);
+
         // 订阅页签锁定相关消息
-        ServiceLocator.Get<EventService>().Subscribe<TabLockedMessage>(OnTabLocked);
-        ServiceLocator.Get<EventService>().Subscribe<TabUnlockedMessage>(OnTabUnlocked);
+        ServiceLocator.Get<EventService>()?.Subscribe<TabLockedMessage>(OnTabLocked);
+        ServiceLocator.Get<EventService>()?.Subscribe<TabUnlockedMessage>(OnTabUnlocked);
 
         // 初始化NavigationView相关
         InitializeNavigationItems();
@@ -195,8 +196,17 @@ public class MainViewModel : ViewModelBase, IDisposable
     /// </summary>
     private void ReloadPluginNavigationItems(string pluginUniqueName)
     {
-        // 先移除旧的导航项
-        RemovePluginNavigationItems(pluginUniqueName);
+        var items = NavigationItems
+          .Where(n => n.NavType == NavigationType.Plugin && n.PluginUniqueName == pluginUniqueName)
+          .ToList();
+        if (items.Count > 0)
+        {
+            foreach (var item in items)
+            {
+                item.IsEnabled = true; ;
+            }
+            return;
+        }
 
         // 从 PluginService 获取插件信息
         var pluginService = ServiceLocator.Get<PluginService>();
@@ -229,17 +239,16 @@ public class MainViewModel : ViewModelBase, IDisposable
                     PluginUniqueName = pluginInfo.UniqueName
                 };
 
-                if (config.IsVisible)
-                {
-                    // 插入到日志项之前
-                    var logItemIndex = NavigationItems.ToList().FindIndex(n => n.Title == "日志");
-                    if (logItemIndex >= 0)
-                        NavigationItems.Insert(logItemIndex, pluginNavItem);
-                    else
-                        NavigationItems.Add(pluginNavItem);
-                }
+                // 插入到日志项之前
+                var logItemIndex = NavigationItems.ToList().FindIndex(n => n.Title == "日志");
+                if (logItemIndex >= 0)
+                    NavigationItems.Insert(logItemIndex, pluginNavItem);
+                else
+                    NavigationItems.Add(pluginNavItem);
+
             }
         }
+        NavigationItems.Sort((a, b) => a.Order.CompareTo(b.Order));
     }
 
     /// <summary>
@@ -256,7 +265,7 @@ public class MainViewModel : ViewModelBase, IDisposable
             if (SelectedNavItem == item)
                 SelectedNavItem = NavigationItems.FirstOrDefault(n => n != item);
 
-            NavigationItems.Remove(item);
+            item.IsEnabled = false;
         }
     }
 
@@ -278,7 +287,7 @@ public class MainViewModel : ViewModelBase, IDisposable
         {
             // 正常显示内容
             CurrentView = SelectedNavItem.Content;
-            
+
             // 如果页签已解锁，刷新解锁时间
             if (SelectedNavItem.IsLocked && SelectedNavItem.IsUnlocked)
             {

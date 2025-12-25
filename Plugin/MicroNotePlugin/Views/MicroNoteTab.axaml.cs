@@ -45,6 +45,7 @@ public partial class MicroNoteTab : UserControl, IMicroTab
     private void OnLoaded(object? sender, RoutedEventArgs e)
     {
         InitializeServices();
+        this.Loaded -= OnLoaded;
     }
 
     private void InitializeServices()
