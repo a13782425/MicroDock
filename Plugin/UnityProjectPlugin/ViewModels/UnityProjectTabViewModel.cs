@@ -220,9 +220,8 @@ namespace UnityProjectPlugin.ViewModels
             try
             {
                 _plugin.Context?.ShowLoading("加载项目中...");
-                List<UnityProject> projects = _plugin.GetProjects();
                 _projects.Clear();
-                foreach (UnityProject project in projects)
+                foreach (UnityProject project in UnityProjectData.Projects)
                 {
                     _projects.Add(project);
                 }
@@ -340,7 +339,7 @@ namespace UnityProjectPlugin.ViewModels
 
                     await _plugin.AddProjectAsync(folderPath);
                     LoadProjects();
-                    
+
                     _plugin.Context?.ShowInAppNotification(
                         "添加成功",
                         $"已添加项目: {System.IO.Path.GetFileName(folderPath)}",
@@ -374,7 +373,7 @@ namespace UnityProjectPlugin.ViewModels
                 {
                     await _plugin.RemoveProjectAsync(project.Path);
                     RemoveProjectFromView(project);
-                    
+
                     _plugin.Context?.ShowInAppNotification(
                         "删除成功",
                         $"已删除项目: {project.Name}",
@@ -400,10 +399,10 @@ namespace UnityProjectPlugin.ViewModels
         {
             // 从主列表移除
             _projects.Remove(project);
-            
+
             // 从过滤列表移除
             _filteredProjects.Remove(project);
-            
+
             // 从分组视图移除
             foreach (ProjectGroupView groupView in _groupedProjects)
             {
@@ -413,7 +412,7 @@ namespace UnityProjectPlugin.ViewModels
                     break;
                 }
             }
-            
+
             // 更新 HasProjects 状态
             HasProjects = _projects.Count > 0;
         }
@@ -428,7 +427,7 @@ namespace UnityProjectPlugin.ViewModels
                 try
                 {
                     _plugin.Context?.ShowLoading($"正在打开 {project.Name}...");
-                    await _plugin.OpenUnityProject(project.Path);
+                    await UnityProjectHelper.OpenUnityProject(project);
                     // 刷新列表以更新最后打开时间
                     LoadProjects();
                 }
@@ -491,7 +490,7 @@ namespace UnityProjectPlugin.ViewModels
             {
                 await _plugin.DeleteGroupAsync(group.Id);
                 RemoveGroupFromView(group);
-                
+
                 _plugin.Context?.ShowInAppNotification(
                     "删除成功",
                     $"已删除分组: {group.Name}",
@@ -547,15 +546,6 @@ namespace UnityProjectPlugin.ViewModels
             // 从分组视图中移除该分组
             _groupedProjects.Remove(groupViewToRemove);
         }
-
-        /// <summary>
-        /// 获取所有分组
-        /// </summary>
-        public List<ProjectGroup> GetGroups()
-        {
-            return _plugin.GetGroups();
-        }
-
         /// <summary>
         /// 获取分组使用计数
         /// </summary>

@@ -16,6 +16,17 @@
 		<StackPanel.ContextMenu>
 			<ContextMenu>
 				<MenuItem Header="添加应用" Command="{Binding AddApplicationCommand}"/>
+				<Separator />
+				<MenuItem Header="排序方式">
+					<!-- 二级菜单项 -->
+					<MenuItem Header="按类型排序" />
+					<MenuItem Header="按名称排序" />
+					<MenuItem Header="按添加时间排序" />
+					<Separator />
+					<MenuItem Header="升序" />
+					<MenuItem Header="降序" />
+					<!-- SortAscCommand SortDescCommand -->
+				</MenuItem>
 			</ContextMenu>
 		</StackPanel.ContextMenu>
 

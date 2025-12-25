@@ -90,7 +90,7 @@ namespace UnityProjectPlugin.Views
         {
             if (_plugin == null) return;
 
-            var groups = _plugin.GetGroups();
+            var groups = UnityProjectData.Groups;
             var groupNames = groups.Select(g => g.Name).ToList();
 
             // 更新 ComboBox
@@ -178,7 +178,7 @@ namespace UnityProjectPlugin.Views
             if (string.IsNullOrEmpty(newGroupName)) return;
 
             // 检查是否已存在
-            if (_plugin.GetGroups().Any(g => g.Name == newGroupName))
+            if (UnityProjectData.Groups.Any(g => g.Name == newGroupName))
             {
                 return;
             }

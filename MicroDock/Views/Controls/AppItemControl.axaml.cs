@@ -6,6 +6,7 @@ using Avalonia.VisualTree;
 using MicroDock.Database;
 using MicroDock.Service;
 using MicroDock.ViewModels;
+using System;
 
 namespace MicroDock.Views.Controls;
 
@@ -46,10 +47,13 @@ public partial class AppItemControl : UserControl
     private void OnDoubleTapped(object? sender, TappedEventArgs e)
     {
         if (_isEditing) return;
-        
+
         if (DataContext is ApplicationDB app)
         {
-            ServiceLocator.Get<IPlatformService>()?.TryStartProcess(app.FilePath);
+            if (ServiceLocator.Get<IPlatformService>()?.TryStartProcess(app.FilePath) ?? false)
+            {
+                app.LastUseAtDateTime = DateTime.Now;
+            }
         }
     }
 
@@ -57,7 +61,10 @@ public partial class AppItemControl : UserControl
     {
         if (DataContext is ApplicationDB app)
         {
-            ServiceLocator.Get<IPlatformService>()?.TryStartProcess(app.FilePath);
+            if (ServiceLocator.Get<IPlatformService>()?.TryStartProcess(app.FilePath) ?? false)
+            {
+                app.LastUseAtDateTime = DateTime.Now;
+            }
         }
     }
 
@@ -90,7 +97,7 @@ public partial class AppItemControl : UserControl
     {
         _isEditing = true;
         _originalName = currentName;
-        
+
         NameTextBlock.IsVisible = false;
         NameTextBox.IsVisible = true;
         NameTextBox.Text = currentName;
@@ -101,9 +108,9 @@ public partial class AppItemControl : UserControl
     private void StopEditing(bool save)
     {
         if (!_isEditing) return;
-        
+
         _isEditing = false;
-        
+
         if (save && DataContext is ApplicationDB app)
         {
             string newName = NameTextBox.Text?.Trim() ?? string.Empty;
@@ -115,7 +122,7 @@ public partial class AppItemControl : UserControl
                 NameTextBlock.Text = newName;
             }
         }
-        
+
         NameTextBox.IsVisible = false;
         NameTextBlock.IsVisible = true;
         _originalName = null;

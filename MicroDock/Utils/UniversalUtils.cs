@@ -4,6 +4,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Controls.Notifications;
 using Avalonia.Threading;
 using FluentAvalonia.UI.Controls;
+using MicroDock.Database;
 using MicroDock.Service;
 using System;
 using System.Collections.Generic;
@@ -507,5 +508,26 @@ internal static class UniversalUtils
     }
 
     #endregion
+
+    /// <summary>
+    /// 通过路径获取文件类型
+    /// </summary>
+    /// <param name="path"></param>
+    /// <returns></returns>
+    public static FileType GetFileType(string path)
+    {
+        // 先检查是否是目录
+        if (Directory.Exists(path))
+            return FileType.Folder;
+
+        string extension = Path.GetExtension(path).ToLowerInvariant();
+
+        return extension switch
+        {
+            ".exe" => FileType.Exe,
+            ".lnk" => FileType.Lnk,
+            _ => FileType.File
+        };
+    }
 
 }

@@ -29,7 +29,7 @@ namespace UnityProjectPlugin.ViewModels
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
-        public ICommand SaveCommand { get; }
+        public ICommand OpenProjectCommand { get; }
         public ICommand CancelCommand { get; }
         public ICommand CloseCommand { get; }
         public ICommand SelectPlatformCommand { get; }
@@ -40,7 +40,7 @@ namespace UnityProjectPlugin.ViewModels
             _onSaveCallback = onSaveCallback;
             _onCloseCallback = onCloseCallback;
 
-            SaveCommand = new AsyncRelayCommand(SaveAsync);
+            OpenProjectCommand = new AsyncRelayCommand(OpenProjectAsync);
             CancelCommand = new RelayCommand(_ => Cancel());
             CloseCommand = new RelayCommand(_ => Close());
             SelectPlatformCommand = new RelayCommand(SelectPlatform);
@@ -193,14 +193,14 @@ namespace UnityProjectPlugin.ViewModels
             // 加载可选分组
             AvailableGroups.Clear();
             AvailableGroups.Add(string.Empty); // 无分组选项
-            foreach (var group in _plugin.GetGroups())
+            foreach (var group in UnityProjectData.Groups)
             {
                 AvailableGroups.Add(group.Name);
             }
 
             // 加载可选版本
             AvailableVersions.Clear();
-            foreach (var version in _plugin.GetVersions())
+            foreach (var version in UnityProjectData.Versions)
             {
                 AvailableVersions.Add(version);
             }
@@ -278,7 +278,7 @@ namespace UnityProjectPlugin.ViewModels
         /// <summary>
         /// 保存修改
         /// </summary>
-        private async Task SaveAsync(object? parameter)
+        private async Task OpenProjectAsync(object? parameter)
         {
             if (Project == null) return;
 
@@ -290,7 +290,6 @@ namespace UnityProjectPlugin.ViewModels
                 // 更新 Unity 版本（包括 ProjectVersion.txt）
                 if (SelectedVersion != null && SelectedVersion.Version != Project.UnityVersion)
                 {
-                    await UpdateProjectVersionFileAsync(Project.Path, SelectedVersion.Version);
                     Project.UnityVersion = SelectedVersion.Version;
                 }
 
@@ -304,6 +303,7 @@ namespace UnityProjectPlugin.ViewModels
                 await _plugin.SaveProjectChangesAsync();
 
                 _onSaveCallback?.Invoke();
+                UnityProjectHelper.OpenUnityProject(Project);
                 Close();
             }
             catch (Exception ex)
@@ -312,42 +312,6 @@ namespace UnityProjectPlugin.ViewModels
                     "保存失败",
                     ex.Message,
                     MicroDock.Plugin.NotificationType.Error);
-            }
-        }
-
-        /// <summary>
-        /// 更新项目的 ProjectVersion.txt 文件
-        /// </summary>
-        private async Task UpdateProjectVersionFileAsync(string projectPath, string newVersion)
-        {
-            try
-            {
-                string versionFilePath = Path.Combine(projectPath, "ProjectSettings", "ProjectVersion.txt");
-
-                if (!File.Exists(versionFilePath))
-                {
-                    _plugin.Context?.LogWarning($"ProjectVersion.txt 不存在: {versionFilePath}");
-                    return;
-                }
-
-                string[] lines = await File.ReadAllLinesAsync(versionFilePath);
-
-                for (int i = 0; i < lines.Length; i++)
-                {
-                    if (lines[i].StartsWith("m_EditorVersion:"))
-                    {
-                        lines[i] = $"m_EditorVersion: {newVersion}";
-                        break;
-                    }
-                }
-
-                await File.WriteAllLinesAsync(versionFilePath, lines);
-                _plugin.Context?.LogInfo($"已更新 ProjectVersion.txt: {newVersion}");
-            }
-            catch (Exception ex)
-            {
-                _plugin.Context?.LogError($"更新 ProjectVersion.txt 失败", ex);
-                throw;
             }
         }
 

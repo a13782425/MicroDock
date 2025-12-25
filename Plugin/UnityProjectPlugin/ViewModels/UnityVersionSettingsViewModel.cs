@@ -47,8 +47,8 @@ namespace UnityProjectPlugin.ViewModels
         public void Refresh()
         {
             Versions.Clear();
-            var versions = _plugin.GetVersions();
-            
+            var versions = UnityProjectData.Versions;
+
             foreach (var version in versions)
             {
                 Versions.Add(version);
@@ -79,7 +79,7 @@ namespace UnityProjectPlugin.ViewModels
             }
             catch (Exception ex)
             {
-               _plugin.Context?.LogError($"删除版本失败: {version.Version} - {ex.Message}");
+                _plugin.Context?.LogError($"删除版本失败: {version.Version} - {ex.Message}");
             }
         }
 

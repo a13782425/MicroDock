@@ -157,7 +157,7 @@
 					</Border>
 
 					<!-- 扩展功能区块（即将推出） -->
-					<Border Classes="section" Opacity="0.5">
+					<Border Classes="section" Opacity="0.5" IsVisible="False">
 						<StackPanel>
 							<Grid ColumnDefinitions="*,Auto" Margin="0,0,0,12">
 								<TextBlock Classes="section-title" Text="扩展功能" Margin="0"/>
@@ -194,8 +194,8 @@
 					<Button Content="取消"
 							Command="{Binding CancelCommand}"
 							Padding="20,8"/>
-					<Button Content="保存"
-							Command="{Binding SaveCommand}"
+					<Button Content="打开"
+							Command="{Binding OpenProjectCommand}"
 							Classes="accent"
 							Padding="20,8"/>
 				</StackPanel>

@@ -44,7 +44,7 @@ namespace UnityProjectPlugin.ViewModels
         /// </summary>
         public void LoadGroups()
         {
-            List<ProjectGroup> groups = _plugin.GetGroups();
+            List<ProjectGroup> groups = UnityProjectData.Groups;
             _groups.Clear();
             foreach (ProjectGroup group in groups)
             {

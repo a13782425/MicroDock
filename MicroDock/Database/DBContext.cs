@@ -1,10 +1,12 @@
 using MicroDock.Model;
 using MicroDock.Service;
+using MicroDock.Utils;
 using SQLite;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Xml;
 
 namespace MicroDock.Database;
 
@@ -25,6 +27,7 @@ internal static class DBContext
             _database.CreateTable<PluginToolStatisticsDB>();
             _database.CreateTable<PluginInfoDB>();
             _database.CreateTable<NavigationTabDB>();
+            _database.CreateTable<UserPreferenceDB>();
         }
         catch
         {
@@ -625,6 +628,226 @@ internal static class DBContext
 
         var tab = GetNavigationTab(tabId);
         return tab.IsLocked && !string.IsNullOrEmpty(tab.PasswordHash);
+    }
+
+    #endregion
+
+    #region 用户偏好
+
+    /// <summary>
+    /// 获取一个用户偏好值
+    /// </summary>
+    /// <param name="preferenceKey"></param>
+    /// <param name="defaultValue"></param>
+    /// <returns></returns>
+    public static string GetStringPreference(string preferenceKey, string defaultValue = "")
+    {
+        if (string.IsNullOrWhiteSpace(preferenceKey))
+            return defaultValue;
+
+        var userPreference = _database.Table<UserPreferenceDB>().FirstOrDefault(t => t.PreferenceKey == preferenceKey);
+        if (userPreference == null)
+        {
+            userPreference = new UserPreferenceDB()
+            {
+                PreferenceKey = preferenceKey,
+                PreferenceValue = defaultValue ?? ""
+            };
+            _database.Insert(userPreference);
+            return defaultValue;
+        }
+        return userPreference.PreferenceValue;
+    }
+    /// <summary>
+    /// 获取一个用户偏好值
+    /// </summary>
+    /// <param name="preferenceKey"></param>
+    /// <param name="defaultValue"></param>
+    /// <returns></returns>
+    public static int GetIntPreference(string preferenceKey, int defaultValue = 0)
+    {
+        if (string.IsNullOrWhiteSpace(preferenceKey))
+            return defaultValue;
+
+        var userPreference = _database.Table<UserPreferenceDB>().FirstOrDefault(t => t.PreferenceKey == preferenceKey);
+        if (userPreference == null)
+        {
+            userPreference = new UserPreferenceDB()
+            {
+                PreferenceKey = preferenceKey,
+                PreferenceValue = defaultValue.ToString()
+            };
+            _database.Insert(userPreference);
+            return defaultValue;
+        }
+        if (int.TryParse(userPreference.PreferenceValue, out int value))
+            return value;
+        return defaultValue;
+    }
+
+    /// <summary>
+    /// 获取一个用户偏好值
+    /// </summary>
+    /// <param name="preferenceKey"></param>
+    /// <param name="defaultValue"></param>
+    /// <returns></returns>
+    public static bool GetBoolPreference(string preferenceKey, bool defaultValue = true)
+    {
+        if (string.IsNullOrWhiteSpace(preferenceKey))
+            return defaultValue;
+
+        var userPreference = _database.Table<UserPreferenceDB>().FirstOrDefault(t => t.PreferenceKey == preferenceKey);
+        if (userPreference == null)
+        {
+            userPreference = new UserPreferenceDB()
+            {
+                PreferenceKey = preferenceKey,
+                PreferenceValue = defaultValue.ToString()
+            };
+            _database.Insert(userPreference);
+            return defaultValue;
+        }
+        if (bool.TryParse(userPreference.PreferenceValue, out bool value))
+            return value;
+        return defaultValue;
+    }
+
+    /// <summary>
+    /// 获取一个用户偏好值
+    /// </summary>
+    /// <param name="preferenceKey"></param>
+    /// <param name="defaultValue"></param>
+    /// <returns></returns>
+    public static long GetLongPreference(string preferenceKey, long defaultValue = 0)
+    {
+        if (string.IsNullOrWhiteSpace(preferenceKey))
+            return defaultValue;
+
+        var userPreference = _database.Table<UserPreferenceDB>().FirstOrDefault(t => t.PreferenceKey == preferenceKey);
+        if (userPreference == null)
+        {
+            userPreference = new UserPreferenceDB()
+            {
+                PreferenceKey = preferenceKey,
+                PreferenceValue = defaultValue.ToString()
+            };
+            _database.Insert(userPreference);
+            return defaultValue;
+        }
+        if (long.TryParse(userPreference.PreferenceValue, out long value))
+            return value;
+        return defaultValue;
+    }
+
+    /// <summary>
+    /// 设置一个用户偏好值
+    /// </summary>
+    /// <param name="preferenceKey"></param>
+    /// <param name="value"></param>
+    /// <returns></returns>
+    public static void SetStringPreference(string preferenceKey, string value)
+    {
+        if (string.IsNullOrWhiteSpace(preferenceKey))
+            return;
+
+        var userPreference = _database.Table<UserPreferenceDB>().FirstOrDefault(t => t.PreferenceKey == preferenceKey);
+        if (userPreference == null)
+        {
+            userPreference = new UserPreferenceDB()
+            {
+                PreferenceKey = preferenceKey,
+                PreferenceValue = value ?? ""
+            };
+            _database.Insert(userPreference);
+        }
+        else
+        {
+            userPreference.PreferenceValue = value ?? "";
+            _database.Update(userPreference);
+        }
+    }
+    /// <summary>
+    /// 设置一个用户偏好值
+    /// </summary>
+    /// <param name="preferenceKey"></param>
+    /// <param name="value"></param>
+    /// <returns></returns>
+    public static void SetIntPreference(string preferenceKey, int value)
+    {
+        if (string.IsNullOrWhiteSpace(preferenceKey))
+            return;
+
+        var userPreference = _database.Table<UserPreferenceDB>().FirstOrDefault(t => t.PreferenceKey == preferenceKey);
+        if (userPreference == null)
+        {
+            userPreference = new UserPreferenceDB()
+            {
+                PreferenceKey = preferenceKey,
+                PreferenceValue = value.ToString()
+            };
+            _database.Insert(userPreference);
+        }
+        else
+        {
+            userPreference.PreferenceValue = value.ToString();
+            _database.Update(userPreference);
+        }
+    }
+
+    /// <summary>
+    /// 设置一个用户偏好值
+    /// </summary>
+    /// <param name="preferenceKey"></param>
+    /// <param name="value"></param>
+    /// <returns></returns>
+    public static void SetBoolPreference(string preferenceKey, bool value)
+    {
+        if (string.IsNullOrWhiteSpace(preferenceKey))
+            return;
+
+        var userPreference = _database.Table<UserPreferenceDB>().FirstOrDefault(t => t.PreferenceKey == preferenceKey);
+        if (userPreference == null)
+        {
+            userPreference = new UserPreferenceDB()
+            {
+                PreferenceKey = preferenceKey,
+                PreferenceValue = value.ToString()
+            };
+            _database.Insert(userPreference);
+        }
+        else
+        {
+            userPreference.PreferenceValue = value.ToString();
+            _database.Update(userPreference);
+        }
+    }
+
+    /// <summary>
+    /// 设置一个用户偏好值
+    /// </summary>
+    /// <param name="preferenceKey"></param>
+    /// <param name="value"></param>
+    /// <returns></returns>
+    public static void SetLongPreference(string preferenceKey, long value)
+    {
+        if (string.IsNullOrWhiteSpace(preferenceKey))
+            return;
+
+        var userPreference = _database.Table<UserPreferenceDB>().FirstOrDefault(t => t.PreferenceKey == preferenceKey);
+        if (userPreference == null)
+        {
+            userPreference = new UserPreferenceDB()
+            {
+                PreferenceKey = preferenceKey,
+                PreferenceValue = value.ToString()
+            };
+            _database.Insert(userPreference);
+        }
+        else
+        {
+            userPreference.PreferenceValue = value.ToString();
+            _database.Update(userPreference);
+        }
     }
 
     #endregion

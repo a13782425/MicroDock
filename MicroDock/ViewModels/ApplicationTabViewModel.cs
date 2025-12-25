@@ -28,8 +28,6 @@ public class ApplicationTabViewModel : ViewModelBase
 
     public ReactiveCommand<Unit, Unit> AddApplicationCommand { get; }
 
-    public ReactiveCommand<ApplicationDB, Unit> LaunchCommand { get; }
-
     private async System.Threading.Tasks.Task AddApplication()
     {
         // 使用新的 StorageProvider API
@@ -85,11 +83,12 @@ public class ApplicationTabViewModel : ViewModelBase
         
         // 创建应用记录
         string name = Path.GetFileName(filePath);
-            
+    
         ApplicationDB app = new ApplicationDB
         {
             Name = name,
-            FilePath = filePath
+            FilePath = filePath,
+            Type = (int)GetFileType(filePath)
         };
         
         // 保存到数据库并刷新列表
@@ -121,6 +120,12 @@ public class ApplicationTabViewModel : ViewModelBase
         _applications.Clear();
         foreach (var app in DBContext.GetApplications())
         {
+            if (app.AppType == FileType.Unknow)
+            {
+                app.Type = (int)GetFileType(app.FilePath);
+                DBContext.UpdateApplication(app);
+            }
+
             _applications.Add(app);
         }
         this.RaisePropertyChanged(nameof(HasApplications));

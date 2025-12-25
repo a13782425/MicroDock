@@ -1,15 +1,9 @@
-using Avalonia.Controls;
-using Avalonia.Media;
 using MicroDock.Plugin;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
-using System.Linq;
 using System.Text.Json;
-using System.Threading.Tasks;
 using UnityProjectPlugin.Models;
 using UnityProjectPlugin.Views;
+using static UnityProjectPlugin.Models.UnityProjectData;
 
 namespace UnityProjectPlugin
 {
@@ -22,10 +16,8 @@ namespace UnityProjectPlugin
         public static UnityProjectPlugin Instance => _instance;
 
         private string _dataFolder = string.Empty;
-        private List<UnityProject> _projects = new();
-        private List<UnityVersion> _versions = new();
-        private List<ProjectGroup> _groups = new();
-        private PluginSettings _pluginSettings = new();
+
+
         private UnityProjectTabView? _projectTabView;
         private UnityVersionSettingsView? _versionSettingsView;
         private bool _isGroupViewEnabled = false;
@@ -102,7 +94,7 @@ namespace UnityProjectPlugin
                 await LoadGroupsFromFileAsync();
                 await LoadSettingsAsync();
 
-                LogInfo($"已加载 {_projects.Count} 个项目、{_versions.Count} 个 Unity 版本和 {_groups.Count} 个分组");
+                LogInfo($"已加载 {Projects.Count} 个项目、{Versions.Count} 个 Unity 版本和 {Groups.Count} 个分组");
 
                 // 如果 Tab 视图已经创建，刷新它
                 _projectTabView?.RefreshProjects();
@@ -136,31 +128,31 @@ namespace UnityProjectPlugin
                 if (File.Exists(filePath))
                 {
                     string json = await File.ReadAllTextAsync(filePath);
-                    _projects = JsonSerializer.Deserialize<List<UnityProject>>(json, _jsonOptions) ?? new List<UnityProject>();
-                    LogInfo($"从文件加载了 {_projects.Count} 个项目");
+                    Projects.AddRange(JsonSerializer.Deserialize<List<UnityProject>>(json, _jsonOptions) ?? new List<UnityProject>());
+                    LogInfo($"从文件加载了 {Projects.Count} 个项目");
                 }
                 else
                 {
-                    _projects = new List<UnityProject>();
+                    Projects.Clear();
                     LogInfo("项目文件不存在，使用空列表");
                 }
             }
             catch (Exception ex)
             {
                 LogError("从文件加载项目列表失败", ex);
-                _projects = new List<UnityProject>();
+                Projects.Clear();
             }
         }
 
         /// <summary>
         /// 保存项目列表到文件
         /// </summary>
-        private async Task SaveProjectsToFileAsync()
+        public async Task SaveProjectsToFileAsync()
         {
             try
             {
                 string filePath = Path.Combine(_dataFolder, "projects.json");
-                string json = JsonSerializer.Serialize(_projects, _jsonOptions);
+                string json = JsonSerializer.Serialize(Projects, _jsonOptions);
                 await File.WriteAllTextAsync(filePath, json);
                 LogInfo("项目列表已保存到文件");
             }
@@ -189,19 +181,19 @@ namespace UnityProjectPlugin
                 if (File.Exists(filePath))
                 {
                     string json = await File.ReadAllTextAsync(filePath);
-                    _versions = JsonSerializer.Deserialize<List<UnityVersion>>(json, _jsonOptions) ?? new List<UnityVersion>();
-                    LogInfo($"从文件加载了 {_versions.Count} 个 Unity 版本");
+                    Versions.AddRange(JsonSerializer.Deserialize<List<UnityVersion>>(json, _jsonOptions) ?? new List<UnityVersion>());
+                    LogInfo($"从文件加载了 {Versions.Count} 个 Unity 版本");
                 }
                 else
                 {
-                    _versions = new List<UnityVersion>();
+                    Versions.Clear();
                     LogInfo("版本文件不存在，使用空列表");
                 }
             }
             catch (Exception ex)
             {
                 LogError("从文件加载 Unity 版本列表失败", ex);
-                _versions = new List<UnityVersion>();
+                Versions.Clear();
             }
         }
 
@@ -213,7 +205,7 @@ namespace UnityProjectPlugin
             try
             {
                 string filePath = Path.Combine(_dataFolder, "versions.json");
-                string json = JsonSerializer.Serialize(_versions, _jsonOptions);
+                string json = JsonSerializer.Serialize(Versions, _jsonOptions);
                 await File.WriteAllTextAsync(filePath, json);
                 LogInfo("Unity 版本列表已保存到文件");
             }
@@ -233,20 +225,21 @@ namespace UnityProjectPlugin
                 string filePath = Path.Combine(_dataFolder, "groups.json");
                 if (File.Exists(filePath))
                 {
+                    Groups.Clear();
                     string json = await File.ReadAllTextAsync(filePath);
-                    _groups = JsonSerializer.Deserialize<List<ProjectGroup>>(json, _jsonOptions) ?? new List<ProjectGroup>();
-                    LogInfo($"从文件加载了 {_groups.Count} 个分组");
+                    Groups.AddRange(JsonSerializer.Deserialize<List<ProjectGroup>>(json, _jsonOptions) ?? new List<ProjectGroup>());
+                    LogInfo($"从文件加载了 {Groups.Count} 个分组");
                 }
                 else
                 {
-                    _groups = new List<ProjectGroup>();
+                    Groups.Clear();
                     LogInfo("分组文件不存在，使用空列表");
                 }
             }
             catch (Exception ex)
             {
                 LogError("从文件加载分组列表失败", ex);
-                _groups = new List<ProjectGroup>();
+                Groups.Clear();
             }
         }
 
@@ -258,7 +251,7 @@ namespace UnityProjectPlugin
             try
             {
                 string filePath = Path.Combine(_dataFolder, "groups.json");
-                string json = JsonSerializer.Serialize(_groups, _jsonOptions);
+                string json = JsonSerializer.Serialize(Groups, _jsonOptions);
                 await File.WriteAllTextAsync(filePath, json);
                 LogInfo("分组列表已保存到文件");
             }
@@ -279,10 +272,10 @@ namespace UnityProjectPlugin
                 if (File.Exists(filePath))
                 {
                     string json = await File.ReadAllTextAsync(filePath);
-                    _pluginSettings = JsonSerializer.Deserialize<PluginSettings>(json, _jsonOptions);
-                    if (_pluginSettings != null)
+                    Settings = JsonSerializer.Deserialize<PluginSettings>(json, _jsonOptions) ?? new PluginSettings();
+                    if (Settings != null)
                     {
-                        _isGroupViewEnabled = _pluginSettings.IsGroupViewEnabled;
+                        _isGroupViewEnabled = Settings.IsGroupViewEnabled;
                     }
                     LogInfo("设置已加载");
                 }
@@ -301,8 +294,8 @@ namespace UnityProjectPlugin
             try
             {
                 string filePath = Path.Combine(_dataFolder, "settings.json");
-                _pluginSettings.IsGroupViewEnabled = IsGroupViewEnabled;
-                string json = JsonSerializer.Serialize(_pluginSettings, _jsonOptions);
+                Settings.IsGroupViewEnabled = IsGroupViewEnabled;
+                string json = JsonSerializer.Serialize(Settings, _jsonOptions);
                 await File.WriteAllTextAsync(filePath, json);
                 LogInfo("设置已保存");
             }
@@ -331,7 +324,7 @@ namespace UnityProjectPlugin
             string fullPath = Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
 
             // 检查是否已存在
-            if (_projects.Any(p => p.Id == fullPath.ToLowerInvariant()))
+            if (Projects.Any(p => p.Id == fullPath.ToLowerInvariant()))
             {
                 throw new InvalidOperationException("该项目已存在");
             }
@@ -363,7 +356,7 @@ namespace UnityProjectPlugin
                 LogWarning($"无法读取项目版本: {ex.Message}");
             }
 
-            _projects.Add(project);
+            Projects.Add(project);
             await SaveProjectsToFileAsync();
 
             LogInfo($"已添加项目: {project.Name} ({project.Path})");
@@ -375,11 +368,11 @@ namespace UnityProjectPlugin
         public async Task RemoveProjectAsync(string path)
         {
             string fullPath = Path.GetFullPath(path).ToLowerInvariant();
-            UnityProject? project = _projects.FirstOrDefault(p => p.Id == fullPath);
+            UnityProject? project = Projects.FirstOrDefault(p => p.Id == fullPath);
 
             if (project != null)
             {
-                _projects.Remove(project);
+                Projects.Remove(project);
                 await SaveProjectsToFileAsync();
                 LogInfo($"已删除项目: {project.Name}");
             }
@@ -390,7 +383,7 @@ namespace UnityProjectPlugin
         /// </summary>
         public async Task UpdateProjectAsync(string projectPath, string newName, string? groupName)
         {
-            UnityProject? project = _projects.FirstOrDefault(p => p.Path == projectPath);
+            UnityProject? project = Projects.FirstOrDefault(p => p.Path == projectPath);
             if (project != null)
             {
                 project.Name = newName;
@@ -421,7 +414,7 @@ namespace UnityProjectPlugin
             }
 
             // 检查是否已存在
-            if (_versions.Any(v => v.Version == version))
+            if (Versions.Any(v => v.Version == version))
             {
                 throw new InvalidOperationException($"版本 {version} 已存在");
             }
@@ -432,7 +425,7 @@ namespace UnityProjectPlugin
                 EditorPath = editorPath
             };
 
-            _versions.Add(unityVersion);
+            Versions.Add(unityVersion);
             await SaveVersionsToFileAsync();
 
             LogInfo($"已添加 Unity 版本: {version} ({editorPath})");
@@ -443,11 +436,11 @@ namespace UnityProjectPlugin
         /// </summary>
         public async Task RemoveVersionAsync(string version)
         {
-            UnityVersion? unityVersion = _versions.FirstOrDefault(v => v.Version == version);
+            UnityVersion? unityVersion = Versions.FirstOrDefault(v => v.Version == version);
 
             if (unityVersion != null)
             {
-                _versions.Remove(unityVersion);
+                Versions.Remove(unityVersion);
                 await SaveVersionsToFileAsync();
                 LogInfo($"已删除 Unity 版本: {version}");
             }
@@ -464,7 +457,7 @@ namespace UnityProjectPlugin
             }
 
             // 检查是否已存在同名分组
-            if (_groups.Any(g => g.Name == name))
+            if (Groups.Any(g => g.Name == name))
             {
                 throw new InvalidOperationException($"分组 '{name}' 已存在");
             }
@@ -474,7 +467,7 @@ namespace UnityProjectPlugin
                 Name = name
             };
 
-            _groups.Add(group);
+            Groups.Add(group);
             await SaveGroupsToFileAsync();
 
             LogInfo($"已添加分组: {name}");
@@ -490,14 +483,14 @@ namespace UnityProjectPlugin
                 throw new ArgumentException("分组名称不能为空", nameof(newName));
             }
 
-            ProjectGroup? group = _groups.FirstOrDefault(g => g.Id == id);
+            ProjectGroup? group = Groups.FirstOrDefault(g => g.Id == id);
             if (group == null)
             {
                 throw new InvalidOperationException($"分组不存在");
             }
 
             // 检查新名称是否与其他分组重复
-            if (_groups.Any(g => g.Id != id && g.Name == newName))
+            if (Groups.Any(g => g.Id != id && g.Name == newName))
             {
                 throw new InvalidOperationException($"分组 '{newName}' 已存在");
             }
@@ -506,7 +499,7 @@ namespace UnityProjectPlugin
             group.Name = newName;
 
             // 更新使用该分组的所有项目
-            foreach (UnityProject project in _projects.Where(p => p.GroupName == oldName))
+            foreach (UnityProject project in Projects.Where(p => p.GroupName == oldName))
             {
                 project.GroupName = newName;
             }
@@ -522,14 +515,14 @@ namespace UnityProjectPlugin
         /// </summary>
         public async Task DeleteGroupAsync(string id)
         {
-            ProjectGroup? group = _groups.FirstOrDefault(g => g.Id == id);
+            ProjectGroup? group = Groups.FirstOrDefault(g => g.Id == id);
             if (group == null)
             {
                 throw new InvalidOperationException($"分组不存在");
             }
 
             // 将该分组下的所有项目转为无分组
-            List<UnityProject> projectsInGroup = _projects.Where(p => p.GroupName == group.Name).ToList();
+            List<UnityProject> projectsInGroup = Projects.Where(p => p.GroupName == group.Name).ToList();
             foreach (UnityProject project in projectsInGroup)
             {
                 project.GroupName = null;
@@ -541,34 +534,19 @@ namespace UnityProjectPlugin
                 await SaveProjectsToFileAsync();
             }
 
-            _groups.Remove(group);
+            Groups.Remove(group);
             await SaveGroupsToFileAsync();
 
             LogInfo($"已删除分组: {group.Name}，{projectsInGroup.Count} 个项目已转为无分组");
         }
 
         /// <summary>
-        /// 获取所有分组
-        /// </summary>
-        public List<ProjectGroup> GetGroups() => new List<ProjectGroup>(_groups);
-
-        /// <summary>
         /// 获取分组使用数量
         /// </summary>
         public int GetGroupUsageCount(string groupName)
         {
-            return _projects.Count(p => p.GroupName == groupName);
+            return Projects.Count(p => p.GroupName == groupName);
         }
-
-        /// <summary>
-        /// 获取所有项目
-        /// </summary>
-        public List<UnityProject> GetProjects() => new List<UnityProject>(_projects);
-
-        /// <summary>
-        /// 获取所有版本
-        /// </summary>
-        public List<UnityVersion> GetVersions() => new List<UnityVersion>(_versions);
 
         #endregion
 
@@ -655,7 +633,7 @@ namespace UnityProjectPlugin
                                 var projectVersion = versionLine.Split(':')[1].Trim();
 
                                 // 在已配置的版本中查找匹配版本
-                                var matchedVersion = _versions.FirstOrDefault(v => v.Version == projectVersion);
+                                var matchedVersion = Versions.FirstOrDefault(v => v.Version == projectVersion);
                                 if (matchedVersion != null)
                                 {
                                     finalEditorPath = matchedVersion.EditorPath;
@@ -674,10 +652,10 @@ namespace UnityProjectPlugin
                 if (string.IsNullOrEmpty(finalEditorPath))
                 {
                     // 使用第一个可用版本
-                    if (_versions.Count > 0)
+                    if (Versions.Count > 0)
                     {
-                        finalEditorPath = _versions[0].EditorPath;
-                        LogInfo($"使用默认 Unity 版本: {_versions[0].Version}");
+                        finalEditorPath = Versions[0].EditorPath;
+                        LogInfo($"使用默认 Unity 版本: {Versions[0].Version}");
                     }
                     else
                     {
@@ -703,7 +681,7 @@ namespace UnityProjectPlugin
                 // 只有成功启动后才更新最后打开时间
                 if (process != null)
                 {
-                    UnityProject? project = _projects.FirstOrDefault(p => p.Id == Path.GetFullPath(projectPath).ToLowerInvariant());
+                    UnityProject? project = Projects.FirstOrDefault(p => p.Id == Path.GetFullPath(projectPath).ToLowerInvariant());
                     if (project != null)
                     {
                         project.LastOpened = DateTime.Now;

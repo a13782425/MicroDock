@@ -1,6 +1,6 @@
 using System;
 
-namespace MicroDock.Database;
+namespace MicroDock.Utils;
 
 /// <summary>
 /// 时间戳辅助类，用于处理从2025年1月1日开始的时间戳转换
