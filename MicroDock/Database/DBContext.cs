@@ -23,7 +23,6 @@ internal static class DBContext
         // 使用 MigrateTable 来支持添加新列
         try
         {
-            _database.CreateTable<SettingDB>();
             _database.CreateTable<ApplicationDB>();
             _database.CreateTable<IconDB>();
             _database.CreateTable<PluginToolStatisticsDB>();
@@ -31,40 +30,12 @@ internal static class DBContext
             _database.CreateTable<NavigationTabDB>();
             _database.CreateTable<UserPreferenceDB>();
 
-            SettingDataTransfer();
         }
         catch
         {
             // 表创建失败时的处理
         }
 
-    }
-
-    private static void SettingDataTransfer()
-    {
-        if (_database.Table<UserPreferenceDB>().Count() > 0)
-            return;
-        SettingDB db = _database.Table<SettingDB>().FirstOrDefault();
-        if (db == null)
-            return;
-        RunInTransaction(() =>
-        {
-            UserPreferenceKeys.SelectedTheme.Set(db.SelectedTheme);
-            UserPreferenceKeys.AutoStartup.Set(db.AutoStartup);
-            UserPreferenceKeys.AutoHide.Set(db.AutoHide);
-            UserPreferenceKeys.AlwaysOnTop.Set(db.AlwaysOnTop);
-            UserPreferenceKeys.ShowLogViewer.Set(db.ShowLogViewer);
-            UserPreferenceKeys.ShowResViewer.Set(db.ShowResViewer);
-            UserPreferenceKeys.WindowX.Set(db.WindowX);
-            UserPreferenceKeys.WindowY.Set(db.WindowY);
-            UserPreferenceKeys.WindowWidth.Set(db.WindowWidth);
-            UserPreferenceKeys.WindowHeight.Set(db.WindowHeight);
-            UserPreferenceKeys.ServerAddress.Set(db.ServerAddress);
-            UserPreferenceKeys.BackupServerAddress.Set(db.BackupServerAddress);
-            UserPreferenceKeys.BackupPassword.Set(db.BackupPassword);
-            UserPreferenceKeys.ServerValidationKey.Set(db.ServerValidationKey);
-            UserPreferenceKeys.LastAppBackupTime.Set(db.LastAppBackupTime);
-        });
     }
 
     public static void RunInTransaction(Action action)
