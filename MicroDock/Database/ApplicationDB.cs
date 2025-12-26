@@ -1,3 +1,4 @@
+using MicroDock.Model;
 using MicroDock.Utils;
 using SQLite;
 using System;
@@ -52,28 +53,4 @@ public class ApplicationDB
         get => TimeStampHelper.ToDateTime(LastUseAt);
         set => LastUseAt = TimeStampHelper.ToTimestamp(value);
     }
-}
-public enum FileType
-{
-    /// <summary>
-    /// 未知
-    /// </summary>
-    Unknow = 0,
-    /// <summary>
-    /// 应用程序
-    /// </summary>
-    Exe,
-    /// <summary>
-    /// 快捷方式
-    /// </summary>
-    Lnk,
-    /// <summary>
-    /// 文件
-    /// </summary>
-    File,
-    /// <summary>
-    /// 文件夹
-    /// </summary>
-    Folder,    
-    Other
 }

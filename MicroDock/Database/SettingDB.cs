@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 
 namespace MicroDock.Database;
 
+[Obsolete("请使用UserPreferenceDB")]
 internal class SettingDB
 {
     [PrimaryKey, AutoIncrement]

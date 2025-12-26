@@ -3,7 +3,9 @@
 			 xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
 			 xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
 			 xmlns:vm="clr-namespace:MicroDock.ViewModels"
+			 xmlns:model="clr-namespace:MicroDock.Model"
 			 xmlns:controls="clr-namespace:MicroDock.Views.Controls"
+			 xmlns:fa="using:FluentAvalonia.UI.Controls"
 			 mc:Ignorable="d" d:DesignWidth="500" d:DesignHeight="350"
 			 x:Class="MicroDock.Views.ApplicationTabView"
 			 x:DataType="vm:ApplicationTabViewModel">
@@ -19,12 +21,47 @@
 				<Separator />
 				<MenuItem Header="排序方式">
 					<!-- 二级菜单项 -->
-					<MenuItem Header="按类型排序" />
-					<MenuItem Header="按名称排序" />
-					<MenuItem Header="按添加时间排序" />
+					<!-- 排序类型 -->
+					<MenuItem Header="添加时间"
+							  Command="{Binding SetSortModeCommand}"
+							  CommandParameter="{x:Static model:ApplicationSortMode.AddTime}">
+						<MenuItem.Icon>
+							<fa:SymbolIcon Symbol="Checkmark" IsVisible="{Binding IsSortByAddTime}" />
+						</MenuItem.Icon>
+					</MenuItem>
+					<MenuItem Header="类型排序"
+							  Command="{Binding SetSortModeCommand}"
+							  CommandParameter="{x:Static model:ApplicationSortMode.Type}">
+						<MenuItem.Icon>
+							<fa:SymbolIcon Symbol="Checkmark" IsVisible="{Binding IsSortByType}" />
+						</MenuItem.Icon>
+					</MenuItem>
+					<MenuItem Header="名称排序"
+							  Command="{Binding SetSortModeCommand}"
+							  CommandParameter="{x:Static model:ApplicationSortMode.Name}">
+						<MenuItem.Icon>
+							<fa:SymbolIcon Symbol="Checkmark" IsVisible="{Binding IsSortByName}" />
+						</MenuItem.Icon>
+					</MenuItem>
+					<MenuItem Header="使用率"
+							  Command="{Binding SetSortModeCommand}"
+							  CommandParameter="{x:Static model:ApplicationSortMode.Usage}">
+						<MenuItem.Icon>
+							<fa:SymbolIcon Symbol="Checkmark" IsVisible="{Binding IsSortByUsage}" />
+						</MenuItem.Icon>
+					</MenuItem>
 					<Separator />
-					<MenuItem Header="升序" />
-					<MenuItem Header="降序" />
+					<!-- 排序方向 -->
+					<MenuItem Header="升序" Command="{Binding SetSortAscendingCommand}" CommandParameter="{x:True}">
+						<MenuItem.Icon>
+							<fa:SymbolIcon Symbol="Checkmark" IsVisible="{Binding IsSortAscending}" />
+						</MenuItem.Icon>
+					</MenuItem>
+					<MenuItem Header="降序" Command="{Binding SetSortAscendingCommand}" CommandParameter="{x:False}">
+						<MenuItem.Icon>
+							<fa:SymbolIcon Symbol="Checkmark" IsVisible="{Binding !IsSortAscending}" />
+						</MenuItem.Icon>
+					</MenuItem>
 					<!-- SortAscCommand SortDescCommand -->
 				</MenuItem>
 			</ContextMenu>

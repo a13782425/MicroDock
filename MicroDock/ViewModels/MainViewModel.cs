@@ -95,7 +95,6 @@ public class MainViewModel : ViewModelBase, IDisposable
         LoadPluginNavigationItems();
 
         // 根据设置添加日志查看器标签页
-        var settings = Database.DBContext.GetSetting();
         var logNavItem = new NavigationItemModel(null)
         {
             Title = "日志",
@@ -103,7 +102,7 @@ public class MainViewModel : ViewModelBase, IDisposable
             Content = new LogViewerTabView(),
             UniqueId = NAVIGATION_LOG_ID,
             NavType = NavigationType.System,
-            IsVisible = settings.ShowLogViewer
+            IsVisible = UserPreferenceKeys.ShowLogViewer.GetBool()
         };
         NavigationItems.Add(logNavItem);
 
@@ -114,7 +113,7 @@ public class MainViewModel : ViewModelBase, IDisposable
             Content = new ResourceBrowserTabView(),
             UniqueId = NAVIGATION_RES_ID,
             NavType = NavigationType.System,
-            IsVisible = settings.ShowResViewer
+            IsVisible = UserPreferenceKeys.ShowResViewer.GetBool()
         };
         NavigationItems.Add(resNavItem);
 

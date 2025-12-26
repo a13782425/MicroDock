@@ -1,6 +1,7 @@
 using MicroDock.Model;
 using MicroDock.Service;
 using MicroDock.Utils;
+using Newtonsoft.Json.Linq;
 using SQLite;
 using System;
 using System.Collections.Generic;
@@ -13,6 +14,7 @@ namespace MicroDock.Database;
 internal static class DBContext
 {
     private static SQLiteConnection _database;
+    private static Dictionary<string, string> _userPreferenceCache = new Dictionary<string, string>();
     static DBContext()
     {   // 获取应用数据目录
         string dbPath = Path.Combine(MAIN_DATA_FOLDER, "microdock");
@@ -28,12 +30,41 @@ internal static class DBContext
             _database.CreateTable<PluginInfoDB>();
             _database.CreateTable<NavigationTabDB>();
             _database.CreateTable<UserPreferenceDB>();
+
+            SettingDataTransfer();
         }
         catch
         {
             // 表创建失败时的处理
         }
 
+    }
+
+    private static void SettingDataTransfer()
+    {
+        if (_database.Table<UserPreferenceDB>().Count() > 0)
+            return;
+        SettingDB db = _database.Table<SettingDB>().FirstOrDefault();
+        if (db == null)
+            return;
+        RunInTransaction(() =>
+        {
+            UserPreferenceKeys.SelectedTheme.Set(db.SelectedTheme);
+            UserPreferenceKeys.AutoStartup.Set(db.AutoStartup);
+            UserPreferenceKeys.AutoHide.Set(db.AutoHide);
+            UserPreferenceKeys.AlwaysOnTop.Set(db.AlwaysOnTop);
+            UserPreferenceKeys.ShowLogViewer.Set(db.ShowLogViewer);
+            UserPreferenceKeys.ShowResViewer.Set(db.ShowResViewer);
+            UserPreferenceKeys.WindowX.Set(db.WindowX);
+            UserPreferenceKeys.WindowY.Set(db.WindowY);
+            UserPreferenceKeys.WindowWidth.Set(db.WindowWidth);
+            UserPreferenceKeys.WindowHeight.Set(db.WindowHeight);
+            UserPreferenceKeys.ServerAddress.Set(db.ServerAddress);
+            UserPreferenceKeys.BackupServerAddress.Set(db.BackupServerAddress);
+            UserPreferenceKeys.BackupPassword.Set(db.BackupPassword);
+            UserPreferenceKeys.ServerValidationKey.Set(db.ServerValidationKey);
+            UserPreferenceKeys.LastAppBackupTime.Set(db.LastAppBackupTime);
+        });
     }
 
     public static void RunInTransaction(Action action)
@@ -43,25 +74,6 @@ internal static class DBContext
         _database.RunInTransaction(action);
     }
 
-    // 获取全局唯一设置
-    public static SettingDB GetSetting()
-    {
-        var settings = _database.Table<SettingDB>().FirstOrDefault();
-        if (settings == null)
-        {
-            // 如果不存在设置记录，创建一个新的并保存
-            settings = new SettingDB();
-            _database.Insert(settings);
-        }
-        return settings;
-    }
-    // 更新设置
-    public static void UpdateSetting(Action<SettingDB> updateAction)
-    {
-        var settings = GetSetting();
-        updateAction(settings);
-        _database.Update(settings);
-    }
 
     #region 图标管理
 
@@ -644,18 +656,17 @@ internal static class DBContext
     {
         if (string.IsNullOrWhiteSpace(preferenceKey))
             return defaultValue;
-
+        if (_userPreferenceCache.TryGetValue(preferenceKey, out var cacheValue))
+        {
+            return cacheValue;
+        }
         var userPreference = _database.Table<UserPreferenceDB>().FirstOrDefault(t => t.PreferenceKey == preferenceKey);
         if (userPreference == null)
         {
-            userPreference = new UserPreferenceDB()
-            {
-                PreferenceKey = preferenceKey,
-                PreferenceValue = defaultValue ?? ""
-            };
-            _database.Insert(userPreference);
+            SetPreference(preferenceKey, defaultValue);
             return defaultValue;
         }
+        _userPreferenceCache[userPreference.PreferenceKey] = userPreference.PreferenceValue;
         return userPreference.PreferenceValue;
     }
     /// <summary>
@@ -668,20 +679,24 @@ internal static class DBContext
     {
         if (string.IsNullOrWhiteSpace(preferenceKey))
             return defaultValue;
-
+        int value = defaultValue;
+        if (_userPreferenceCache.TryGetValue(preferenceKey, out var cacheValue))
+        {
+            if (int.TryParse(cacheValue, out value))
+                return value;
+            return defaultValue;
+        }
         var userPreference = _database.Table<UserPreferenceDB>().FirstOrDefault(t => t.PreferenceKey == preferenceKey);
         if (userPreference == null)
         {
-            userPreference = new UserPreferenceDB()
-            {
-                PreferenceKey = preferenceKey,
-                PreferenceValue = defaultValue.ToString()
-            };
-            _database.Insert(userPreference);
+            SetPreference(preferenceKey, defaultValue);
             return defaultValue;
         }
-        if (int.TryParse(userPreference.PreferenceValue, out int value))
+        if (int.TryParse(userPreference.PreferenceValue, out value))
+        {
+            _userPreferenceCache[userPreference.PreferenceKey] = userPreference.PreferenceValue;
             return value;
+        }
         return defaultValue;
     }
 
@@ -691,24 +706,28 @@ internal static class DBContext
     /// <param name="preferenceKey"></param>
     /// <param name="defaultValue"></param>
     /// <returns></returns>
-    public static bool GetBoolPreference(string preferenceKey, bool defaultValue = true)
+    public static bool GetBoolPreference(string preferenceKey, bool defaultValue = false)
     {
         if (string.IsNullOrWhiteSpace(preferenceKey))
             return defaultValue;
-
+        bool value = defaultValue;
+        if (_userPreferenceCache.TryGetValue(preferenceKey, out var cacheValue))
+        {
+            if (bool.TryParse(cacheValue, out value))
+                return value;
+            return defaultValue;
+        }
         var userPreference = _database.Table<UserPreferenceDB>().FirstOrDefault(t => t.PreferenceKey == preferenceKey);
         if (userPreference == null)
         {
-            userPreference = new UserPreferenceDB()
-            {
-                PreferenceKey = preferenceKey,
-                PreferenceValue = defaultValue.ToString()
-            };
-            _database.Insert(userPreference);
+            SetPreference(preferenceKey, defaultValue);
             return defaultValue;
         }
-        if (bool.TryParse(userPreference.PreferenceValue, out bool value))
+        if (bool.TryParse(userPreference.PreferenceValue, out value))
+        {
+            _userPreferenceCache[userPreference.PreferenceKey] = userPreference.PreferenceValue;
             return value;
+        }
         return defaultValue;
     }
 
@@ -722,20 +741,24 @@ internal static class DBContext
     {
         if (string.IsNullOrWhiteSpace(preferenceKey))
             return defaultValue;
-
+        long value = defaultValue;
+        if (_userPreferenceCache.TryGetValue(preferenceKey, out var cacheValue))
+        {
+            if (long.TryParse(cacheValue, out value))
+                return value;
+            return defaultValue;
+        }
         var userPreference = _database.Table<UserPreferenceDB>().FirstOrDefault(t => t.PreferenceKey == preferenceKey);
         if (userPreference == null)
         {
-            userPreference = new UserPreferenceDB()
-            {
-                PreferenceKey = preferenceKey,
-                PreferenceValue = defaultValue.ToString()
-            };
-            _database.Insert(userPreference);
+            SetPreference(preferenceKey, defaultValue);
             return defaultValue;
         }
-        if (long.TryParse(userPreference.PreferenceValue, out long value))
+        if (long.TryParse(userPreference.PreferenceValue, out value))
+        {
+            _userPreferenceCache[userPreference.PreferenceKey] = userPreference.PreferenceValue;
             return value;
+        }
         return defaultValue;
     }
 
@@ -745,10 +768,11 @@ internal static class DBContext
     /// <param name="preferenceKey"></param>
     /// <param name="value"></param>
     /// <returns></returns>
-    public static void SetStringPreference(string preferenceKey, string value)
+    public static void SetPreference(string preferenceKey, string value)
     {
         if (string.IsNullOrWhiteSpace(preferenceKey))
             return;
+        _userPreferenceCache[preferenceKey] = value;
 
         var userPreference = _database.Table<UserPreferenceDB>().FirstOrDefault(t => t.PreferenceKey == preferenceKey);
         if (userPreference == null)
@@ -772,11 +796,11 @@ internal static class DBContext
     /// <param name="preferenceKey"></param>
     /// <param name="value"></param>
     /// <returns></returns>
-    public static void SetIntPreference(string preferenceKey, int value)
+    public static void SetPreference(string preferenceKey, int value)
     {
         if (string.IsNullOrWhiteSpace(preferenceKey))
             return;
-
+        _userPreferenceCache[preferenceKey] = value.ToString();
         var userPreference = _database.Table<UserPreferenceDB>().FirstOrDefault(t => t.PreferenceKey == preferenceKey);
         if (userPreference == null)
         {
@@ -800,11 +824,11 @@ internal static class DBContext
     /// <param name="preferenceKey"></param>
     /// <param name="value"></param>
     /// <returns></returns>
-    public static void SetBoolPreference(string preferenceKey, bool value)
+    public static void SetPreference(string preferenceKey, bool value)
     {
         if (string.IsNullOrWhiteSpace(preferenceKey))
             return;
-
+        _userPreferenceCache[preferenceKey] = value.ToString();
         var userPreference = _database.Table<UserPreferenceDB>().FirstOrDefault(t => t.PreferenceKey == preferenceKey);
         if (userPreference == null)
         {
@@ -828,11 +852,11 @@ internal static class DBContext
     /// <param name="preferenceKey"></param>
     /// <param name="value"></param>
     /// <returns></returns>
-    public static void SetLongPreference(string preferenceKey, long value)
+    public static void SetPreference(string preferenceKey, long value)
     {
         if (string.IsNullOrWhiteSpace(preferenceKey))
             return;
-
+        _userPreferenceCache[preferenceKey] = value.ToString();
         var userPreference = _database.Table<UserPreferenceDB>().FirstOrDefault(t => t.PreferenceKey == preferenceKey);
         if (userPreference == null)
         {

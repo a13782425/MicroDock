@@ -1,4 +1,6 @@
 using MicroDock.Database;
+using MicroDock.Model;
+using MicroDock.Utils;
 using Serilog;
 using System;
 using System.Collections.Generic;
@@ -209,25 +211,16 @@ public class PluginServerApiClient
     #region 基础 HTTP 方法
 
     /// <summary>
-    /// 获取服务器地址
-    /// </summary>
-    private static string GetServerAddress()
-    {
-        return DBContext.GetSetting().ServerAddress ?? string.Empty;
-    }
-
-    /// <summary>
     /// 获取备份服务器地址（如果配置了备份地址则使用备份地址，否则使用主服务器地址）
     /// </summary>
     private static string GetBackupServerAddress()
     {
-        var settings = DBContext.GetSetting();
-        var backupAddress = settings.BackupServerAddress ?? string.Empty;
+        var backupAddress = UserPreferenceKeys.BackupServerAddress.GetString();
         if (!string.IsNullOrWhiteSpace(backupAddress))
         {
             return backupAddress;
         }
-        return settings.ServerAddress ?? string.Empty;
+        return UserPreferenceKeys.ServerAddress.GetString();
     }
 
     /// <summary>
@@ -235,15 +228,7 @@ public class PluginServerApiClient
     /// </summary>
     private static string GetUserKey()
     {
-        return DBContext.GetSetting().BackupPassword ?? string.Empty;
-    }
-
-    /// <summary>
-    /// 获取服务器验证的Key
-    /// </summary>
-    private static string GetServerValidationKey()
-    {
-        return DBContext.GetSetting().ServerValidationKey ?? string.Empty;
+        return UserPreferenceKeys.BackupPassword.GetString();
     }
 
     /// <summary>
@@ -251,7 +236,7 @@ public class PluginServerApiClient
     /// </summary>
     private static string BuildUrl(string endpoint)
     {
-        string serverAddress = GetServerAddress();
+        string serverAddress = UserPreferenceKeys.ServerAddress.GetString();
         return $"{serverAddress.TrimEnd('/')}{endpoint}";
     }
 
@@ -544,7 +529,7 @@ public class PluginServerApiClient
     {
         try
         {
-            string address = serverAddress ?? GetServerAddress();
+            string address = serverAddress ?? UserPreferenceKeys.ServerAddress.GetString();
             if (string.IsNullOrEmpty(address))
             {
                 return (false, "服务器地址不能为空");
@@ -637,8 +622,8 @@ public class PluginServerApiClient
     /// <returns>上传结果</returns>
     public static async Task<(bool success, string message)> UploadPluginAsync(string pluginFolderPath, string pluginKey)
     {
-        string serverAddress = GetServerAddress();
-        string serverKey = GetServerValidationKey();
+        string serverAddress = UserPreferenceKeys.ServerAddress.GetString();
+        string serverKey = UserPreferenceKeys.ServerValidationKey.GetString();
         if (string.IsNullOrEmpty(serverAddress))
         {
             return (false, "请先在高级设置中配置服务器地址");
@@ -1129,7 +1114,7 @@ public class PluginServerApiClient
             if (result.success)
             {
                 // 更新备份时间
-                DBContext.UpdateSetting(s => s.LastAppBackupTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+                UserPreferenceKeys.LastAppBackupTime.Set(TimeStampHelper.GetCurrentTimestamp());
             }
 
             return result;

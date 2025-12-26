@@ -83,7 +83,7 @@ public class SettingsTabViewModel : ViewModelBase
         set
         {
             this.RaiseAndSetIfChanged(ref _autoStartup, value);
-            SaveSetting(nameof(AutoStartup), value);
+            UserPreferenceKeys.AutoStartup.Set(value);
             // 通过事件请求改变服务状态
             ServiceLocator.Get<EventService>().Publish(new AutoStartupChangeRequestMessage(value));
         }
@@ -98,7 +98,7 @@ public class SettingsTabViewModel : ViewModelBase
         set
         {
             this.RaiseAndSetIfChanged(ref _autoHide, value);
-            SaveSetting(nameof(AutoHide), value);
+            UserPreferenceKeys.AutoHide.Set(value);
             // 通过事件请求改变服务状态
             ServiceLocator.Get<EventService>().Publish(new AutoHideChangeRequestMessage(value));
         }
@@ -113,7 +113,7 @@ public class SettingsTabViewModel : ViewModelBase
         set
         {
             this.RaiseAndSetIfChanged(ref _alwaysOnTop, value);
-            SaveSetting(nameof(AlwaysOnTop), value);
+            UserPreferenceKeys.AlwaysOnTop.Set(value);
             // 通过事件请求改变服务状态
             ServiceLocator.Get<EventService>().Publish(new WindowTopmostChangeRequestMessage(value));
         }
@@ -128,7 +128,7 @@ public class SettingsTabViewModel : ViewModelBase
         set
         {
             this.RaiseAndSetIfChanged(ref _showLogViewer, value);
-            SaveSetting(nameof(ShowLogViewer), value);
+            UserPreferenceKeys.ShowLogViewer.Set(value);
             // 通过事件请求改变日志查看器可见性
             ServiceLocator.Get<EventService>().Publish(new NavigationTabVisibilityChangedMessage(NAVIGATION_LOG_ID, value));
         }
@@ -143,7 +143,7 @@ public class SettingsTabViewModel : ViewModelBase
         set
         {
             this.RaiseAndSetIfChanged(ref _showResViewer, value);
-            SaveSetting(nameof(ShowResViewer), value);
+            UserPreferenceKeys.ShowResViewer.Set(value);
             // 通过事件请求改变日志查看器可见性
             ServiceLocator.Get<EventService>().Publish(new NavigationTabVisibilityChangedMessage(NAVIGATION_RES_ID, value));
         }
@@ -184,7 +184,7 @@ public class SettingsTabViewModel : ViewModelBase
                 this.RaisePropertyChanged();
 
                 // 保存到数据库
-                DBContext.UpdateSetting(s => s.SelectedTheme = value);
+                UserPreferenceKeys.SelectedTheme.Set(value);
 
                 // 应用主题
                 var themeService = ServiceLocator.Get<Service.ThemeService>();
@@ -235,7 +235,7 @@ public class SettingsTabViewModel : ViewModelBase
                     {
                         _selectedTheme = value.Name;
                         // 保存到数据库
-                        DBContext.UpdateSetting(s => s.SelectedTheme = value.Name);
+                        UserPreferenceKeys.SelectedTheme.Set(value.Name);
 
                         // 应用主题
                         var themeService = ServiceLocator.Get<Service.ThemeService>();
@@ -547,19 +547,18 @@ public class SettingsTabViewModel : ViewModelBase
     /// </summary>
     private void LoadSettings()
     {
-        SettingDB settings = DBContext.GetSetting();
-        _autoStartup = settings.AutoStartup;
-        _autoHide = settings.AutoHide;
-        _alwaysOnTop = settings.AlwaysOnTop;
-        _showLogViewer = settings.ShowLogViewer;
-        _showResViewer = settings.ShowResViewer;
-        _selectedTheme = settings.SelectedTheme;
+        _autoStartup = UserPreferenceKeys.AutoStartup.GetBool();
+        _autoHide = UserPreferenceKeys.AutoHide.GetBool();
+        _alwaysOnTop = UserPreferenceKeys.AlwaysOnTop.GetBool();
+        _showLogViewer = UserPreferenceKeys.ShowLogViewer.GetBool();
+        _showResViewer = UserPreferenceKeys.ShowResViewer.GetBool();
+        _selectedTheme = UserPreferenceKeys.SelectedTheme.GetString();
 
         // 加载服务器与备份设置
-        _serverAddress = settings.ServerAddress ?? string.Empty;
-        _backupServerAddress = settings.BackupServerAddress ?? string.Empty;
-        _backupPassword = settings.BackupPassword ?? string.Empty;
-        _serverValidationKey = settings.ServerValidationKey ?? string.Empty;
+        _serverAddress = UserPreferenceKeys.ServerAddress.GetString();
+        _backupServerAddress = UserPreferenceKeys.BackupServerAddress.GetString();
+        _backupPassword = UserPreferenceKeys.BackupPassword.GetString();
+        _serverValidationKey = UserPreferenceKeys.ServerValidationKey.GetString();
 
 
         // 通知UI更新（仅UI，不触发setter中的事件发布）
@@ -700,34 +699,6 @@ public class SettingsTabViewModel : ViewModelBase
         };
     }
 
-    /// <summary>
-    /// 保存配置到数据库
-    /// </summary>
-    private void SaveSetting(string settingName, bool value)
-    {
-        DBContext.UpdateSetting(settings =>
-        {
-            switch (settingName)
-            {
-                case nameof(AutoStartup):
-                    settings.AutoStartup = value;
-                    break;
-                case nameof(AutoHide):
-                    settings.AutoHide = value;
-                    break;
-                case nameof(AlwaysOnTop):
-                    settings.AlwaysOnTop = value;
-                    break;
-                case nameof(ShowLogViewer):
-                    settings.ShowLogViewer = value;
-                    break;
-                case nameof(ShowResViewer):
-                    settings.ShowResViewer = value;
-                    break;
-            }
-        });
-    }
-
     #region 服务器与备份设置
 
     private string _serverAddress = string.Empty;
@@ -746,7 +717,7 @@ public class SettingsTabViewModel : ViewModelBase
         {
             if (this.RaiseAndSetIfChanged(ref _serverAddress, value) == value)
             {
-                DBContext.UpdateSetting(s => s.ServerAddress = value);
+                UserPreferenceKeys.ServerAddress.Set(value);
             }
         }
     }
@@ -761,7 +732,7 @@ public class SettingsTabViewModel : ViewModelBase
         {
             if (this.RaiseAndSetIfChanged(ref _backupServerAddress, value) == value)
             {
-                DBContext.UpdateSetting(s => s.BackupServerAddress = value);
+                UserPreferenceKeys.BackupServerAddress.Set(value);
             }
         }
     }
@@ -776,7 +747,7 @@ public class SettingsTabViewModel : ViewModelBase
         {
             if (this.RaiseAndSetIfChanged(ref _backupPassword, value) == value)
             {
-                DBContext.UpdateSetting(s => s.BackupPassword = value);
+                UserPreferenceKeys.BackupPassword.Set(value);
             }
         }
     }
@@ -791,7 +762,7 @@ public class SettingsTabViewModel : ViewModelBase
         {
             if (this.RaiseAndSetIfChanged(ref _serverValidationKey, value) == value)
             {
-                DBContext.UpdateSetting(s => s.ServerValidationKey = value);
+                UserPreferenceKeys.ServerValidationKey.Set(value);
             }
         }
     }
@@ -1310,10 +1281,10 @@ public class SettingsTabViewModel : ViewModelBase
     /// </summary>
     private void UpdateLastBackupTime()
     {
-        var settings = DBContext.GetSetting();
-        if (settings.LastAppBackupTime > 0)
+        var lastBackTime = UserPreferenceKeys.LastAppBackupTime.GetInt();
+        if (lastBackTime > 0)
         {
-            var dt = DateTimeOffset.FromUnixTimeSeconds(settings.LastAppBackupTime).LocalDateTime;
+            var dt = DateTimeOffset.FromUnixTimeSeconds(lastBackTime).LocalDateTime;
             LastAppBackupTimeText = dt.ToString("yyyy-MM-dd HH:mm:ss");
         }
         else

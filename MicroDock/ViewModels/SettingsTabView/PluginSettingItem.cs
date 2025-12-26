@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using DynamicData;
+using MicroDock.Database;
 using MicroDock.Model;
 using MicroDock.Plugin;
 using MicroDock.Service;
@@ -481,15 +482,13 @@ public class PluginSettingItem : ViewModelBase
     {
         try
         {
-            var settings = Database.DBContext.GetSetting();
-
-            if (string.IsNullOrEmpty(settings.ServerAddress))
+            if (string.IsNullOrEmpty(UserPreferenceKeys.ServerAddress.GetString()) && string.IsNullOrEmpty(UserPreferenceKeys.BackupServerAddress.GetString()))
             {
                 ShowNotification("备份失败", "请先在高级设置中配置服务器地址", AppNotificationType.Warning);
                 return;
             }
 
-            if (string.IsNullOrEmpty(settings.BackupPassword))
+            if (string.IsNullOrEmpty(UserPreferenceKeys.BackupPassword.GetString()))
             {
                 ShowNotification("备份失败", "请先在高级设置中配置备份密码", AppNotificationType.Warning);
                 return;
@@ -540,15 +539,13 @@ public class PluginSettingItem : ViewModelBase
     {
         try
         {
-            var settings = Database.DBContext.GetSetting();
-
-            if (string.IsNullOrEmpty(settings.ServerAddress) && string.IsNullOrEmpty(settings.BackupServerAddress))
+            if (string.IsNullOrEmpty(UserPreferenceKeys.ServerAddress.GetString()) && string.IsNullOrEmpty(UserPreferenceKeys.BackupServerAddress.GetString()))
             {
                 ShowNotification("恢复失败", "请先在高级设置中配置服务器地址或备份地址", AppNotificationType.Warning);
                 return;
             }
 
-            if (string.IsNullOrEmpty(settings.BackupPassword))
+            if (string.IsNullOrEmpty(UserPreferenceKeys.BackupPassword.GetString()))
             {
                 ShowNotification("恢复失败", "请先在高级设置中配置备份密码", AppNotificationType.Warning);
                 return;
@@ -737,15 +734,13 @@ public class PluginSettingItem : ViewModelBase
     {
         try
         {
-            var settings = Database.DBContext.GetSetting();
-
-            if (string.IsNullOrEmpty(settings.ServerAddress))
+            if (string.IsNullOrEmpty(UserPreferenceKeys.ServerAddress.GetString()))
             {
                 ShowNotification("上传失败", "请先在高级设置中配置服务器地址", AppNotificationType.Warning);
                 return;
             }
             // 检查服务器验证Key
-            if (string.IsNullOrEmpty(settings.ServerValidationKey))
+            if (string.IsNullOrEmpty(UserPreferenceKeys.ServerValidationKey.GetString()))
             {
                 ShowNotification("上传失败", "请先在高级设置中配置服务器验证Key", AppNotificationType.Warning);
                 return;

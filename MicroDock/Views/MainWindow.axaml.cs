@@ -4,6 +4,7 @@ using Avalonia.Controls.Notifications;
 using DesktopNotifications;
 using FluentAvalonia.UI.Windowing;
 using MicroDock.Database;
+using MicroDock.Model;
 using MicroDock.Service;
 using MicroDock.ViewModels;
 using Serilog;
@@ -73,7 +74,7 @@ public partial class MainWindow : AppWindow
             {
                 splashVm.LoadingCompleted -= OnSplashLoadingCompleted;
             }
-          
+
             // 获取 MainWindowViewModel 并设置主内容
             if (DataContext is MainWindowViewModel mainWindowVm)
             {
@@ -194,22 +195,20 @@ public partial class MainWindow : AppWindow
     /// </summary>
     private void InitializeServicesFromSettings()
     {
-        SettingDB settings = DBContext.GetSetting();
-
         // 应用初始配置
-        if (settings.AutoStartup)
+        if (UserPreferenceKeys.AutoStartup.GetBool())
         {
-            ServiceLocator.Get<AutoStartupService>().Enable();
+            ServiceLocator.Get<AutoStartupService>()?.Enable();
         }
 
-        if (settings.AutoHide)
+        if (UserPreferenceKeys.AutoHide.GetBool())
         {
-            ServiceLocator.Get<AutoHideService>().Enable();
+            ServiceLocator.Get<AutoHideService>()?.Enable();
         }
 
-        if (settings.AlwaysOnTop)
+        if (UserPreferenceKeys.AlwaysOnTop.GetBool())
         {
-            ServiceLocator.Get<TopMostService>().Enable();
+            ServiceLocator.Get<TopMostService>()?.Enable();
         }
     }
 
@@ -250,12 +249,12 @@ public partial class MainWindow : AppWindow
         try
         {
             var position = this.Position;
-            DBContext.UpdateSetting(settings =>
+            DBContext.RunInTransaction(() =>
             {
-                settings.WindowX = position.X;
-                settings.WindowY = position.Y;
-                settings.WindowWidth = (int)this.Width;
-                settings.WindowHeight = (int)this.Height;
+                UserPreferenceKeys.WindowX.Set(position.X);
+                UserPreferenceKeys.WindowY.Set(position.Y);
+                UserPreferenceKeys.WindowWidth.Set((int)this.Width);
+                UserPreferenceKeys.WindowHeight.Set((int)this.Height);
             });
             Log.Debug("窗口状态已保存: X={X}, Y={Y}, Width={Width}, Height={Height}",
                 position.X, position.Y, this.Width, this.Height);
@@ -273,16 +272,14 @@ public partial class MainWindow : AppWindow
     {
         try
         {
-            var settings = DBContext.GetSetting();
+            int x = UserPreferenceKeys.WindowX.GetInt();
+            int y = UserPreferenceKeys.WindowY.GetInt();
+            int width = UserPreferenceKeys.WindowWidth.GetInt();
+            int height = UserPreferenceKeys.WindowHeight.GetInt();
 
             // 检查是否有保存的窗口状态
-            if (settings.WindowWidth > 0 && settings.WindowHeight > 0)
+            if (width > 0 && height > 0)
             {
-                int x = settings.WindowX;
-                int y = settings.WindowY;
-                int width = settings.WindowWidth;
-                int height = settings.WindowHeight;
-
                 // 验证位置和大小是否有效
                 if (ValidateAndAdjustWindowPosition(ref x, ref y, width, height))
                 {

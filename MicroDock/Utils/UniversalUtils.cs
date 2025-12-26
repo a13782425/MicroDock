@@ -4,7 +4,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Controls.Notifications;
 using Avalonia.Threading;
 using FluentAvalonia.UI.Controls;
-using MicroDock.Database;
+using MicroDock.Model;
 using MicroDock.Service;
 using System;
 using System.Collections.Generic;

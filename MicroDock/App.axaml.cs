@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using MicroDock.Database;
+using MicroDock.Model;
 using MicroDock.Service;
 using MicroDock.ViewModels;
 using MicroDock.Views;
@@ -106,15 +107,15 @@ namespace MicroDock
         {
             try
             {
-                var settings = DBContext.GetSetting();
+                var theme = UserPreferenceKeys.SelectedTheme.GetString();
                 var themeService = ServiceLocator.Get<Service.ThemeService>();
 
                 // 如果数据库中有保存的主题名称，应用该主题
-                if (!string.IsNullOrEmpty(settings.SelectedTheme))
+                if (!string.IsNullOrEmpty(theme))
                 {
-                    if (themeService.LoadAndApplyTheme(settings.SelectedTheme))
+                    if (themeService.LoadAndApplyTheme(theme))
                     {
-                        Serilog.Log.Debug("启动时应用主题: {ThemeName}", settings.SelectedTheme);
+                        Serilog.Log.Debug("启动时应用主题: {ThemeName}", theme);
                         return;
                     }
                 }
