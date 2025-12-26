@@ -59,6 +59,63 @@
 								Margin="0,0,4,0"/>
 					</Grid>
 
+					<!-- 缓存管理 -->
+					<TextBlock Text="缓存管理"
+							   FontSize="13"
+							   FontWeight="SemiBold"
+							   Margin="0,15,0,8"
+							   Foreground="#666"/>
+					<Grid Margin="0,4">
+						<Grid.ColumnDefinitions>
+							<ColumnDefinition Width="*"/>
+							<ColumnDefinition Width="Auto"/>
+							<ColumnDefinition Width="Auto"/>
+						</Grid.ColumnDefinitions>
+						<StackPanel Grid.Column="0" VerticalAlignment="Center">
+							<TextBlock Text="日志缓存"/>
+							<TextBlock Text="{Binding LogCacheSize}"
+									   FontSize="11"
+									   Foreground="Gray"/>
+						</StackPanel>
+						<Button Content="清除"
+								Command="{Binding ClearLogCacheCommand}"
+								Grid.Column="2"
+								Margin="8,0,0,0"/>
+					</Grid>
+					<Grid Margin="0,4">
+						<Grid.ColumnDefinitions>
+							<ColumnDefinition Width="*"/>
+							<ColumnDefinition Width="Auto"/>
+							<ColumnDefinition Width="Auto"/>
+						</Grid.ColumnDefinitions>
+						<StackPanel Grid.Column="0" VerticalAlignment="Center">
+							<TextBlock Text="应用缓存"/>
+							<TextBlock Text="{Binding AppCacheSize}"
+									   FontSize="11"
+									   Foreground="Gray"/>
+						</StackPanel>
+						<Button Content="清除"
+								Command="{Binding ClearAppCacheCommand}"
+								Grid.Column="2"
+								Margin="8,0,0,0"/>
+					</Grid>
+					<Grid Margin="0,4">
+						<Grid.ColumnDefinitions>
+							<ColumnDefinition Width="*"/>
+							<ColumnDefinition Width="Auto"/>
+							<ColumnDefinition Width="Auto"/>
+						</Grid.ColumnDefinitions>
+						<StackPanel Grid.Column="0" VerticalAlignment="Center">
+							<TextBlock Text="插件缓存"/>
+							<TextBlock Text="{Binding PluginCacheSize}"
+									   FontSize="11"
+									   Foreground="Gray"/>
+						</StackPanel>
+						<Button Content="清除"
+								Command="{Binding ClearPluginCacheCommand}"
+								Grid.Column="2"
+								Margin="8,0,0,0"/>
+					</Grid>
 
 					<!-- 功能设置 -->
 					<TextBlock Text="功能"

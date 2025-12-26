@@ -45,6 +45,10 @@ public class SettingsTabViewModel : ViewModelBase
         InstallPluginCommand = ReactiveCommand.CreateFromTask(InstallPluginFromServer);
         OpenStorageFolderCommand = ReactiveCommand.Create(OnOpenStorageFolder);
         BrowseStorageFolderCommand = ReactiveCommand.CreateFromTask(OnBrowseStorageFolder);
+        ClearLogCacheCommand = ReactiveCommand.CreateFromTask(ClearLogCache);
+        ClearAppCacheCommand = ReactiveCommand.CreateFromTask(ClearAppCache);
+        ClearPluginCacheCommand = ReactiveCommand.CreateFromTask(ClearPluginCache);
+
 
         PluginSettings = new ObservableCollection<PluginSettingItem>();
         AvailableThemes = new ObservableCollection<MicroDock.Model.ThemeModel>();
@@ -57,7 +61,7 @@ public class SettingsTabViewModel : ViewModelBase
         LoadSettings();
         LoadThemes();
         LoadNavigationTabs();
-
+        LoadCacheSizes(); // 加载缓存大小
         // 加载插件设置（使用单例实例）
         LoadPluginSettings();
 
@@ -284,8 +288,6 @@ public class SettingsTabViewModel : ViewModelBase
     }
 
     public ObservableCollection<NavigationTabSettingItem> NavigationTabs { get; }
-    // Drag and Drop MoveTab
-
     private void LoadNavigationTabs()
     {
         NavigationTabs.Clear();
@@ -1293,6 +1295,139 @@ public class SettingsTabViewModel : ViewModelBase
         }
     }
 
+    #endregion
+
+    #region 缓存管理
+    private string _logCacheSize = "计算中...";
+    private string _appCacheSize = "计算中...";
+    private string _pluginCacheSize = "计算中...";
+    public string LogCacheSize
+    {
+        get => _logCacheSize;
+        private set => this.RaiseAndSetIfChanged(ref _logCacheSize, value);
+    }
+    public string AppCacheSize
+    {
+        get => _appCacheSize;
+        private set => this.RaiseAndSetIfChanged(ref _appCacheSize, value);
+    }
+    public string PluginCacheSize
+    {
+        get => _pluginCacheSize;
+        private set => this.RaiseAndSetIfChanged(ref _pluginCacheSize, value);
+    }
+    public ReactiveCommand<Unit, Unit> ClearLogCacheCommand { get; }
+    public ReactiveCommand<Unit, Unit> ClearAppCacheCommand { get; }
+    public ReactiveCommand<Unit, Unit> ClearPluginCacheCommand { get; }
+    // 在构造函数中初始化命令:
+    // ClearLogCacheCommand = ReactiveCommand.CreateFromTask(ClearLogCache);
+    // ClearAppCacheCommand = ReactiveCommand.CreateFromTask(ClearAppCache);
+    // ClearPluginCacheCommand = ReactiveCommand.CreateFromTask(ClearPluginCache);
+    // LoadCacheSizes(); // 加载缓存大小
+    private void LoadCacheSizes()
+    {
+        Task.Run(() =>
+        {
+            LogCacheSize = FormatSize(CalculateFolderSize(LOG_FOLDER));
+            AppCacheSize = FormatSize(CalculateFolderSize(MAIN_TEMP_DATA_FOLDER));
+            PluginCacheSize = FormatSize(CalculateFolderSize(PLUGIN_TEMP_DATA_FOLDER));
+        });
+    }
+    private long CalculateFolderSize(string folderPath)
+    {
+        if (!Directory.Exists(folderPath))
+            return 0;
+
+        try
+        {
+            return new DirectoryInfo(folderPath)
+                .EnumerateFiles("*", SearchOption.AllDirectories)
+                .Sum(f => f.Length);
+        }
+        catch
+        {
+            return 0;
+        }
+    }
+    private string FormatSize(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB" };
+        double len = bytes;
+        int order = 0;
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len /= 1024;
+        }
+        return $"{len:0.##} {sizes[order]}";
+    }
+    private async Task ClearLogCache()
+    {
+        bool confirm = await ShowConfirmDialogAsync("清除日志缓存", "确定要清除所有日志文件吗？");
+        if (!confirm) return;
+
+        try
+        {
+            ClearFolder(LOG_FOLDER);
+            LogCacheSize = FormatSize(0);
+            ShowNotification("清除成功", "日志缓存已清除");
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "清除日志缓存失败");
+            ShowNotification("清除失败", ex.Message, AppNotificationType.Error);
+        }
+    }
+    private async Task ClearAppCache()
+    {
+        bool confirm = await ShowConfirmDialogAsync("清除应用缓存", "确定要清除应用临时文件吗？");
+        if (!confirm) return;
+
+        try
+        {
+            ClearFolder(MAIN_TEMP_DATA_FOLDER);
+            ClearFolder(TEMP_IMPORT_FOLDER);
+            AppCacheSize = FormatSize(0);
+            ShowNotification("清除成功", "应用缓存已清除");
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "清除应用缓存失败");
+            ShowNotification("清除失败", ex.Message, AppNotificationType.Error);
+        }
+    }
+    private async Task ClearPluginCache()
+    {
+        bool confirm = await ShowConfirmDialogAsync("清除插件缓存", "确定要清除插件临时文件吗？");
+        if (!confirm) return;
+
+        try
+        {
+            ClearFolder(PLUGIN_TEMP_DATA_FOLDER);
+            PluginCacheSize = FormatSize(0);
+            ShowNotification("清除成功", "插件缓存已清除");
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "清除插件缓存失败");
+            ShowNotification("清除失败", ex.Message, AppNotificationType.Error);
+        }
+    }
+    private void ClearFolder(string path)
+    {
+        if (!Directory.Exists(path))
+            return;
+
+        var di = new DirectoryInfo(path);
+        foreach (var file in di.GetFiles())
+        {
+            try { file.Delete(); } catch { }
+        }
+        foreach (var dir in di.GetDirectories())
+        {
+            try { dir.Delete(true); } catch { }
+        }
+    }
     #endregion
 
 }
